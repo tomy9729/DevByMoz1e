@@ -1,4 +1,6 @@
-<template>123</template>
+<template>
+    <MyLayout />
+</template>
 
 <script>
 import Highcharts from "highcharts"
@@ -14,6 +16,8 @@ import solidGauge from "highcharts/modules/solid-gauge"
 import "devextreme/dist/css/dx.light.css"
 import "bootstrap-icons/font/bootstrap-icons.css"
 import "material-icons/iconfont/material-icons.css"
+
+import MyLayout from "./MyLayout.vue"
 
 {
     Highcharts.setOptions({
@@ -40,7 +44,9 @@ import "material-icons/iconfont/material-icons.css"
 export default {
     name: "App",
 
-    components: {},
+    components: {
+        MyLayout,
+    },
 
     provide: {},
 }
