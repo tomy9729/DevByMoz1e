@@ -1,0 +1,77 @@
+{
+    "//": {
+        "1-1": "매우 불행하고 짜증나게도, package.json은 커멘트를 허용하지 않는다.",
+        "1-2": "워크어라운드로서, 탑레벨의 경우, package.json을 사용하는 수많은 툴들이 사용하지 않는 키를 넣으면 무시되고, 또 보존된다.",
+        "1-3": "단 키가 중복되면 안 된다.",
+        "1-4": "따라서, 커멘트하고 싶은 항목의 루트레벨 키앞에 //를 붙이고 그 안에 커멘트를 넣는다",
+        "2-1": "package.json은 수많은 툴들이 건드리고, 수많은 툴들이 자기 config를 여기에 넣는 경향이 있다",
+        "2-2": "절대로 바람직하지 않으므로, 별도의 파일에서 config가 가능한 경우는 그렇게 하도록 한다.",
+        "2-3": "예를 들어, eslint, browserlist 등은 각각의 config 파일인 .eslintrc.json, .browserlistrc에 넣는다."
+    },
+    "//type": {
+        "1": "원래는 mjs 확장자를 사용하고 싶지만, vscode에서 지원하지 않고, 지원하도록 하는 방법을 못 찾아, 그냥 .js를 사용한다. 20211020"
+    },
+    "//other plugins": {
+        "1-1": "20220224 vue create로 프로젝트를 생성할때 package.json에 생성되는 다른 툴의 config를 옮김",
+        "1-2": "eslintConfig --> .eslintrc.js",
+        "1-3": "browserslist --> .browserlistrc"
+    },
+    "name": "devbymoz1e",
+    "version": "0.1.0",
+    "private": true,
+    "description": "",
+    "scripts": {
+        "serve": "vue-cli-service serve",
+        "build": "vue-cli-service build",
+        "lint": "vue-cli-service lint"
+    },
+    "//dependencies": [
+        "1-1 20220629 dependency나 devDependency는 각별한 주의가 필요하다.",
+        "1-2 vue-cli가 넣은 것들은 버전을 건드리지 말 것",
+        "1-3 vue-cli@5.0.6로 vue create한 original:",
+        "    core-js ^3.8.3",
+        "    vue ^3.2.13",
+        "2 dependencies에는 꼭 필요한, direct dependency만 포함시킬 것",
+        "3 20211224 material-icons 써도 되나 잘 모르겠지만 일단..."
+    ],
+    "dependencies": {
+        "axios": ">=0.21.4",
+        "bootstrap-icons": ">=1.7.2",
+        "core-js": "^3.8.3",
+        "d3": "^7.4.4",
+        "devextreme-vue": ">=21.1.5",
+        "fast-deep-equal": "^3.1.3",
+        "highcharts-vue": ">=1.4.0",
+        "lodash": ">=4.17.21",
+        "material-icons": ">=1.10.4",
+        "split": "^1.0.1",
+        "vue": "^3.2.13",
+        "vue-router": "^4.0.3"
+    },
+    "//devDependencies": [
+        "1 20220701 vue-cli@5.0.6로 vue create ([Vue 3] babel, eslint)한 원본:",
+        "@babel/core ^7.12.16",
+        "@babel/eslint-parser ^7.12.16",
+        "@vue/cli-plugin-babel ~5.0.0",
+        "@vue/cli-plugin-eslint ~5.0.0",
+        "@vue/cli-service ~5.0.0",
+        "eslint ^7.32.0",
+        "eslint-plugin-vue ^8.0.3",
+        "2 css에 sass를 사용한다. 따라서 node-sass와 sass-loader가 필요함",
+        "3 import ... .vue를 force하기 위해 eslint-plugin-import, eslint-import-resolver-alias를 사용. .eslintrc.js 참조",
+        "4 eslint 훅을 돌릴때 filter-ignore.js를 사용하기 위해 split이 필요함"
+    ],
+    "devDependencies": {
+        "@babel/core": "^7.12.16",
+        "@babel/eslint-parser": "^7.12.16",
+        "@vue/cli-plugin-babel": "~5.0.0",
+        "@vue/cli-plugin-eslint": " ~5.0.0",
+        "@vue/cli-service": " ~5.0.0",
+        "eslint": "^7.32.0",
+        "eslint-plugin-import": "^2.26.0",
+        "eslint-plugin-vue": "^8.0.3",
+        "eslint-import-resolver-alias": ">=1.1.2",
+        "node-sass": "^6.0.1",
+        "sass-loader": "^10.2.0"
+    }
+}

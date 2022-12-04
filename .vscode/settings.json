@@ -1,0 +1,23 @@
+{
+    "editor.formatOnSave": true,
+    "editor.detectIndentation": false,
+    "files.eol": "\n",
+    "vetur.format.options.tabSize": 4,
+    "vetur.format.defaultFormatterOptions": {
+        "prettyhtml": {
+            "printWidth": 120,
+        },
+        "prettier": {
+            "semi": false,
+            "printWidth": 120
+        }
+    },
+    "eslint.workingDirectories": [
+        {
+            "mode": "auto"
+        }
+    ],
+    "vetur.validation.template": false,
+    "vetur.validation.script": false,
+    "vetur.validation.style": false,
+}

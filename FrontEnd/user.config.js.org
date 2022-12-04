@@ -1,0 +1,12 @@
+module.exports = {
+    devMode: {
+        useDevTargetTreeFetcher: false,
+        useDevServiceTreeFetcher: false,
+        useDevViewSaveLoader: false,
+        useDevMonitoringDataFetcher: false,
+        useDevButtonGroup: true
+    },
+    axios: {
+        url: "http://10.0.10.158:8080"
+    }
+}
