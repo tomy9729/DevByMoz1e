@@ -1,5 +1,6 @@
 class User {
-    constructor(id, name, birth, email) {
+    constructor(myid, id, name, birth, email) {
+        this.myid = myid
         this.id = id
         this.name = name
         this.birth = birth
@@ -8,7 +9,7 @@ class User {
 }
 
 User.getDefault = function () {
-    return new User(0, "", "", "")
+    return new User("", "", "", "")
 }
 
 export default User
