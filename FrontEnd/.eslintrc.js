@@ -90,7 +90,9 @@ module.exports = {
         //20220701 emit에 대해 정의하지 않으면 에러표시
         "vue/require-explicit-emits": ["error", {
             "allowProps": false
-        }]
+        }],
+
+        "semi": [2, 'never']
 
         //// end of 20220630 plugin:vue/vue3-recommended중에서 customize ////////
     },
@@ -111,4 +113,4 @@ module.exports = {
             },
         },
     },
-};
+}
