@@ -1,0 +1,389 @@
+{
+  "Element_000": {
+    "type": "NameTagBox",
+    "value": " +17 화려한 사멸의 선언 전투망치 "
+  },
+  "Element_001": {
+    "type": "ItemTitle",
+    "value": {
+      "bEquip": 0,
+      "leftStr0": "고대 해머",
+      "leftStr1": "품질",
+      "leftStr2": "아이템 레벨 1685 (티어 4)",
+      "qualityValue": 95,
+      "rightStr0": "장착중",
+      "slotData": {
+        "advBookIcon": 0,
+        "battleItemTypeIcon": 0,
+        "blackListIcon": 0,
+        "cardIcon": false,
+        "friendship": 0,
+        "iconGrade": 6,
+        "iconPath": "https://cdn-lostark.game.onstove.com/efui_iconatlas/dr_item/dr_item_01_153.png",
+        "imagePath": "",
+        "islandIcon": 0,
+        "petBorder": 0,
+        "rtString": "",
+        "seal": false,
+        "temporary": 0,
+        "town": 0,
+        "trash": 0
+      }
+    }
+  },
+  "Element_002": {
+    "type": "SingleTextBox",
+    "value": "디스트로이어 전용"
+  },
+  "Element_003": {
+    "type": "SingleTextBox",
+    "value": "캐릭터 귀속됨"
+  },
+  "Element_004": {
+    "type": "MultiTextBox",
+    "value": "|거래 불가"
+  },
+  "Element_005": {
+    "type": "SingleTextBox",
+    "value": "[상급 재련] 10단계"
+  },
+  "Element_006": {
+    "type": "ItemPartBox",
+    "value": {
+      "Element_000": "기본 효과",
+      "Element_001": "무기 공격력 +93036"
+    }
+  },
+  "Element_007": {
+    "type": "ItemPartBox",
+    "value": {
+      "Element_000": "추가 효과",
+      "Element_001": "추가 피해 +28.06%"
+    }
+  },
+  "Element_008": {
+    "type": "Progress",
+    "value": {
+      "forceValue": "장비 재련 가능",
+      "maximum": 75000,
+      "minimum": 0,
+      "title": "현재 단계 재련 경험치",
+      "value": 75000,
+      "valueType": -1
+    }
+  },
+  "Element_009": {
+    "type": "IndentStringGroup",
+    "value": {
+      "Element_000": {
+        "contentStr": {
+          "Element_000": {
+            "bPoint": false,
+            "contentStr": "무기 공격력 +2940"
+          },
+          "Element_001": {
+            "bPoint": false,
+            "contentStr": "모든 장비에 적용된 총 122개"
+          },
+          "Element_002": {
+            "bPoint": false,
+            "contentStr": "5 - 공격력이 800 증가하며, 낙인력이 2% 증가합니다."
+          },
+          "Element_003": {
+            "bPoint": false,
+            "contentStr": "10 - 공격력이 800 추가로 증가하며, 아군 공격력 강화 효과가 2% 증가합니다."
+          },
+          "Element_004": {
+            "bPoint": false,
+            "contentStr": "15 - 공격력이 800 추가로 증가하며, 낙인력이 2% 추가로 증가합니다."
+          },
+          "Element_005": {
+            "bPoint": false,
+            "contentStr": "20 - 공격력이 1125 추가로 증가하며, 낙인력이 4% 추가로 증가합니다."
+          }
+        },
+        "topStr": "슬롯 효과 [초월] 7단계 21"
+      }
+    }
+  },
+  "Element_010": {
+    "type": "IndentStringGroup",
+    "value": null
+  },
+  "Element_011": {
+    "type": "SingleTextBox",
+    "value": "분해불가"
+  },
+  "Element_012": {
+    "type": "SingleTextBox",
+    "value": "[세트 업그레이드] 대도시 - 세트 장비 관리"
+  },
+  "Element_013": {
+    "type": "ShowMeTheMoney",
+    "value": "내구도 144 / 175|"
+  }
+}
+
+
+{
+  "Element_000": {
+    "type": "NameTagBox",
+    "value": " 도래한 결전의 목걸이 "
+  },
+  "Element_001": {
+    "type": "ItemTitle",
+    "value": {
+      "bEquip": 0,
+      "leftStr0": "고대 목걸이",
+      "leftStr1": "품질",
+      "leftStr2": "아이템 티어 4",
+      "qualityValue": 75,
+      "rightStr0": "장착중",
+      "slotData": {
+        "advBookIcon": 0,
+        "battleItemTypeIcon": 0,
+        "blackListIcon": 0,
+        "cardIcon": false,
+        "friendship": 0,
+        "iconGrade": 6,
+        "iconPath": "https://cdn-lostark.game.onstove.com/efui_iconatlas/acc/acc_215.png",
+        "imagePath": "",
+        "islandIcon": 0,
+        "petBorder": 0,
+        "rtString": "",
+        "seal": false,
+        "temporary": 0,
+        "town": 0,
+        "trash": 0
+      }
+    }
+  },
+  "Element_002": {
+    "type": "SingleTextBox",
+    "value": "캐릭터 귀속됨 거래 2회 가능 거래 제한 아이템 레벨 1680"
+  },
+  "Element_003": {
+    "type": "MultiTextBox",
+    "value": "|거래가능"
+  },
+  "Element_004": {
+    "type": "ItemPartBox",
+    "value": {
+      "Element_000": "기본 효과",
+      "Element_001": "힘 +15420 민첩 +15420 지능 +15420 체력 +3905"
+    }
+  },
+  "Element_005": {
+    "type": "ItemPartBox",
+    "value": {
+      "Element_000": "연마 효과",
+      "Element_001": "공격력 +80 무기 공격력 +195 추가 피해 +0.70%"
+    }
+  },
+  "Element_006": {
+    "type": "IndentStringGroup",
+    "value": null
+  },
+  "Element_007": {
+    "type": "ItemPartBox",
+    "value": {
+      "Element_000": "아크 패시브 포인트 효과",
+      "Element_001": "깨달음 +13"
+    }
+  },
+  "Element_008": {
+    "type": "SingleTextBox",
+    "value": "[카제로스 레이드] 1막 : 대지를 부수는 업화의 궤적 - 하드 [카제로스 레이드] 2막 : 부유하는 악몽의 진혼곡 - 하드"
+  }
+}
+
+
+{
+  "Element_000": {
+    "type": "NameTagBox",
+    "value": " 강력한 비상의 돌 "
+  },
+  "Element_001": {
+    "type": "ItemTitle",
+    "value": {
+      "bEquip": 0,
+      "leftStr0": "전설 어빌리티 스톤",
+      "leftStr2": "아이템 티어 3",
+      "qualityValue": -1,
+      "rightStr0": "장착중",
+      "slotData": {
+        "advBookIcon": 0,
+        "battleItemTypeIcon": 0,
+        "blackListIcon": 0,
+        "cardIcon": false,
+        "friendship": 0,
+        "iconGrade": 4,
+        "iconPath": "https://cdn-lostark.game.onstove.com/efui_iconatlas/ability/ability_20.png",
+        "imagePath": "",
+        "islandIcon": 0,
+        "petBorder": 0,
+        "rtString": "",
+        "seal": false,
+        "temporary": 0,
+        "town": 0,
+        "trash": 0
+      }
+    }
+  },
+  "Element_002": {
+    "type": "SingleTextBox",
+    "value": "캐릭터 귀속됨 거래 제한 아이템 레벨 1100"
+  },
+  "Element_003": {
+    "type": "MultiTextBox",
+    "value": "|거래 불가"
+  },
+  "Element_004": {
+    "type": "ItemPartBox",
+    "value": {
+      "Element_000": "기본 효과",
+      "Element_001": "체력 +12439"
+    }
+  },
+  "Element_005": {
+    "type": "ItemPartBox",
+    "value": {
+      "Element_000": "세공 단계 보너스",
+      "Element_001": "체력 +1866"
+    }
+  },
+  "Element_006": {
+    "type": "IndentStringGroup",
+    "value": {
+      "Element_000": {
+        "contentStr": {
+          "Element_000": {
+            "bPoint": 0,
+            "contentStr": "[슈퍼 차지] 활성도 9 ",
+            "pointType": 2
+          },
+          "Element_001": {
+            "bPoint": 0,
+            "contentStr": "[바리케이드] 활성도 7 ",
+            "pointType": 2
+          },
+          "Element_002": {
+            "bPoint": 0,
+            "contentStr": "[공격속도 감소] 활성도 2 ",
+            "pointType": 2
+          }
+        },
+        "topStr": "무작위 각인 효과"
+      },
+      "Element_001": {
+        "contentStr": {
+          "Element_000": {
+            "bPoint": 0,
+            "contentStr": "[슈퍼 차지] Lv.3 ",
+            "pointType": 2
+          },
+          "Element_001": {
+            "bPoint": 0,
+            "contentStr": "[바리케이드] Lv.2 ",
+            "pointType": 2
+          },
+          "Element_002": {
+            "bPoint": 0,
+            "contentStr": "[공격속도 감소] Lv.0 ",
+            "pointType": 2
+          },
+          "Element_003": {
+            "bPoint": 0,
+            "contentStr": "[레벨 보너스] 기본 공격력 +1.50% ",
+            "pointType": 2
+          }
+        },
+        "topStr": "[아크 패시브 활성화 상태]"
+      }
+    }
+  },
+  "Element_007": {
+    "type": "IndentStringGroup",
+    "value": null
+  },
+  "Element_008": {
+    "type": "SingleTextBox",
+    "value": "푸른 기운과 붉은 기운이 희미하게 뒤섞여 신묘한 느낌이 난다. 자세히 보고 싶지만 더 만졌다가는 부서져 버릴 것 같다. 어빌리티 스톤 세공사에게 세공 완료 후 장착 가능합니다."
+  },
+  "Element_009": {
+    "type": "SingleTextBox",
+    "value": "판매불가"
+  },
+  "Element_010": {
+    "type": "SingleTextBox",
+    "value": "[가디언 토벌] 토벌 5단계 [어비스 레이드] 아르고스 [필드 보스] 파푸니카 - 모아케 그 외에 획득처가 더 존재합니다."
+  }
+}
+
+{
+  "Element_000": {
+    "type": "NameTagBox",
+    "value": " 찬란한 구원자의 팔찌 "
+  },
+  "Element_001": {
+    "type": "ItemTitle",
+    "value": {
+      "bEquip": 0,
+      "leftStr0": "고대 팔찌",
+      "leftStr2": "아이템 티어 4",
+      "qualityValue": -1,
+      "rightStr0": "장착중",
+      "slotData": {
+        "advBookIcon": 0,
+        "battleItemTypeIcon": 0,
+        "blackListIcon": 0,
+        "cardIcon": false,
+        "friendship": 0,
+        "iconGrade": 6,
+        "iconPath": "https://cdn-lostark.game.onstove.com/efui_iconatlas/acc/acc_327.png",
+        "imagePath": "",
+        "islandIcon": 0,
+        "petBorder": 0,
+        "rtString": "",
+        "seal": false,
+        "temporary": 0,
+        "town": 0,
+        "trash": 0
+      }
+    }
+  },
+  "Element_002": {
+    "type": "SingleTextBox",
+    "value": "캐릭터 귀속됨 거래 제한 아이템 레벨 1680"
+  },
+  "Element_003": {
+    "type": "MultiTextBox",
+    "value": "|거래 불가"
+  },
+  "Element_004": {
+    "type": "ItemPartBox",
+    "value": {
+      "Element_000": "팔찌 효과",
+      "Element_001": " 특화 +80 치명 +99 적에게 주는 피해가 2.5% 증가한다. 치명타 적중률 +4.20%"
+    }
+  },
+  "Element_005": {
+    "type": "IndentStringGroup",
+    "value": null
+  },
+  "Element_006": {
+    "type": "SingleTextBox",
+    "value": "효과 부여 불가"
+  },
+  "Element_007": {
+    "type": "ItemPartBox",
+    "value": {
+      "Element_000": "아크 패시브 포인트 효과",
+      "Element_001": "도약 +18"
+    }
+  },
+  "Element_008": {
+    "type": "SingleTextBox",
+    "value": "[쿠르잔 전선] [가디언 토벌] 스콜라키아 [카제로스 레이드] 1막 : 대지를 부수는 업화의 궤적 - 하드 그 외에 획득처가 더 존재합니다."
+  }
+}
