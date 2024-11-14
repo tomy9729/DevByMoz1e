@@ -54,7 +54,7 @@ function onCommand(msg) {
     }
 }
 
-bot.setCommandPrefix("/") // "/"로 시작하는 메시지를 command로 판단
+bot.setCommandPrefix("!") // "!"로 시작하는 메시지를 command로 판단
 bot.addListener(Event.COMMAND, onCommand)
 
 /**
@@ -190,14 +190,55 @@ const HttpUtil = {
                     const clothes = equipments.slice(0, 6)
                     result.push("장비 | 품질 | 강화 | 상재")
                     result.push("====================")
+
+                    const nasaengmuns = []
                     clothes.forEach((cloth) => {
                         const tooltip = cleanTooltip(cloth.Tooltip)
-                        const qualityValue = tooltip.Element_001.value.qualityValue
-                        const qualityStr = qualityValue < 100 ? "0" + qualityValue : qualityValue
-                        const equipLvStr = cloth.Name.toString().split(" ")[0].slice(1) + "강"
-                        const highLv = tooltip.Element_005.value.toString().split(" ")[2]
-                        result.push([cloth.Type, qualityStr, equipLvStr, highLv ? highLv : "X"].join(" | "))
+                        {
+                            //장비
+                            const qualityValue = tooltip.Element_001.value.qualityValue
+                            const qualityStr = qualityValue < 100 ? "0" + qualityValue : qualityValue
+                            const equipLvStr = cloth.Name.toString().split(" ")[0].slice(1) + "강"
+                            const highLv = tooltip.Element_005.value.toString().split(" ")[2]
+                            result.push([cloth.Type, qualityStr, equipLvStr, highLv ? highLv : "X"].join(" | "))
+                        }
+                        {
+                            //엘릭서 초월 관련 obj
+                            const nasaengmun = []
+                            Object.keys(tooltip).forEach((key) => {
+                                if (tooltip[key].type == "IndentStringGroup") {
+                                    nasaengmun.push(tooltip[key].value)
+                                }
+                            })
+                            nasaengmuns.push(nasaengmun)
+                        }
                     })
+                    result.push("")
+                    /**
+                     *  엘릭서 42 : 회심
+                        초월121 : 방초100 + 무초21
+
+                        nasaengmuns
+                        0번째는 무기 초월, null
+                        그외 방어구 초월 엘릭서 엘릭서
+                     */
+
+                    {
+                        //초월
+                        const chowol = []
+                        nasaengmuns.forEach((n) => {
+                            if (n[0]) {
+                                const cLv = Number(n[0].Element_000.topStr.split(" ")[4])
+                                chowol.push(cLv)
+                            } else {
+                                chowol.push(0)
+                            }
+                        })
+                        const mChowol = chowol[0]
+                        const bChowol = chowol[1] + chowol[2] + chowol[3] + chowol[4] + chowol[5]
+                        const allChowol = mChowol + bChowol
+                        result.push("초월" + allChowol + " : " + "방초" + bChowol + "+" + "무초" + mChowol)
+                    }
                 }
 
                 //반환
