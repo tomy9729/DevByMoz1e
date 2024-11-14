@@ -1,3 +1,20 @@
+/**
+ * TODO
+ * # 노션 활용해서 DB 구축
+ *  - 노션 연결
+ *  - DB 테이블 설계
+ *
+ * # key 관리
+ *  - 로스트아크 api key
+ *  - 노션 db key
+ *  - 노션 api key
+ *
+ * # 기능 추가
+ *  - 캐릭터 관련 : 기본정보, 스펙 / zloa, 로펙 연동
+ *  - 경매장 관련 : 보석 유각 악세 등 / 재료값, 융화관련 가격
+ *  -
+ */
+
 const bot = BotManager.getCurrentBot()
 const apiKey = //key 관리
     "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiIsIng1dCI6IktYMk40TkRDSTJ5NTA5NWpjTWk5TllqY2lyZyIsImtpZCI6IktYMk40TkRDSTJ5NTA5NWpjTWk5TllqY2lyZyJ9.eyJpc3MiOiJodHRwczovL2x1ZHkuZ2FtZS5vbnN0b3ZlLmNvbSIsImF1ZCI6Imh0dHBzOi8vbHVkeS5nYW1lLm9uc3RvdmUuY29tL3Jlc291cmNlcyIsImNsaWVudF9pZCI6IjEwMDAwMDAwMDAwODY2MTQifQ.PYeBEH3_CjaE7Sdf2Bfx9__W7644xFf77wiTUINTy0hVYlVO55pfOG-pWZwcXxz-8k-w1RB-eNxYJ0QYWhC9i3ShX57PZ4uu5rkzEjsNg2b3GeFensDj2NKkXHOl9EIlBhg9O3d87yaIVLk1UumgR1a_sqgXbSU594B9QpoY5Zh0EQVHBTbNb6w39EPgD2fH8POBG19AeyijRYlK6AzO6yKKed8IgfuglNRO20a1IHdyNG4GjgDfirGWTniCut0wXzkKP_motJLLHTTr3LriZSUmerzcC_9NDsQA11yO6eZQ3meEzaKXWGzSmWCoHRWezN1rBkQweZGdr-16fCPuMw"
@@ -45,10 +62,7 @@ bot.addListener(Event.COMMAND, onCommand)
  * - 기능 주제별 : CharacterUtil
  * - 자주 사용되는 함수별 : HttpUtil
  */
-
-// 캐릭터 관련 기능
 const CharacterUtil = {}
-
 const HttpUtil = {
     Base_URL: "https://developer-lostark.game.onstove.com",
     authorization: ("bearer " + apiKey).toString(),
@@ -56,7 +70,6 @@ const HttpUtil = {
 
 {
     //CharacterUtil
-    // TODO 캐릭터 스펙 정보 한눈에 볼수 있게 고도화
     CharacterUtil.getCharacterInfo = function (msg) {
         const result = []
         result.push("@" + msg.author.name)
