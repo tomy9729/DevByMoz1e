@@ -12,7 +12,9 @@
  * # 기능 추가
  *  - 캐릭터 관련 : 기본정보, 스펙 / zloa, 로펙 연동
  *  - 경매장 관련 : 보석 유각 악세 등 / 재료값, 융화관련 가격
- *  -
+ * 
+ * # 기타
+ *  - util 상위 부분 공통화
  */
 
 const bot = BotManager.getCurrentBot()
@@ -31,7 +33,7 @@ const apiKey = //key 관리
  * (string) msg.packageName: 메시지를 받은 메신저의 패키지명
  * (void) msg.reply(string): 답장하기
  */
-function onMessage(msg) {}
+function onMessage(msg) { }
 bot.addListener(Event.MESSAGE, onMessage)
 
 /**
@@ -49,7 +51,11 @@ bot.addListener(Event.MESSAGE, onMessage)
  * (Array) msg.args: 명령어 인자 배열
  */
 function onCommand(msg) {
-    {
+    const cmd = msg.content.slice(1)
+    if (cmd == "모험섬") {
+        EtcUtil.getAdventureIsland(msg)
+    }
+    else {
         CharacterUtil.getCharacterInfo(msg)
     }
 }
@@ -59,17 +65,20 @@ bot.addListener(Event.COMMAND, onCommand)
 
 /**
  * util 관리
- * - 기능 주제별 : CharacterUtil
+ * - 기능 주제별 : CharacterUtil EtcUtil
  * - 자주 사용되는 함수별 : HttpUtil
  */
 const CharacterUtil = {}
+const EtcUtil = {
+    // 모험섬
+}
 const HttpUtil = {
     Base_URL: "https://developer-lostark.game.onstove.com",
     authorization: ("bearer " + apiKey).toString(),
 }
 
+//CharacterUtil
 {
-    //CharacterUtil
     CharacterUtil.getCharacterInfo = function (msg) {
         const result = []
         result.push("@" + msg.author.name)
@@ -176,7 +185,7 @@ const HttpUtil = {
                 }
                 {
                     // 무기 투구 상의 하의 장갑 어깨
-                    //무기 : 품질95 / +17강 / 상재10단계
+                    // 무기 : 품질95 / +17강 / 상재10단계
                     /**
                         장비 | 품질 | 강화 | 상재
                         =========================
@@ -221,7 +230,7 @@ const HttpUtil = {
                         nasaengmuns
                         0번째는 무기 초월, null
                         그외 방어구 초월 엘릭서 엘릭서
-                     */
+                    */
 
                     {
                         //초월
@@ -248,8 +257,32 @@ const HttpUtil = {
     }
 }
 
+//EtcUtil
 {
-    // HttpUtil
+    EtcUtil.getAdventureIsland = function (msg) {
+        const result = []
+        result.push("@" + msg.author.name)
+        result.push("※ 모험섬")
+        const url = (HttpUtil.Base_URL + "/gamecontents/calendar").toString()
+        HttpUtil.get(msg, url, (calendar) => {
+            const adventureIslands = calendar.filter((c) => c.CategoryName == "모험 섬").map((i) => {
+
+            })
+            adventureIslands.forEach((ai) => {
+                const iName = ai.ContentsName
+                result.push(iName + " : " + ai.RewardItems[0].Items.map((i) => i.Name).join("/"))
+            })
+
+            //반환
+            msg.reply(result.join("\n"))
+        })
+
+    }
+
+}
+
+// HttpUtil
+{
     HttpUtil.headerGet = function (url) {
         return {
             url: url,
@@ -293,6 +326,7 @@ const HttpUtil = {
     }
 }
 
+
 /////////////////////////////////////////////////////////////////////////////
 // default code
 // not use
@@ -303,19 +337,19 @@ function onCreate(savedInstanceState, activity) {
     activity.setContentView(textView)
 }
 
-function onStart(activity) {}
+function onStart(activity) { }
 
-function onResume(activity) {}
+function onResume(activity) { }
 
-function onPause(activity) {}
+function onPause(activity) { }
 
-function onStop(activity) {}
+function onStop(activity) { }
 
-function onRestart(activity) {}
+function onRestart(activity) { }
 
-function onDestroy(activity) {}
+function onDestroy(activity) { }
 
-function onBackPressed(activity) {}
+function onBackPressed(activity) { }
 
 bot.addListener(Event.Activity.CREATE, onCreate)
 bot.addListener(Event.Activity.START, onStart)
