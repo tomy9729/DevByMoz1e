@@ -340,7 +340,6 @@ const HttpUtil = {
     EtcUtil.getAdventureIslandForDay = function (msg, _day) {
         const result = []
         result.push("@" + msg.author.name)
-        result.push("※ 모험섬")
 
         const days = ["일", "월", "화", "수", "목", "금", "토"]
         const today = (() => {
@@ -354,6 +353,7 @@ const HttpUtil = {
             msg.reply(result.join("\n"))
             return
         }
+        result.push("※ 모험섬 [" + targetDay + "요일]")
 
         const targetDate = (() => {
             const dayOrder = ["수", "목", "금", "토", "일", "월", "화"]
@@ -392,8 +392,6 @@ const HttpUtil = {
                                 ),
                             }
                         }),
-                        // .map((i) => i.Name)
-                        // .join("/"),
                     }
                 })
                 .filter((ai) => ai.items.length > 0)
@@ -415,11 +413,16 @@ const HttpUtil = {
                 }
             })
 
-            morning.forEach((ai) => {
-                const name = ai.name
-                const rewardItem = ai.items.map((i) => i.name).join("/")
-                result.push(name + " : " + EtcUtil.rewardItemShort[rewardItem])
-            })
+            {
+                result.push("================")
+                morning.forEach((ai) => {
+                    const name = ai.name
+                    const rewardItem = ai.items.map((i) => i.name).join("/")
+                    result.push(
+                        name + " : " + EtcUtil.rewardItemShort[rewardItem]
+                    )
+                })
+            }
 
             if (afternoon.length > 0) {
                 result.push("================")
@@ -432,42 +435,6 @@ const HttpUtil = {
                     )
                 })
             }
-
-            //반환
-            msg.reply(result.join("\n"))
-        })
-    }
-
-    EtcUtil.getAdventureIsland = function (msg) {
-        const result = []
-        result.push("@" + msg.author.name)
-        result.push("※ 모험섬")
-        const url = (HttpUtil.Base_URL + "/gamecontents/calendar").toString()
-        HttpUtil.get(msg, url, (calendar) => {
-            const date = new Date().toISOString().slice(0, 10)
-            const adventureIslands = calendar
-                .filter((c) => c.CategoryName == "모험 섬")
-                .map((i) => {
-                    return {
-                        name: EtcUtil.islandNameShort[i.ContentsName],
-                        rewardItem: i.RewardItems[0].Items.filter(
-                            (item) =>
-                                !!item.StartTimes &&
-                                item.StartTimes.some(
-                                    (st) => st.slice(0, 10) == date
-                                )
-                        )
-                            .map((i) => i.Name)
-                            .join("/"),
-                    }
-                })
-                .filter((i) => i.rewardItem)
-
-            adventureIslands.forEach((ai) => {
-                result.push(
-                    ai.name + " : " + EtcUtil.rewardItemShort[ai.rewardItem]
-                )
-            })
 
             //반환
             msg.reply(result.join("\n"))
