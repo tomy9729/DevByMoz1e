@@ -15,6 +15,7 @@
  *
  * # 기타
  *  - util 상위 부분 공통화
+ *  - 서버가 느릴때 로딩중
  */
 
 const bot = BotManager.getCurrentBot()
@@ -68,7 +69,10 @@ bot.addListener(Event.COMMAND, onCommand)
  * - 기능 주제별 : CharacterUtil EtcUtil
  * - 자주 사용되는 함수별 : HttpUtil
  */
-const CharacterUtil = {}
+const CharacterUtil = {
+    // 캐릭터 정보
+    // 캐릭터 스펙
+}
 const EtcUtil = {
     // 모험섬
 }
@@ -331,7 +335,7 @@ const HttpUtil = {
         "스노우팡 아일랜드": "스노우팡",
     }
     EtcUtil.rewardItemShort = {
-        "대양의 주화 상자/해적 주화": "해적주화",
+        "대양의 주화 상자/해적 주화": "해주",
         "전설 ~ 고급 카드 팩 III/전설 ~ 고급 카드 팩 IV/영혼의 잎사귀": "카드",
         실링: "실링",
         골드: "골드",
@@ -361,18 +365,25 @@ const HttpUtil = {
             const targetIndex = dayOrder.indexOf(targetDay)
 
             const currentDate = new Date()
-
             // today가 수목금토일월화 중 몇 번째인지에 따라 위치 조정
             const diffDays = targetIndex - todayIndex
-
             currentDate.setDate(currentDate.getDate() + diffDays)
-
-            // 'YYYY-MM-DD' 포맷으로 반환
             return currentDate.toISOString().split("T")[0]
         })()
 
         const url = (HttpUtil.Base_URL + "/gamecontents/calendar").toString()
         HttpUtil.get(msg, url, (calendar) => {
+            /**
+             * type adventureIslands = ai[]
+             * type ai = {
+             *      name : string
+             *      itmes : item[]
+             * }
+             * type item = {
+             *      name : string
+             *      startTimes : ISOString[]
+             * }
+             */
             const adventureIslands = calendar
                 .filter((c) => c.CategoryName == "모험 섬")
                 .map((i) => {
@@ -414,6 +425,7 @@ const HttpUtil = {
             })
 
             {
+                // 오전 or 하루
                 result.push("================")
                 morning.forEach((ai) => {
                     const name = ai.name
@@ -425,6 +437,7 @@ const HttpUtil = {
             }
 
             if (afternoon.length > 0) {
+                // 오후 : 주말에 한정
                 result.push("================")
 
                 afternoon.forEach((ai) => {
