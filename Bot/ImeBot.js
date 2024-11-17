@@ -12,9 +12,10 @@
  * # 기능 추가
  *  - 캐릭터 관련 : 기본정보, 스펙 / zloa, 로펙 연동
  *  - 경매장 관련 : 보석 유각 악세 등 / 재료값, 융화관련 가격
- * 
+ *
  * # 기타
  *  - util 상위 부분 공통화
+ *  - 서버가 느릴때 로딩중
  */
 
 const bot = BotManager.getCurrentBot()
@@ -33,7 +34,7 @@ const apiKey = //key 관리
  * (string) msg.packageName: 메시지를 받은 메신저의 패키지명
  * (void) msg.reply(string): 답장하기
  */
-function onMessage(msg) { }
+function onMessage(msg) {}
 bot.addListener(Event.MESSAGE, onMessage)
 
 /**
@@ -51,11 +52,11 @@ bot.addListener(Event.MESSAGE, onMessage)
  * (Array) msg.args: 명령어 인자 배열
  */
 function onCommand(msg) {
-    const cmd = msg.content.slice(1)
-    if (cmd == "모험섬") {
-        EtcUtil.getAdventureIsland(msg)
-    }
-    else {
+    const cmds = msg.content.slice(1).split(" ")
+
+    if (cmds[0] == "모험섬") {
+        EtcUtil.getAdventureIslandForDay(msg, cmds[1])
+    } else {
         CharacterUtil.getCharacterInfo(msg)
     }
 }
@@ -68,7 +69,10 @@ bot.addListener(Event.COMMAND, onCommand)
  * - 기능 주제별 : CharacterUtil EtcUtil
  * - 자주 사용되는 함수별 : HttpUtil
  */
-const CharacterUtil = {}
+const CharacterUtil = {
+    // 캐릭터 정보
+    // 캐릭터 스펙
+}
 const EtcUtil = {
     // 모험섬
 }
@@ -83,13 +87,21 @@ const HttpUtil = {
         const result = []
         result.push("@" + msg.author.name)
         const cName = msg.content.slice(1)
-        const baseUrl = HttpUtil.Base_URL + "/armories/characters/" + encodeURIComponent(cName)
+        const baseUrl =
+            HttpUtil.Base_URL +
+            "/armories/characters/" +
+            encodeURIComponent(cName)
 
         const profileUrl = (baseUrl + "/profiles").toString()
 
         HttpUtil.get(msg, profileUrl, (profile) => {
             if (profile == null) {
-                msg.reply("'" + cName + "'" + "은(는) 존재하지않는 캐릭터나 명령어입니다.")
+                msg.reply(
+                    "'" +
+                        cName +
+                        "'" +
+                        "은(는) 존재하지않는 캐릭터나 명령어입니다."
+                )
                 return
             }
 
@@ -107,7 +119,12 @@ const HttpUtil = {
                 공격력 : 104477
                 최대 생명력 : 240915
              */
-            result.push("※" + server + " " + (title ? "[" + title + "]" + " " + _cName : _cName))
+            result.push(
+                "※" +
+                    server +
+                    " " +
+                    (title ? "[" + title + "]" + " " + _cName : _cName)
+            )
             result.push(cclass + " " + itemLevel + "Lv")
 
             const stats = profile.Stats
@@ -169,15 +186,24 @@ const HttpUtil = {
                             jsonData[key].type === "MultiTextBox"
                         ) {
                             jsonData[key].value = cleanText(jsonData[key].value)
-                        } else if (jsonData[key].type === "ItemTitle" || jsonData[key].type === "ItemPartBox") {
+                        } else if (
+                            jsonData[key].type === "ItemTitle" ||
+                            jsonData[key].type === "ItemPartBox"
+                        ) {
                             // 내부의 "value" 객체 내의 텍스트 정리
                             let value = jsonData[key].value
-                            if (value.leftStr0) value.leftStr0 = cleanText(value.leftStr0)
-                            if (value.leftStr1) value.leftStr1 = cleanText(value.leftStr1)
-                            if (value.leftStr2) value.leftStr2 = cleanText(value.leftStr2)
-                            if (value.rightStr0) value.rightStr0 = cleanText(value.rightStr0)
-                            if (value.Element_000) value.Element_000 = cleanText(value.Element_000)
-                            if (value.Element_001) value.Element_001 = cleanText(value.Element_001)
+                            if (value.leftStr0)
+                                value.leftStr0 = cleanText(value.leftStr0)
+                            if (value.leftStr1)
+                                value.leftStr1 = cleanText(value.leftStr1)
+                            if (value.leftStr2)
+                                value.leftStr2 = cleanText(value.leftStr2)
+                            if (value.rightStr0)
+                                value.rightStr0 = cleanText(value.rightStr0)
+                            if (value.Element_000)
+                                value.Element_000 = cleanText(value.Element_000)
+                            if (value.Element_001)
+                                value.Element_001 = cleanText(value.Element_001)
                         }
                     }
 
@@ -205,11 +231,26 @@ const HttpUtil = {
                         const tooltip = cleanTooltip(cloth.Tooltip)
                         {
                             //장비
-                            const qualityValue = tooltip.Element_001.value.qualityValue
-                            const qualityStr = qualityValue < 100 ? "0" + qualityValue : qualityValue
-                            const equipLvStr = cloth.Name.toString().split(" ")[0].slice(1) + "강"
-                            const highLv = tooltip.Element_005.value.toString().split(" ")[2]
-                            result.push([cloth.Type, qualityStr, equipLvStr, highLv ? highLv : "X"].join(" | "))
+                            const qualityValue =
+                                tooltip.Element_001.value.qualityValue
+                            const qualityStr =
+                                qualityValue < 100
+                                    ? "0" + qualityValue
+                                    : qualityValue
+                            const equipLvStr =
+                                cloth.Name.toString().split(" ")[0].slice(1) +
+                                "강"
+                            const highLv = tooltip.Element_005.value
+                                .toString()
+                                .split(" ")[2]
+                            result.push(
+                                [
+                                    cloth.Type,
+                                    qualityStr,
+                                    equipLvStr,
+                                    highLv ? highLv : "X",
+                                ].join(" | ")
+                            )
                         }
                         {
                             //엘릭서 초월 관련 obj
@@ -237,16 +278,32 @@ const HttpUtil = {
                         const chowol = []
                         nasaengmuns.forEach((n) => {
                             if (n[0]) {
-                                const cLv = Number(n[0].Element_000.topStr.split(" ")[4])
+                                const cLv = Number(
+                                    n[0].Element_000.topStr.split(" ")[4]
+                                )
                                 chowol.push(cLv)
                             } else {
                                 chowol.push(0)
                             }
                         })
                         const mChowol = chowol[0]
-                        const bChowol = chowol[1] + chowol[2] + chowol[3] + chowol[4] + chowol[5]
+                        const bChowol =
+                            chowol[1] +
+                            chowol[2] +
+                            chowol[3] +
+                            chowol[4] +
+                            chowol[5]
                         const allChowol = mChowol + bChowol
-                        result.push("초월" + allChowol + " : " + "방초" + bChowol + "+" + "무초" + mChowol)
+                        result.push(
+                            "초월" +
+                                allChowol +
+                                " : " +
+                                "방초" +
+                                bChowol +
+                                "+" +
+                                "무초" +
+                                mChowol
+                        )
                     }
                 }
 
@@ -259,26 +316,143 @@ const HttpUtil = {
 
 //EtcUtil
 {
-    EtcUtil.getAdventureIsland = function (msg) {
+    EtcUtil.islandNameShort = {
+        수라도: "수라도",
+        "고요한 안식의 섬": "고안섬",
+        "우거진 갈대의 섬": "우갈섬",
+        "환영 나비 섬": "환나섬",
+        포르페: "포르페",
+        "기회의 섬": "기회섬",
+        "하모니 섬": "하모니",
+        "쿵덕쿵 아일랜드": "쿵덕쿵",
+        "잔혹한 장난감 성": "잔장성",
+        몬테섬: "몬테섬",
+        "블루홀 섬": "블루홀",
+        "볼라르 섬": "볼라르",
+        "죽음의 협곡": "죽협",
+        "라일라이 아일랜드": "라일라이",
+        메데이아: "메데",
+        "스노우팡 아일랜드": "스노우팡",
+    }
+    EtcUtil.rewardItemShort = {
+        "대양의 주화 상자/해적 주화": "해주",
+        "전설 ~ 고급 카드 팩 III/전설 ~ 고급 카드 팩 IV/영혼의 잎사귀": "카드",
+        실링: "실링",
+        골드: "골드",
+    }
+
+    EtcUtil.getAdventureIslandForDay = function (msg, _day) {
         const result = []
         result.push("@" + msg.author.name)
-        result.push("※ 모험섬")
+
+        const days = ["일", "월", "화", "수", "목", "금", "토"]
+        const today = (() => {
+            const today = new Date().getDay() // 0(일요일)부터 6(토요일)까지 반환
+            return days[today]
+        })()
+
+        const targetDay = (_day ? _day : today)[0]
+        if (!days.includes(targetDay)) {
+            result.push("요일을 다시 확인하세요.")
+            msg.reply(result.join("\n"))
+            return
+        }
+        result.push("※ 모험섬 [" + targetDay + "요일]")
+
+        const targetDate = (() => {
+            const dayOrder = ["수", "목", "금", "토", "일", "월", "화"]
+            const todayIndex = dayOrder.indexOf(today)
+            const targetIndex = dayOrder.indexOf(targetDay)
+
+            const currentDate = new Date()
+            // today가 수목금토일월화 중 몇 번째인지에 따라 위치 조정
+            const diffDays = targetIndex - todayIndex
+            currentDate.setDate(currentDate.getDate() + diffDays)
+            return currentDate.toISOString().split("T")[0]
+        })()
+
         const url = (HttpUtil.Base_URL + "/gamecontents/calendar").toString()
         HttpUtil.get(msg, url, (calendar) => {
-            const adventureIslands = calendar.filter((c) => c.CategoryName == "모험 섬").map((i) => {
+            /**
+             * type adventureIslands = ai[]
+             * type ai = {
+             *      name : string
+             *      itmes : item[]
+             * }
+             * type item = {
+             *      name : string
+             *      startTimes : ISOString[]
+             * }
+             */
+            const adventureIslands = calendar
+                .filter((c) => c.CategoryName == "모험 섬")
+                .map((i) => {
+                    return {
+                        name: EtcUtil.islandNameShort[i.ContentsName],
+                        items: i.RewardItems[0].Items.filter(
+                            (item) =>
+                                !!item.StartTimes &&
+                                item.StartTimes.some(
+                                    (st) => st.slice(0, 10) == targetDate
+                                )
+                        ).map((item) => {
+                            return {
+                                name: item.Name,
+                                startTimes: item.StartTimes.filter(
+                                    (st) => st.slice(0, 10) == targetDate
+                                ),
+                            }
+                        }),
+                    }
+                })
+                .filter((ai) => ai.items.length > 0)
 
-            })
+            const morning = []
+            const afternoon = []
             adventureIslands.forEach((ai) => {
-                const iName = ai.ContentsName
-                result.push(iName + " : " + ai.RewardItems[0].Items.map((i) => i.Name).join("/"))
+                if (ai.items[0].startTimes.length == 3) {
+                    if (
+                        ai.items[0].startTimes[0].split("T")[1].split(":")[0] ==
+                        "09"
+                    ) {
+                        morning.push(ai)
+                    } else {
+                        afternoon.push(ai)
+                    }
+                } else {
+                    morning.push(ai)
+                }
             })
+
+            {
+                // 오전 or 하루
+                result.push("================")
+                morning.forEach((ai) => {
+                    const name = ai.name
+                    const rewardItem = ai.items.map((i) => i.name).join("/")
+                    result.push(
+                        name + " : " + EtcUtil.rewardItemShort[rewardItem]
+                    )
+                })
+            }
+
+            if (afternoon.length > 0) {
+                // 오후 : 주말에 한정
+                result.push("================")
+
+                afternoon.forEach((ai) => {
+                    const name = ai.name
+                    const rewardItem = ai.items.map((i) => i.name).join("/")
+                    result.push(
+                        name + " : " + EtcUtil.rewardItemShort[rewardItem]
+                    )
+                })
+            }
 
             //반환
             msg.reply(result.join("\n"))
         })
-
     }
-
 }
 
 // HttpUtil
@@ -312,20 +486,27 @@ const HttpUtil = {
         if (statusIndex !== -1) {
             const statusStart = statusIndex + "Status=".length
             const statusEnd = errorMessage.indexOf(",", statusStart)
-            const statusCode = errorMessage.substring(statusStart, statusEnd).trim()
+            const statusCode = errorMessage
+                .substring(statusStart, statusEnd)
+                .trim()
 
             // 에러 처리
             if (statusCode.startsWith("5")) {
-                msg.reply("에러코드 : " + statusCode + "\n로스트아크 서버 에러입니다.\nex)로스트아크 서버 점검")
+                msg.reply(
+                    "에러코드 : " +
+                        statusCode +
+                        "\n로스트아크 서버 에러입니다.\nex)로스트아크 서버 점검"
+                )
             } else if (statusCode.startsWith("4")) {
-                msg.reply("에러코드 : " + statusCode + "\n클라이언트 에러입니다.")
+                msg.reply(
+                    "에러코드 : " + statusCode + "\n클라이언트 에러입니다."
+                )
             }
         } else {
             msg.reply("알 수 없는 에러입니다.")
         }
     }
 }
-
 
 /////////////////////////////////////////////////////////////////////////////
 // default code
@@ -337,19 +518,19 @@ function onCreate(savedInstanceState, activity) {
     activity.setContentView(textView)
 }
 
-function onStart(activity) { }
+function onStart(activity) {}
 
-function onResume(activity) { }
+function onResume(activity) {}
 
-function onPause(activity) { }
+function onPause(activity) {}
 
-function onStop(activity) { }
+function onStop(activity) {}
 
-function onRestart(activity) { }
+function onRestart(activity) {}
 
-function onDestroy(activity) { }
+function onDestroy(activity) {}
 
-function onBackPressed(activity) { }
+function onBackPressed(activity) {}
 
 bot.addListener(Event.Activity.CREATE, onCreate)
 bot.addListener(Event.Activity.START, onStart)
