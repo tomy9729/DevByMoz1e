@@ -1,0 +1,385 @@
+// post
+{
+  "ItemLevelMin": 0,
+  "ItemLevelMax": 0,
+  "ItemGradeQuality": null,
+  "ItemUpgradeLevel": null,
+  "ItemTradeAllowCount": null,
+  "SkillOptions": [
+    {
+      "FirstOption": null,
+      "SecondOption": null,
+      "MinValue": null,
+      "MaxValue": null
+    }
+  ],
+  "EtcOptions": [
+    {
+      "FirstOption": null,
+      "SecondOption": null,
+      "MinValue": null,
+      "MaxValue": null
+    }
+  ],
+  "Sort": "BIDSTART_PRICE",
+  "CategoryCode": 0,
+  "CharacterClass": "string",
+  "ItemTier": null,
+  "ItemGrade": "string",
+  "ItemName": "string",
+  "PageNo": 0,
+  "SortCondition": "ASC"
+}
+
+
+"Categories": [
+    {
+        "Subs": [
+            {
+                "Code": 170300,
+                "CodeName": "아뮬렛"
+            },
+            {
+                "Code": 180000,
+                "CodeName": "무기"
+            },
+            {
+                "Code": 190010,
+                "CodeName": "투구"
+            },
+            {
+                "Code": 190020,
+                "CodeName": "상의"
+            },
+            {
+                "Code": 190030,
+                "CodeName": "하의"
+            },
+            {
+                "Code": 190040,
+                "CodeName": "장갑"
+            },
+            {
+                "Code": 190050,
+                "CodeName": "어깨"
+            }
+        ],
+        "Code": 10000,
+        "CodeName": "장비"
+    },
+    {
+        "Subs": [],
+        "Code": 30000,
+        "CodeName": "어빌리티 스톤"
+    },
+    {
+        "Subs": [
+            {
+                "Code": 200010,
+                "CodeName": "목걸이"
+            },
+            {
+                "Code": 200020,
+                "CodeName": "귀걸이"
+            },
+            {
+                "Code": 200030,
+                "CodeName": "반지"
+            },
+            {
+                "Code": 200040,
+                "CodeName": "팔찌"
+            }
+        ],
+        "Code": 200000,
+        "CodeName": "장신구"
+    },
+    {
+        "Subs": [],
+        "Code": 210000,
+        "CodeName": "보석"
+    }
+],
+"ItemGrades": [
+    "일반",
+    "고급",
+    "희귀",
+    "영웅",
+    "전설",
+    "유물",
+    "고대",
+    "에스더"
+],
+"ItemTiers": [2, 3, 4],
+"Classes": [
+    "버서커",
+    "디스트로이어",
+    "워로드",
+    "홀리나이트",
+    "슬레이어",
+    "아르카나",
+    "서머너",
+    "바드",
+    "소서리스",
+    "배틀마스터",
+    "인파이터",
+    "기공사",
+    "창술사",
+    "스트라이커",
+    "브레이커",
+    "블레이드",
+    "데모닉",
+    "리퍼",
+    "소울이터",
+    "호크아이",
+    "데빌헌터",
+    "블래스터",
+    "스카우터",
+    "건슬링어",
+    "도화가",
+    "기상술사"
+]
+
+
+
+{
+    "EtcSubs": [
+        {
+            "Value": 45,
+            "Text": "공격력 %",
+            "Class": "",
+            "Categorys": [200020],
+            "Tiers": null,
+            "EtcValues": [
+                { "DisplayValue": "0.40%", "Value": 1, "IsPercentage": true },
+                { "DisplayValue": "0.95%", "Value": 2, "IsPercentage": true },
+                { "DisplayValue": "1.55%", "Value": 3, "IsPercentage": true }
+            ]
+        },
+        {
+            "Value": 53,
+            "Text": "공격력 +",
+            "Class": "",
+            "Categorys": null,
+            "Tiers": null,
+            "EtcValues": [
+                { "DisplayValue": "80", "Value": 1, "IsPercentage": false },
+                { "DisplayValue": "195", "Value": 2, "IsPercentage": false },
+                { "DisplayValue": "390", "Value": 3, "IsPercentage": false }
+            ]
+        },
+        {
+            "Value": 44,
+            "Text": "낙인력",
+            "Class": "",
+            "Categorys": [200010],
+            "Tiers": null,
+            "EtcValues": [
+                { "DisplayValue": "2.15%", "Value": 1, "IsPercentage": true },
+                { "DisplayValue": "4.80%", "Value": 2, "IsPercentage": true },
+                { "DisplayValue": "8.00%", "Value": 3, "IsPercentage": true }
+            ]
+        },
+        {
+            "Value": 46,
+            "Text": "무기 공격력 %",
+            "Class": "",
+            "Categorys": [200020],
+            "Tiers": null,
+            "EtcValues": [
+                { "DisplayValue": "0.80%", "Value": 1, "IsPercentage": true },
+                { "DisplayValue": "1.80%", "Value": 2, "IsPercentage": true },
+                { "DisplayValue": "3.00%", "Value": 3, "IsPercentage": true }
+            ]
+        },
+        {
+            "Value": 54,
+            "Text": "무기 공격력 +",
+            "Class": "",
+            "Categorys": null,
+            "Tiers": null,
+            "EtcValues": [
+                { "DisplayValue": "195", "Value": 1, "IsPercentage": false },
+                { "DisplayValue": "480", "Value": 2, "IsPercentage": false },
+                { "DisplayValue": "960", "Value": 3, "IsPercentage": false }
+            ]
+        },
+        {
+            "Value": 57,
+            "Text": "상태이상 공격 지속시간",
+            "Class": "",
+            "Categorys": null,
+            "Tiers": null,
+            "EtcValues": [
+                { "DisplayValue": "0.20%", "Value": 1, "IsPercentage": true },
+                { "DisplayValue": "0.50%", "Value": 2, "IsPercentage": true },
+                { "DisplayValue": "1.00%", "Value": 3, "IsPercentage": true }
+            ]
+        },
+        {
+            "Value": 43,
+            "Text": "세레나데, 신성, 조화 게이지 획득량 증가",
+            "Class": "",
+            "Categorys": [200010],
+            "Tiers": null,
+            "EtcValues": [
+                { "DisplayValue": "1.60%", "Value": 1, "IsPercentage": true },
+                { "DisplayValue": "3.60%", "Value": 2, "IsPercentage": true },
+                { "DisplayValue": "6.00%", "Value": 3, "IsPercentage": true }
+            ]
+        },
+        {
+            "Value": 51,
+            "Text": "아군 공격력 강화 효과",
+            "Class": "",
+            "Categorys": [200030],
+            "Tiers": null,
+            "EtcValues": [
+                { "DisplayValue": "1.35%", "Value": 1, "IsPercentage": true },
+                { "DisplayValue": "3.00%", "Value": 2, "IsPercentage": true },
+                { "DisplayValue": "5.00%", "Value": 3, "IsPercentage": true }
+            ]
+        },
+        {
+            "Value": 52,
+            "Text": "아군 피해량 강화 효과",
+            "Class": "",
+            "Categorys": [200030],
+            "Tiers": null,
+            "EtcValues": [
+                { "DisplayValue": "2.00%", "Value": 1, "IsPercentage": true },
+                { "DisplayValue": "4.50%", "Value": 2, "IsPercentage": true },
+                { "DisplayValue": "7.50%", "Value": 3, "IsPercentage": true }
+            ]
+        },
+        {
+            "Value": 42,
+            "Text": "적에게 주는 피해 증가",
+            "Class": "",
+            "Categorys": [200010],
+            "Tiers": null,
+            "EtcValues": [
+                { "DisplayValue": "0.55%", "Value": 1, "IsPercentage": true },
+                { "DisplayValue": "1.20%", "Value": 2, "IsPercentage": true },
+                { "DisplayValue": "2.00%", "Value": 3, "IsPercentage": true }
+            ]
+        },
+        {
+            "Value": 58,
+            "Text": "전투 중 생명력 회복량",
+            "Class": "",
+            "Categorys": null,
+            "Tiers": null,
+            "EtcValues": [
+                { "DisplayValue": "10", "Value": 1, "IsPercentage": false },
+                { "DisplayValue": "25", "Value": 2, "IsPercentage": false },
+                { "DisplayValue": "50", "Value": 3, "IsPercentage": false }
+            ]
+        },
+        {
+            "Value": 56,
+            "Text": "최대 마나",
+            "Class": "",
+            "Categorys": null,
+            "Tiers": null,
+            "EtcValues": [
+                { "DisplayValue": "6", "Value": 1, "IsPercentage": false },
+                { "DisplayValue": "15", "Value": 2, "IsPercentage": false },
+                { "DisplayValue": "30", "Value": 3, "IsPercentage": false }
+            ]
+        },
+        {
+            "Value": 55,
+            "Text": "최대 생명력",
+            "Class": "",
+            "Categorys": null,
+            "Tiers": null,
+            "EtcValues": [
+                { "DisplayValue": "1300", "Value": 1, "IsPercentage": false },
+                { "DisplayValue": "3250", "Value": 2, "IsPercentage": false },
+                { "DisplayValue": "6500", "Value": 3, "IsPercentage": false }
+            ]
+        },
+        {
+            "Value": 41,
+            "Text": "추가 피해",
+            "Class": "",
+            "Categorys": [200010],
+            "Tiers": null,
+            "EtcValues": [
+                { "DisplayValue": "0.70%", "Value": 1, "IsPercentage": true },
+                { "DisplayValue": "1.60%", "Value": 2, "IsPercentage": true },
+                { "DisplayValue": "2.60%", "Value": 3, "IsPercentage": true }
+            ]
+        },
+        {
+            "Value": 49,
+            "Text": "치명타 적중률",
+            "Class": "",
+            "Categorys": [200030],
+            "Tiers": null,
+            "EtcValues": [
+                { "DisplayValue": "0.40%", "Value": 1, "IsPercentage": true },
+                { "DisplayValue": "0.95%", "Value": 2, "IsPercentage": true },
+                { "DisplayValue": "1.55%", "Value": 3, "IsPercentage": true }
+            ]
+        },
+        {
+            "Value": 50,
+            "Text": "치명타 피해",
+            "Class": "",
+            "Categorys": [200030],
+            "Tiers": null,
+            "EtcValues": [
+                { "DisplayValue": "1.10%", "Value": 1, "IsPercentage": true },
+                { "DisplayValue": "2.40%", "Value": 2, "IsPercentage": true },
+                { "DisplayValue": "4.00%", "Value": 3, "IsPercentage": true }
+            ]
+        },
+        {
+            "Value": 48,
+            "Text": "파티원 보호막 효과",
+            "Class": "",
+            "Categorys": [200020],
+            "Tiers": null,
+            "EtcValues": [
+                { "DisplayValue": "0.95%", "Value": 1, "IsPercentage": true },
+                { "DisplayValue": "2.10%", "Value": 2, "IsPercentage": true },
+                { "DisplayValue": "3.50%", "Value": 3, "IsPercentage": true }
+            ]
+        },
+        {
+            "Value": 47,
+            "Text": "파티원 회복 효과",
+            "Class": "",
+            "Categorys": [200020],
+            "Tiers": null,
+            "EtcValues": [
+                { "DisplayValue": "0.95%", "Value": 1, "IsPercentage": true },
+                { "DisplayValue": "2.10%", "Value": 2, "IsPercentage": true },
+                { "DisplayValue": "3.50%", "Value": 3, "IsPercentage": true }
+            ]
+        }
+    ],
+    "Value": 8,
+    "Text": "아크 패시브",
+    "Tiers": [4],
+    "EtcSubs": [
+        {
+            "Value": 1,
+            "Text": "깨달음",
+            "Class": "",
+            "Categorys": [200010, 200020, 200030],
+            "Tiers": [4],
+            "EtcValues": null
+        },
+        {
+            "Value": 2,
+            "Text": "도약",
+            "Class": "",
+            "Categorys": [200040],
+            "Tiers": [4],
+            "EtcValues": null
+        }
+    ]
+}
