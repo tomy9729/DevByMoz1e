@@ -34,7 +34,7 @@ const apiKey = //key 관리
  * (string) msg.packageName: 메시지를 받은 메신저의 패키지명
  * (void) msg.reply(string): 답장하기
  */
-function onMessage(msg) {}
+function onMessage(msg) { }
 bot.addListener(Event.MESSAGE, onMessage)
 
 /**
@@ -56,7 +56,10 @@ function onCommand(msg) {
 
     if (cmds[0] == "모험섬") {
         EtcUtil.getAdventureIslandForDay(msg, cmds[1])
-    } else {
+    } else if (cmds[0] == "악세") {
+        AuctionUtil.getAcce(msg, cmds[1], cmds[2])
+    }
+    else {
         CharacterUtil.getCharacterInfo(msg)
     }
 }
@@ -66,9 +69,13 @@ bot.addListener(Event.COMMAND, onCommand)
 
 /**
  * util 관리
- * - 기능 주제별 : CharacterUtil EtcUtil
+ * - 기능 주제별 : AuctionUtil CharacterUtil EtcUtil 
  * - 자주 사용되는 함수별 : HttpUtil
  */
+const AuctionUtil = {
+    // 경매장
+    // 악세 보석 
+}
 const CharacterUtil = {
     // 캐릭터 정보
     // 캐릭터 스펙
@@ -79,6 +86,167 @@ const EtcUtil = {
 const HttpUtil = {
     Base_URL: "https://developer-lostark.game.onstove.com",
     authorization: ("bearer " + apiKey).toString(),
+    timeout: 30 * 1000
+}
+
+//AuctionUtil
+{
+    /**
+     * 
+     * @param {*} msg 
+     * @param {string} itemGrade 유물 | 고대
+     * @param {*} simpleItemOption 
+     * 상상옵 상중옵 상하옵 상단일
+     * 중중옵 중하옵 중단일
+     */
+    AuctionUtil.getAcce = function (msg, itemGrade, simpleItemOption) {
+        const result = []
+        result.push("@" + msg.author.name)
+
+        if (itemGrade != "유물" && itemGrade != "고대") {
+            msg.reply("명령어를 확인해주세요.")
+            return
+        }
+        const simpleItemOptions = ["상상옵", "상중옵", "상하옵", "상단일", "중중옵", "중하옵", "중단일"]
+        if (!simpleItemOptions.includes(simpleItemOption)) {
+            msg.reply("명령어를 확인해주세요.\n 유효하지 않은 옵션입니다.")
+            return
+        }
+
+        const url = (HttpUtil.Base_URL + "/auctions/items").toString()
+
+        const acceKinds = [
+            {
+                categoryCode: 200010,
+                name: "목걸이"
+            }, {
+                categoryCode: 200020,
+                name: "귀걸이"
+            }, {
+                categoryCode: 200030,
+                name: "반지"
+            }
+        ]
+
+        const acceOptions = {
+            200010: [
+                [{
+                    secondOption: 41,
+                    name: "추피",
+                },
+                {
+                    secondOption: 42,
+                    name: "적주피",
+                },],
+                [{
+                    secondOption: 43,
+                    name: "조게획",
+                }, {
+                    secondOption: 44,
+                    name: "낙인력",
+                },]
+            ],
+            200020: [
+                [{
+                    secondOption: 45,
+                    name: "공퍼",
+                },
+                {
+                    secondOption: 46,
+                    name: "무공퍼",
+                },]
+            ],
+            200030: [
+                [{
+                    secondOption: 49,
+                    name: "치적",
+                },
+                {
+                    secondOption: 50,
+                    name: "치피",
+                },],
+                [{
+                    secondOption: 51,
+                    name: "아공강",
+                }, {
+                    secondOption: 52,
+                    name: "아피강",
+                },]
+            ],
+        }
+
+        // 상상옵 상중옵 상하옵 상단일 중중옵 중하옵 중단일
+        const itemGrades = (() => {
+            if (simpleItemOption == "상상옵") return [3, 3]
+            else if (simpleItemOption == "상중옵") return [3, 2]
+            else if (simpleItemOption == "상하옵") return [3, 1]
+            else if (simpleItemOption == "상단일") return [3]
+            else if (simpleItemOption == "중중옵") return [2, 2]
+            else if (simpleItemOption == "중하옵") return [3, 1]
+            else if (simpleItemOption == "중단일") return [2]
+        })()
+
+        // 상단일 중단일
+        if (itemGrades.length == 1) {
+            acceKinds.forEach((acceKind) => {
+                result.push(acceKind.name)
+                const categoryCode = acceKind.categoryCode
+                acceOptions[categoryCode].forEach((optionsForAcceKind) => {
+                    optionsForAcceKind.forEach((itemOption) => {
+                        const data = {
+                            "ItemLevelMin": 0,
+                            "ItemLevelMax": 0,
+                            "ItemGradeQuality": null,
+                            "ItemUpgradeLevel": null,
+                            "ItemTradeAllowCount": null,
+                            "SkillOptions": [
+                                {
+                                    "FirstOption": null,
+                                    "SecondOption": null,
+                                    "MinValue": null,
+                                    "MaxValue": null
+                                }
+                            ],
+                            "EtcOptions": [
+                                {
+                                    // 꺠달음 12~13
+                                    "FirstOption": 8,
+                                    "SecondOption": 1,
+                                    "MinValue": 12,
+                                    "MaxValue": 13
+                                },
+                                {
+                                    "FirstOption": 7, //연마 효과
+                                    "SecondOption": itemOption.secondOption, // 추피, 적추피, 낙인력 등
+                                    "MinValue": itemGrades[0], // 1하 2중 3상
+                                    "MaxValue": itemGrades[0]
+                                }
+                            ],
+                            "Sort": "BuyPrice",
+                            "CategoryCode": categoryCode,
+                            "CharacterClass": "",
+                            "ItemTier": 4,
+                            "ItemGrade": itemGrade,
+                            "ItemName": "",
+                            "PageNo": 0,
+                            "SortCondition": "ASC"
+                        }
+                        HttpUtil.post(msg, url, data, (searchedItems) => {
+                            msg.replace(JSON.stringify(searchedItems[0]))
+                        })
+                    })
+
+                })
+            })
+        }
+        else {
+            msg.reply("아직 구현되지 않은 기능입니다.")
+            return
+        }
+
+        //반환
+        msg.reply(result.join("\n"))
+    }
 }
 
 //CharacterUtil
@@ -98,9 +266,9 @@ const HttpUtil = {
             if (profile == null) {
                 msg.reply(
                     "'" +
-                        cName +
-                        "'" +
-                        "은(는) 존재하지않는 캐릭터나 명령어입니다."
+                    cName +
+                    "'" +
+                    "은(는) 존재하지않는 캐릭터나 명령어입니다."
                 )
                 return
             }
@@ -121,9 +289,9 @@ const HttpUtil = {
              */
             result.push(
                 "※" +
-                    server +
-                    " " +
-                    (title ? "[" + title + "]" + " " + _cName : _cName)
+                server +
+                " " +
+                (title ? "[" + title + "]" + " " + _cName : _cName)
             )
             result.push(cclass + " " + itemLevel + "Lv")
 
@@ -296,13 +464,13 @@ const HttpUtil = {
                         const allChowol = mChowol + bChowol
                         result.push(
                             "초월" +
-                                allChowol +
-                                " : " +
-                                "방초" +
-                                bChowol +
-                                "+" +
-                                "무초" +
-                                mChowol
+                            allChowol +
+                            " : " +
+                            "방초" +
+                            bChowol +
+                            "+" +
+                            "무초" +
+                            mChowol
                         )
                     }
                 }
@@ -457,10 +625,10 @@ const HttpUtil = {
 
 // HttpUtil
 {
-    HttpUtil.headerGet = function (url) {
+    HttpUtil.optionGet = function (url) {
         return {
             url: url,
-            timeout: 3000,
+            timeout: HttpUtil.timeout,
             method: "GET",
             headers: {
                 authorization: HttpUtil.authorization,
@@ -469,12 +637,35 @@ const HttpUtil = {
         }
     }
     HttpUtil.get = function (msg, url, callback) {
-        Http.request(HttpUtil.headerGet(url), (error, response, doc) => {
+        Http.request(HttpUtil.optionGet(url), (error, response, doc) => {
             if (error) {
                 HttpUtil.error(error, msg)
                 return
             }
 
+            const info = JSON.parse(doc.text())
+            callback(info)
+        })
+    }
+    HttpUtil.optionPost = function (url, data) {
+        return {
+            url: url,
+            timeout: HttpUtil.timeout,
+            method: "POST",
+            headers: {
+                authorization: HttpUtil.authorization,
+                accept: "application/json",
+                "Content-Type": "application/json"
+            },
+            body: data
+        }
+    }
+    HttpUtil.post = function (msg, url, data, callback) {
+        Http.request(HttpUtil.optionPost(url, data), (error, response, doc) => {
+            if (error) {
+                HttpUtil.error(error, msg)
+                return
+            }
             const info = JSON.parse(doc.text())
             callback(info)
         })
@@ -494,8 +685,8 @@ const HttpUtil = {
             if (statusCode.startsWith("5")) {
                 msg.reply(
                     "에러코드 : " +
-                        statusCode +
-                        "\n로스트아크 서버 에러입니다.\nex)로스트아크 서버 점검"
+                    statusCode +
+                    "\n로스트아크 서버 에러입니다.\nex)로스트아크 서버 점검"
                 )
             } else if (statusCode.startsWith("4")) {
                 msg.reply(
@@ -518,19 +709,19 @@ function onCreate(savedInstanceState, activity) {
     activity.setContentView(textView)
 }
 
-function onStart(activity) {}
+function onStart(activity) { }
 
-function onResume(activity) {}
+function onResume(activity) { }
 
-function onPause(activity) {}
+function onPause(activity) { }
 
-function onStop(activity) {}
+function onStop(activity) { }
 
-function onRestart(activity) {}
+function onRestart(activity) { }
 
-function onDestroy(activity) {}
+function onDestroy(activity) { }
 
-function onBackPressed(activity) {}
+function onBackPressed(activity) { }
 
 bot.addListener(Event.Activity.CREATE, onCreate)
 bot.addListener(Event.Activity.START, onStart)
