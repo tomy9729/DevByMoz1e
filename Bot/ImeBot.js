@@ -270,8 +270,7 @@ const HttpUtil = {
                             PageNo: 0,
                             SortCondition: "ASC",
                         }
-                        HttpUtil.post(msg, url, data, (_searchedItems) => {
-                            const searchedItems = JSON.parse(_searchedItems)
+                        HttpUtil.post(url, data, (searchedItems) => {
                             const price = searchedItems.Items.filter(
                                 (i) => i.AuctionInfo.BuyPrice != null
                             )[0].AuctionInfo.BuyPrice
@@ -303,7 +302,7 @@ const HttpUtil = {
 
         const profileUrl = (baseUrl + "/profiles").toString()
 
-        HttpUtil.get(msg, profileUrl, (profile) => {
+        HttpUtil.get(profileUrl, (profile) => {
             if (profile == null) {
                 msg.reply(
                     "'" +
@@ -341,87 +340,88 @@ const HttpUtil = {
             const vitality = stats.find((s) => s.Type == "최대 생명력").Value
             result.push("공격력 : " + attack)
             result.push("최대 생명력 : " + vitality)
+        })
 
-            /////////////////////////////////////////////////////////////////////////
-            result.push("")
-            const equipmentUrl = (baseUrl + "/equipment").toString()
-            HttpUtil.get(msg, equipmentUrl, (equipments) => {
-                /**
-                 * //장비 0~6
-                 * 무기 : 품질95 / +17강 / 상재 10단계
-                 * 투구 +16강
-                 * 상의 +16강
-                 * 하의 +16강
-                 * 장갑 +16강
-                 * 견갑 +16강
-                 *
-                 * 방초 +100
-                 * 무초 +20
-                 *
-                 * //악세 7~11
-                 * 목걸이 중단일
-                 * 귀걸이1 떡작
-                 * 귀걸이2 중단일
-                 * 반지1 중단일
-                 * 반지2 중단일
-                 *
-                 * //스톤 12
-                 * 어빌리티스톤 97
-                 * //팔찌 13
-                 * 팔찌
-                 * - 치명 109
-                 * - 특화 90
-                 * - 적주피 2퍼
-                 * - 치적 3퍼
-                 */
+        /////////////////////////////////////////////////////////////////////////
+        result.push("")
+        const equipmentUrl = (baseUrl + "/equipment").toString()
+        HttpUtil.get(equipmentUrl, (equipments) => {
+            /**
+             * //장비 0~6
+             * 무기 : 품질95 / +17강 / 상재 10단계
+             * 투구 +16강
+             * 상의 +16강
+             * 하의 +16강
+             * 장갑 +16강
+             * 견갑 +16강
+             *
+             * 방초 +100
+             * 무초 +20
+             *
+             * //악세 7~11
+             * 목걸이 중단일
+             * 귀걸이1 떡작
+             * 귀걸이2 중단일
+             * 반지1 중단일
+             * 반지2 중단일
+             *
+             * //스톤 12
+             * 어빌리티스톤 97
+             * //팔찌 13
+             * 팔찌
+             * - 치명 109
+             * - 특화 90
+             * - 적주피 2퍼
+             * - 치적 3퍼
+             */
 
-                function cleanTooltip(originalTooltip) {
-                    const jsonData = JSON.parse(originalTooltip)
+            function cleanTooltip(originalTooltip) {
+                const jsonData = JSON.parse(originalTooltip)
 
-                    // HTML 태그 및 \로 시작하는 부분 제거하는 함수
-                    function cleanText(text) {
-                        // HTML 태그 제거
-                        let clean = text.replace(/<\/?[^>]+(>|$)/g, "")
-                        // \로 시작하는 부분 제거
-                        clean = clean.replace(/\\[^\s]+/g, "")
-                        return clean
-                    }
-
-                    // 모든 요소를 순회하여 text 값 정리
-                    for (let key in jsonData) {
-                        if (
-                            jsonData[key].type === "NameTagBox" ||
-                            jsonData[key].type === "SingleTextBox" ||
-                            jsonData[key].type === "MultiTextBox"
-                        ) {
-                            jsonData[key].value = cleanText(jsonData[key].value)
-                        } else if (
-                            jsonData[key].type === "ItemTitle" ||
-                            jsonData[key].type === "ItemPartBox"
-                        ) {
-                            // 내부의 "value" 객체 내의 텍스트 정리
-                            let value = jsonData[key].value
-                            if (value.leftStr0)
-                                value.leftStr0 = cleanText(value.leftStr0)
-                            if (value.leftStr1)
-                                value.leftStr1 = cleanText(value.leftStr1)
-                            if (value.leftStr2)
-                                value.leftStr2 = cleanText(value.leftStr2)
-                            if (value.rightStr0)
-                                value.rightStr0 = cleanText(value.rightStr0)
-                            if (value.Element_000)
-                                value.Element_000 = cleanText(value.Element_000)
-                            if (value.Element_001)
-                                value.Element_001 = cleanText(value.Element_001)
-                        }
-                    }
-
-                    return jsonData
+                // HTML 태그 및 \로 시작하는 부분 제거하는 함수
+                function cleanText(text) {
+                    // HTML 태그 제거
+                    let clean = text.replace(/<\/?[^>]+(>|$)/g, "")
+                    // \로 시작하는 부분 제거
+                    clean = clean.replace(/\\[^\s]+/g, "")
+                    return clean
                 }
-                {
-                    // 무기 투구 상의 하의 장갑 어깨
-                    // 무기 : 품질95 / +17강 / 상재10단계
-                    /**
+
+                // 모든 요소를 순회하여 text 값 정리
+                for (let key in jsonData) {
+                    if (
+                        jsonData[key].type === "NameTagBox" ||
+                        jsonData[key].type === "SingleTextBox" ||
+                        jsonData[key].type === "MultiTextBox"
+                    ) {
+                        jsonData[key].value = cleanText(jsonData[key].value)
+                    } else if (
+                        jsonData[key].type === "ItemTitle" ||
+                        jsonData[key].type === "ItemPartBox"
+                    ) {
+                        // 내부의 "value" 객체 내의 텍스트 정리
+                        let value = jsonData[key].value
+                        if (value.leftStr0)
+                            value.leftStr0 = cleanText(value.leftStr0)
+                        if (value.leftStr1)
+                            value.leftStr1 = cleanText(value.leftStr1)
+                        if (value.leftStr2)
+                            value.leftStr2 = cleanText(value.leftStr2)
+                        if (value.rightStr0)
+                            value.rightStr0 = cleanText(value.rightStr0)
+                        if (value.Element_000)
+                            value.Element_000 = cleanText(value.Element_000)
+                        if (value.Element_001)
+                            value.Element_001 = cleanText(value.Element_001)
+                    }
+                }
+
+                return jsonData
+            }
+            {
+                // 무기 투구 상의 하의 장갑 어깨
+                // 무기 : 품질95 / +17강 / 상재10단계
+                /**
                         장비 | 품질 | 강화 | 상재
                         =========================
                         무기 | 095 | 17강 | 10단계
@@ -431,49 +431,48 @@ const HttpUtil = {
                         장갑 | 096 | 16강 | 10단계
                         어깨 | 094 | 16강 | 10단계
                     */
-                    const clothes = equipments.slice(0, 6)
-                    result.push("장비 | 품질 | 강화 | 상재")
-                    result.push("====================")
+                const clothes = equipments.slice(0, 6)
+                result.push("장비 | 품질 | 강화 | 상재")
+                result.push("====================")
 
-                    const nasaengmuns = []
-                    clothes.forEach((cloth) => {
-                        const tooltip = cleanTooltip(cloth.Tooltip)
-                        {
-                            //장비
-                            const qualityValue =
-                                tooltip.Element_001.value.qualityValue
-                            const qualityStr =
-                                qualityValue < 100
-                                    ? "0" + qualityValue
-                                    : qualityValue
-                            const equipLvStr =
-                                cloth.Name.toString().split(" ")[0].slice(1) +
-                                "강"
-                            const highLv = tooltip.Element_005.value
-                                .toString()
-                                .split(" ")[2]
-                            result.push(
-                                [
-                                    cloth.Type,
-                                    qualityStr,
-                                    equipLvStr,
-                                    highLv ? highLv : "X",
-                                ].join(" | ")
-                            )
-                        }
-                        {
-                            //엘릭서 초월 관련 obj
-                            const nasaengmun = []
-                            Object.keys(tooltip).forEach((key) => {
-                                if (tooltip[key].type == "IndentStringGroup") {
-                                    nasaengmun.push(tooltip[key].value)
-                                }
-                            })
-                            nasaengmuns.push(nasaengmun)
-                        }
-                    })
-                    result.push("")
-                    /**
+                const nasaengmuns = []
+                clothes.forEach((cloth) => {
+                    const tooltip = cleanTooltip(cloth.Tooltip)
+                    {
+                        //장비
+                        const qualityValue =
+                            tooltip.Element_001.value.qualityValue
+                        const qualityStr =
+                            qualityValue < 100
+                                ? "0" + qualityValue
+                                : qualityValue
+                        const equipLvStr =
+                            cloth.Name.toString().split(" ")[0].slice(1) + "강"
+                        const highLv = tooltip.Element_005.value
+                            .toString()
+                            .split(" ")[2]
+                        result.push(
+                            [
+                                cloth.Type,
+                                qualityStr,
+                                equipLvStr,
+                                highLv ? highLv : "X",
+                            ].join(" | ")
+                        )
+                    }
+                    {
+                        //엘릭서 초월 관련 obj
+                        const nasaengmun = []
+                        Object.keys(tooltip).forEach((key) => {
+                            if (tooltip[key].type == "IndentStringGroup") {
+                                nasaengmun.push(tooltip[key].value)
+                            }
+                        })
+                        nasaengmuns.push(nasaengmun)
+                    }
+                })
+                result.push("")
+                /**
                      *  엘릭서 42 : 회심
                         초월121 : 방초100 + 무초21
 
@@ -482,44 +481,43 @@ const HttpUtil = {
                         그외 방어구 초월 엘릭서 엘릭서
                     */
 
-                    {
-                        //초월
-                        const chowol = []
-                        nasaengmuns.forEach((n) => {
-                            if (n[0]) {
-                                const cLv = Number(
-                                    n[0].Element_000.topStr.split(" ")[4]
-                                )
-                                chowol.push(cLv)
-                            } else {
-                                chowol.push(0)
-                            }
-                        })
-                        const mChowol = chowol[0]
-                        const bChowol =
-                            chowol[1] +
-                            chowol[2] +
-                            chowol[3] +
-                            chowol[4] +
-                            chowol[5]
-                        const allChowol = mChowol + bChowol
-                        result.push(
-                            "초월" +
-                                allChowol +
-                                " : " +
-                                "방초" +
-                                bChowol +
-                                "+" +
-                                "무초" +
-                                mChowol
-                        )
-                    }
+                {
+                    //초월
+                    const chowol = []
+                    nasaengmuns.forEach((n) => {
+                        if (n[0]) {
+                            const cLv = Number(
+                                n[0].Element_000.topStr.split(" ")[4]
+                            )
+                            chowol.push(cLv)
+                        } else {
+                            chowol.push(0)
+                        }
+                    })
+                    const mChowol = chowol[0]
+                    const bChowol =
+                        chowol[1] +
+                        chowol[2] +
+                        chowol[3] +
+                        chowol[4] +
+                        chowol[5]
+                    const allChowol = mChowol + bChowol
+                    result.push(
+                        "초월" +
+                            allChowol +
+                            " : " +
+                            "방초" +
+                            bChowol +
+                            "+" +
+                            "무초" +
+                            mChowol
+                    )
                 }
-
-                //반환
-                msg.reply(result.join("\n"))
-            })
+            }
         })
+
+        //반환
+        msg.reply(result.join("\n"))
     }
 }
 
@@ -581,7 +579,7 @@ const HttpUtil = {
         })()
 
         const url = (HttpUtil.Base_URL + "/gamecontents/calendar").toString()
-        HttpUtil.get(msg, url, (calendar) => {
+        HttpUtil.get(url, (calendar) => {
             /**
              * type adventureIslands = ai[]
              * type ai = {
@@ -666,44 +664,19 @@ const HttpUtil = {
 
 // HttpUtil
 {
-    HttpUtil.optionGet = function (url) {
-        return {
-            url: url,
-            timeout: HttpUtil.timeout,
-            method: "GET",
-            headers: {
-                authorization: HttpUtil.authorization,
-                accept: "application/json",
-            },
-        }
+    HttpUtil.get = function (url, callback) {
+        const result = org.jsoup.Jsoup.connect(url)
+            .header("accept", "application/json")
+            .header("Authorization", HttpUtil.authorization)
+            .ignoreContentType(true)
+            .ignoreHttpErrors(true)
+            .timeout(HttpUtil.timeout)
+            .get()
+            .text()
+        callback(JSON.parse(result))
     }
-    HttpUtil.get = function (msg, url, callback) {
-        Http.request(HttpUtil.optionGet(url), (error, response, doc) => {
-            if (error) {
-                HttpUtil.error(error, msg)
-                return
-            }
-
-            const info = JSON.parse(doc.text())
-            callback(info)
-        })
-    }
-    HttpUtil.optionPost = function (url, data) {
-        return {
-            url: url,
-            timeout: HttpUtil.timeout,
-            method: "POST",
-            headers: {
-                authorization: HttpUtil.authorization,
-                accept: "application/json",
-                "Content-Type": "application/json",
-            },
-            data: JSON.stringify(data),
-        }
-    }
-    HttpUtil.post = function (msg, url, data, callback) {
-        // TODO 동기처리임 API2에는 post 어떻게 쓰는건데....
-        const info = org.jsoup.Jsoup.connect(url)
+    HttpUtil.post = function (url, data, callback) {
+        const result = org.jsoup.Jsoup.connect(url)
             .header("Authorization", HttpUtil.authorization)
             .header("Content-Type", "application/json")
             .requestBody(JSON.stringify(data))
@@ -712,18 +685,10 @@ const HttpUtil = {
             .timeout(HttpUtil.timeout)
             .post()
             .text()
-        callback(info)
-
-        // Http.request(HttpUtil.optionPost(url, data), (error, response, doc) => {
-        //     if (error) {
-        //         HttpUtil.error(error, msg)
-        //         return
-        //     }
-        //     const info = JSON.parse(doc.text())
-        //     callback(info)
-        // })
+        callback(JSON.parse(result))
     }
     HttpUtil.error = function (error, msg) {
+        // 사용되지 않게되버림. error 코드는 어떻게 가져오게..?
         Log.e(error)
         const errorMessage = error.toString()
         const statusIndex = errorMessage.indexOf("Status=")
