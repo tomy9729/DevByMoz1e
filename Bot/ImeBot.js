@@ -16,6 +16,7 @@
  * # 기타
  *  - util 상위 부분 공통화
  *  - 서버가 느릴때 로딩중
+ *  - 명령어 정리
  */
 
 const bot = BotManager.getCurrentBot()
@@ -34,7 +35,7 @@ const apiKey = //key 관리
  * (string) msg.packageName: 메시지를 받은 메신저의 패키지명
  * (void) msg.reply(string): 답장하기
  */
-function onMessage(msg) { }
+function onMessage(msg) {}
 bot.addListener(Event.MESSAGE, onMessage)
 
 /**
@@ -52,14 +53,22 @@ bot.addListener(Event.MESSAGE, onMessage)
  * (Array) msg.args: 명령어 인자 배열
  */
 function onCommand(msg) {
+    /**
+     * 모든 명령어는 !로 시작
+     * [] : 해당하는 내용
+     * ? : 있어도 되고, 없어도 된다.
+     * | : 나열된 문자열 중 하나
+     * ![캐릭터이름]
+     * !모험섬 [?요일]
+     * !악세 [고대|유물] [상상옵|상중옵|상하옵|상단일|중중옵|중하옵|중단일]
+     */
     const cmds = msg.content.slice(1).split(" ")
 
     if (cmds[0] == "모험섬") {
         EtcUtil.getAdventureIslandForDay(msg, cmds[1])
     } else if (cmds[0] == "악세") {
         AuctionUtil.getAcce(msg, cmds[1], cmds[2])
-    }
-    else {
+    } else {
         CharacterUtil.getCharacterInfo(msg)
     }
 }
@@ -69,12 +78,12 @@ bot.addListener(Event.COMMAND, onCommand)
 
 /**
  * util 관리
- * - 기능 주제별 : AuctionUtil CharacterUtil EtcUtil 
+ * - 기능 주제별 : AuctionUtil CharacterUtil EtcUtil
  * - 자주 사용되는 함수별 : HttpUtil
  */
 const AuctionUtil = {
     // 경매장
-    // 악세 보석 
+    // 악세 보석
 }
 const CharacterUtil = {
     // 캐릭터 정보
@@ -86,16 +95,16 @@ const EtcUtil = {
 const HttpUtil = {
     Base_URL: "https://developer-lostark.game.onstove.com",
     authorization: ("bearer " + apiKey).toString(),
-    timeout: 30 * 1000
+    timeout: 30 * 1000,
 }
 
 //AuctionUtil
 {
     /**
-     * 
-     * @param {*} msg 
+     *
+     * @param {*} msg
      * @param {string} itemGrade 유물 | 고대
-     * @param {*} simpleItemOption 
+     * @param {*} simpleItemOption
      * 상상옵 상중옵 상하옵 상단일
      * 중중옵 중하옵 중단일
      */
@@ -107,9 +116,17 @@ const HttpUtil = {
             msg.reply("명령어를 확인해주세요.")
             return
         }
-        const simpleItemOptions = ["상상옵", "상중옵", "상하옵", "상단일", "중중옵", "중하옵", "중단일"]
+        const simpleItemOptions = [
+            "상상옵",
+            "상중옵",
+            "상하옵",
+            "상단일",
+            "중중옵",
+            "중하옵",
+            "중단일",
+        ]
         if (!simpleItemOptions.includes(simpleItemOption)) {
-            msg.reply("명령어를 확인해주세요.\n 유효하지 않은 옵션입니다.")
+            msg.reply("명령어를 확인해주세요.\n유효하지 않은 옵션입니다.")
             return
         }
 
@@ -118,65 +135,79 @@ const HttpUtil = {
         const acceKinds = [
             {
                 categoryCode: 200010,
-                name: "목걸이"
-            }, {
+                name: "목걸이",
+            },
+            {
                 categoryCode: 200020,
-                name: "귀걸이"
-            }, {
+                name: "귀걸이",
+            },
+            {
                 categoryCode: 200030,
-                name: "반지"
-            }
+                name: "반지",
+            },
         ]
 
         const acceOptions = {
             200010: [
-                [{
-                    secondOption: 41,
-                    name: "추피",
-                },
-                {
-                    secondOption: 42,
-                    name: "적주피",
-                },],
-                [{
-                    secondOption: 43,
-                    name: "조게획",
-                }, {
-                    secondOption: 44,
-                    name: "낙인력",
-                },]
+                [
+                    {
+                        secondOption: 41,
+                        name: "추피",
+                    },
+                    {
+                        secondOption: 42,
+                        name: "적주피",
+                    },
+                ],
+                [
+                    {
+                        secondOption: 43,
+                        name: "조게획",
+                    },
+                    {
+                        secondOption: 44,
+                        name: "낙인력",
+                    },
+                ],
             ],
             200020: [
-                [{
-                    secondOption: 45,
-                    name: "공퍼",
-                },
-                {
-                    secondOption: 46,
-                    name: "무공퍼",
-                },]
+                [
+                    {
+                        secondOption: 45,
+                        name: "공퍼",
+                    },
+                    {
+                        secondOption: 46,
+                        name: "무공퍼",
+                    },
+                ],
             ],
             200030: [
-                [{
-                    secondOption: 49,
-                    name: "치적",
-                },
-                {
-                    secondOption: 50,
-                    name: "치피",
-                },],
-                [{
-                    secondOption: 51,
-                    name: "아공강",
-                }, {
-                    secondOption: 52,
-                    name: "아피강",
-                },]
+                [
+                    {
+                        secondOption: 49,
+                        name: "치적",
+                    },
+                    {
+                        secondOption: 50,
+                        name: "치피",
+                    },
+                ],
+                [
+                    {
+                        secondOption: 51,
+                        name: "아공강",
+                    },
+                    {
+                        secondOption: 52,
+                        name: "아피강",
+                    },
+                ],
             ],
         }
 
         // 상상옵 상중옵 상하옵 상단일 중중옵 중하옵 중단일
-        const itemGrades = (() => {
+        const itemOptionGrades = (() => {
             if (simpleItemOption == "상상옵") return [3, 3]
             else if (simpleItemOption == "상중옵") return [3, 2]
             else if (simpleItemOption == "상하옵") return [3, 1]
@@ -187,59 +218,69 @@ const HttpUtil = {
         })()
 
         // 상단일 중단일
-        if (itemGrades.length == 1) {
+        /**
+         * @병장망치
+         * ※악세
+         * - 고대 상단일
+         * - 품질70↑ 3연마 최저가
+         *
+         * 목걸이
+         * - 추피 80000
+         * - 적주치 70000
+         * - 낙인력 80000
+         * - 조게획 70000
+         *
+         * 귀걸이
+         * 반지
+         */
+        result.push("※악세")
+        result.push("- " + itemGrade + " " + simpleItemOption)
+        result.push("- 품질70↑ 3연마 최저가")
+
+        if (itemOptionGrades.length == 1) {
             acceKinds.forEach((acceKind) => {
+                result.push("")
                 result.push(acceKind.name)
                 const categoryCode = acceKind.categoryCode
                 acceOptions[categoryCode].forEach((optionsForAcceKind) => {
                     optionsForAcceKind.forEach((itemOption) => {
                         const data = {
-                            "ItemLevelMin": 0,
-                            "ItemLevelMax": 0,
-                            "ItemGradeQuality": null,
-                            "ItemUpgradeLevel": null,
-                            "ItemTradeAllowCount": null,
-                            "SkillOptions": [
+                            ItemGradeQuality: 70,
+                            EtcOptions: [
                                 {
-                                    "FirstOption": null,
-                                    "SecondOption": null,
-                                    "MinValue": null,
-                                    "MaxValue": null
-                                }
-                            ],
-                            "EtcOptions": [
-                                {
-                                    // 꺠달음 12~13
-                                    "FirstOption": 8,
-                                    "SecondOption": 1,
-                                    "MinValue": 12,
-                                    "MaxValue": 13
+                                    // 깨달음 12~13
+                                    FirstOption: 8,
+                                    SecondOption: 1,
+                                    MinValue: itemGrade == "유물" ? 9 : 12,
+                                    MaxValue: 13,
                                 },
                                 {
-                                    "FirstOption": 7, //연마 효과
-                                    "SecondOption": itemOption.secondOption, // 추피, 적추피, 낙인력 등
-                                    "MinValue": itemGrades[0], // 1하 2중 3상
-                                    "MaxValue": itemGrades[0]
-                                }
+                                    FirstOption: 7, //연마 효과
+                                    SecondOption: itemOption.secondOption, // 추피, 적추피, 낙인력 등
+                                    MinValue: itemOptionGrades[0], // 1하 2중 3상
+                                    MaxValue: itemOptionGrades[0],
+                                },
                             ],
-                            "Sort": "BuyPrice",
-                            "CategoryCode": categoryCode,
-                            "CharacterClass": "",
-                            "ItemTier": 4,
-                            "ItemGrade": itemGrade,
-                            "ItemName": "",
-                            "PageNo": 0,
-                            "SortCondition": "ASC"
+                            Sort: "BuyPrice",
+                            CategoryCode: categoryCode,
+                            CharacterClass: "",
+                            ItemTier: 4,
+                            ItemGrade: itemGrade,
+                            ItemName: "",
+                            PageNo: 0,
+                            SortCondition: "ASC",
                         }
-                        HttpUtil.post(msg, url, data, (searchedItems) => {
-                            msg.replace(JSON.stringify(searchedItems[0]))
+                        HttpUtil.post(msg, url, data, (_searchedItems) => {
+                            const searchedItems = JSON.parse(_searchedItems)
+                            const price = searchedItems.Items.filter(
+                                (i) => i.AuctionInfo.BuyPrice != null
+                            )[0].AuctionInfo.BuyPrice
+                            result.push("- " + itemOption.name + " " + price)
                         })
                     })
-
                 })
             })
-        }
-        else {
+        } else {
             msg.reply("아직 구현되지 않은 기능입니다.")
             return
         }
@@ -266,9 +307,9 @@ const HttpUtil = {
             if (profile == null) {
                 msg.reply(
                     "'" +
-                    cName +
-                    "'" +
-                    "은(는) 존재하지않는 캐릭터나 명령어입니다."
+                        cName +
+                        "'" +
+                        "은(는) 존재하지않는 캐릭터나 명령어입니다."
                 )
                 return
             }
@@ -289,9 +330,9 @@ const HttpUtil = {
              */
             result.push(
                 "※" +
-                server +
-                " " +
-                (title ? "[" + title + "]" + " " + _cName : _cName)
+                    server +
+                    " " +
+                    (title ? "[" + title + "]" + " " + _cName : _cName)
             )
             result.push(cclass + " " + itemLevel + "Lv")
 
@@ -464,13 +505,13 @@ const HttpUtil = {
                         const allChowol = mChowol + bChowol
                         result.push(
                             "초월" +
-                            allChowol +
-                            " : " +
-                            "방초" +
-                            bChowol +
-                            "+" +
-                            "무초" +
-                            mChowol
+                                allChowol +
+                                " : " +
+                                "방초" +
+                                bChowol +
+                                "+" +
+                                "무초" +
+                                mChowol
                         )
                     }
                 }
@@ -525,7 +566,7 @@ const HttpUtil = {
             msg.reply(result.join("\n"))
             return
         }
-        result.push("※ 모험섬 [" + targetDay + "요일]")
+        result.push("※모험섬 [" + targetDay + "요일]")
 
         const targetDate = (() => {
             const dayOrder = ["수", "목", "금", "토", "일", "월", "화"]
@@ -655,20 +696,32 @@ const HttpUtil = {
             headers: {
                 authorization: HttpUtil.authorization,
                 accept: "application/json",
-                "Content-Type": "application/json"
+                "Content-Type": "application/json",
             },
-            body: data
+            data: JSON.stringify(data),
         }
     }
     HttpUtil.post = function (msg, url, data, callback) {
-        Http.request(HttpUtil.optionPost(url, data), (error, response, doc) => {
-            if (error) {
-                HttpUtil.error(error, msg)
-                return
-            }
-            const info = JSON.parse(doc.text())
-            callback(info)
-        })
+        // TODO 동기처리임 API2에는 post 어떻게 쓰는건데....
+        const info = org.jsoup.Jsoup.connect(url)
+            .header("Authorization", HttpUtil.authorization)
+            .header("Content-Type", "application/json")
+            .requestBody(JSON.stringify(data))
+            .ignoreContentType(true)
+            .ignoreHttpErrors(true)
+            .timeout(HttpUtil.timeout)
+            .post()
+            .text()
+        callback(info)
+
+        // Http.request(HttpUtil.optionPost(url, data), (error, response, doc) => {
+        //     if (error) {
+        //         HttpUtil.error(error, msg)
+        //         return
+        //     }
+        //     const info = JSON.parse(doc.text())
+        //     callback(info)
+        // })
     }
     HttpUtil.error = function (error, msg) {
         Log.e(error)
@@ -685,8 +738,8 @@ const HttpUtil = {
             if (statusCode.startsWith("5")) {
                 msg.reply(
                     "에러코드 : " +
-                    statusCode +
-                    "\n로스트아크 서버 에러입니다.\nex)로스트아크 서버 점검"
+                        statusCode +
+                        "\n로스트아크 서버 에러입니다.\nex)로스트아크 서버 점검"
                 )
             } else if (statusCode.startsWith("4")) {
                 msg.reply(
@@ -709,19 +762,19 @@ function onCreate(savedInstanceState, activity) {
     activity.setContentView(textView)
 }
 
-function onStart(activity) { }
+function onStart(activity) {}
 
-function onResume(activity) { }
+function onResume(activity) {}
 
-function onPause(activity) { }
+function onPause(activity) {}
 
-function onStop(activity) { }
+function onStop(activity) {}
 
-function onRestart(activity) { }
+function onRestart(activity) {}
 
-function onDestroy(activity) { }
+function onDestroy(activity) {}
 
-function onBackPressed(activity) { }
+function onBackPressed(activity) {}
 
 bot.addListener(Event.Activity.CREATE, onCreate)
 bot.addListener(Event.Activity.START, onStart)
