@@ -10,13 +10,14 @@
  *  - 노션 api key
  *
  * # 기능 추가
- *  - 캐릭터 관련 : 기본정보, 스펙 / zloa, 로펙 연동
- *  - 경매장 관련 : 보석 유각 악세 등 / 재료값, 융화관련 가격
+ *  - 기본정보, 스펙 / zloa, 로펙 연동
+ *  - 보석 유각 악세 등 / 재료값, 융화관련 가격
+ *  - !악세 고대 상단일 반지 -> 최저가부터 10개정도 세세하게 가져오기
+ *  - !유각, !유각 [?각인이름] !유각 [?직업이름]
+ *  - 모험섬 일주일
  *
  * # 기타
- *  - util 상위 부분 공통화
  *  - 서버가 느릴때 로딩중
- *  - 명령어 정리
  */
 
 /**
@@ -68,15 +69,34 @@ function onCommand(msg) {
      * !모험섬 [?요일]
      * !악세 [고대|유물] [상상옵|상중옵|상하옵|상단일|중중옵|중하옵|중단일]
      */
-    const cmds = msg.content.slice(1).split(" ")
 
-    if (cmds[0] == "모험섬") {
-        EtcUtil.getAdventureIslandForDay(msg, cmds[1])
+    // 공통 부분 처리
+    const result = []
+    result.push("@" + msg.author.name)
+
+    const cmds = msg.content.slice(1).split(" ")
+    if (cmds[0] == "명령어") {
+        result.push("※명령어")
+        result.push("모든 명령어는 !로 시작")
+        result.push("[] : 해당하는 내용")
+        result.push("? : 있어도 되고, 없어도 된다.")
+        result.push("| : 나열된 문자열 중 하나")
+        result.push("")
+        result.push("![캐릭터이름]")
+        result.push("!모험섬 [?요일]")
+        result.push(
+            "!악세 [고대|유물] [상상옵|상중옵|상하옵|상단일|중중옵|중하옵|중단일]"
+        )
+    } else if (cmds[0] == "모험섬") {
+        EtcUtil.getAdventureIslandForDay(msg, result, cmds[1])
     } else if (cmds[0] == "악세") {
-        AuctionUtil.getAcce(msg, cmds[1], cmds[2])
+        AuctionUtil.getAcce(msg, result, cmds[1], cmds[2])
     } else {
-        CharacterUtil.getCharacterInfo(msg)
+        CharacterUtil.getCharacterInfo(msg, result)
     }
+
+    // 답장
+    msg.reply(result.join("\n"))
 }
 
 bot.setCommandPrefix("!") // "!"로 시작하는 메시지를 command로 판단
@@ -114,12 +134,9 @@ const HttpUtil = {
      * 상상옵 상중옵 상하옵 상단일
      * 중중옵 중하옵 중단일
      */
-    AuctionUtil.getAcce = function (msg, itemGrade, simpleItemOption) {
-        const result = []
-        result.push("@" + msg.author.name)
-
+    AuctionUtil.getAcce = function (msg, result, itemGrade, simpleItemOption) {
         if (itemGrade != "유물" && itemGrade != "고대") {
-            msg.reply("명령어를 확인해주세요.")
+            result.push("명령어를 확인해주세요. [고대|유물]")
             return
         }
         const simpleItemOptions = [
@@ -132,7 +149,9 @@ const HttpUtil = {
             "중단일",
         ]
         if (!simpleItemOptions.includes(simpleItemOption)) {
-            msg.reply("명령어를 확인해주세요.\n유효하지 않은 옵션입니다.")
+            result.push(
+                "명령어를 확인해주세요.[상상옵|상중옵|상하옵|상단일|중중옵|중하옵|중단일]"
+            )
             return
         }
 
@@ -444,20 +463,15 @@ const HttpUtil = {
                 })
             })
         } else {
-            msg.reply("아직 구현되지 않은 기능입니다.")
+            result.push("아직 구현되지 않은 기능입니다.")
             return
         }
-
-        //반환
-        msg.reply(result.join("\n"))
     }
 }
 
 //CharacterUtil
 {
-    CharacterUtil.getCharacterInfo = function (msg) {
-        const result = []
-        result.push("@" + msg.author.name)
+    CharacterUtil.getCharacterInfo = function (msg, result) {
         const cName = msg.content.slice(1)
         const baseUrl =
             HttpUtil.Base_URL +
@@ -465,15 +479,17 @@ const HttpUtil = {
             encodeURIComponent(cName)
 
         const profileUrl = (baseUrl + "/profiles").toString()
+        let isValid = true
 
         HttpUtil.get(profileUrl, (profile) => {
             if (profile == null) {
-                msg.reply(
+                result.push(
                     "'" +
                         cName +
                         "'" +
                         "은(는) 존재하지않는 캐릭터나 명령어입니다."
                 )
+                isValid = false
                 return
             }
 
@@ -505,6 +521,9 @@ const HttpUtil = {
             result.push("공격력 : " + attack)
             result.push("최대 생명력 : " + vitality)
         })
+
+        // 존재하지 않는 프로필
+        if (!isValid) return
 
         /////////////////////////////////////////////////////////////////////////
         result.push("")
@@ -685,9 +704,6 @@ const HttpUtil = {
                 }
             }
         })
-
-        //반환
-        msg.reply(result.join("\n"))
     }
 }
 
@@ -718,10 +734,7 @@ const HttpUtil = {
         골드: "골드",
     }
 
-    EtcUtil.getAdventureIslandForDay = function (msg, _day) {
-        const result = []
-        result.push("@" + msg.author.name)
-
+    EtcUtil.getAdventureIslandForDay = function (msg, result, _day) {
         const days = ["일", "월", "화", "수", "목", "금", "토"]
         const today = (() => {
             const today = new Date().getDay() // 0(일요일)부터 6(토요일)까지 반환
@@ -731,7 +744,6 @@ const HttpUtil = {
         const targetDay = (_day ? _day : today)[0]
         if (!days.includes(targetDay)) {
             result.push("요일을 다시 확인하세요.")
-            msg.reply(result.join("\n"))
             return
         }
         result.push("※모험섬 [" + targetDay + "요일]")
@@ -825,9 +837,6 @@ const HttpUtil = {
                     )
                 })
             }
-
-            //반환
-            msg.reply(result.join("\n"))
         })
     }
 }
@@ -857,34 +866,35 @@ const HttpUtil = {
             .text()
         callback(JSON.parse(result))
     }
-    HttpUtil.error = function (error, msg) {
-        // 사용되지 않게되버림. error 코드는 어떻게 가져오게..?
-        Log.e(error)
-        const errorMessage = error.toString()
-        const statusIndex = errorMessage.indexOf("Status=")
-        if (statusIndex !== -1) {
-            const statusStart = statusIndex + "Status=".length
-            const statusEnd = errorMessage.indexOf(",", statusStart)
-            const statusCode = errorMessage
-                .substring(statusStart, statusEnd)
-                .trim()
+    // TODO Error...
+    // HttpUtil.error = function (error, msg) {
+    //     // 사용되지 않게되버림. error 코드는 어떻게 가져오게..?
+    //     Log.e(error)
+    //     const errorMessage = error.toString()
+    //     const statusIndex = errorMessage.indexOf("Status=")
+    //     if (statusIndex !== -1) {
+    //         const statusStart = statusIndex + "Status=".length
+    //         const statusEnd = errorMessage.indexOf(",", statusStart)
+    //         const statusCode = errorMessage
+    //             .substring(statusStart, statusEnd)
+    //             .trim()
 
-            // 에러 처리
-            if (statusCode.startsWith("5")) {
-                msg.reply(
-                    "에러코드 : " +
-                        statusCode +
-                        "\n로스트아크 서버 에러입니다.\nex)로스트아크 서버 점검"
-                )
-            } else if (statusCode.startsWith("4")) {
-                msg.reply(
-                    "에러코드 : " + statusCode + "\n클라이언트 에러입니다."
-                )
-            }
-        } else {
-            msg.reply("알 수 없는 에러입니다.")
-        }
-    }
+    //         // 에러 처리
+    //         if (statusCode.startsWith("5")) {
+    //             msg.reply(
+    //                 "에러코드 : " +
+    //                     statusCode +
+    //                     "\n로스트아크 서버 에러입니다.\nex)로스트아크 서버 점검"
+    //             )
+    //         } else if (statusCode.startsWith("4")) {
+    //             msg.reply(
+    //                 "에러코드 : " + statusCode + "\n클라이언트 에러입니다."
+    //             )
+    //         }
+    //     } else {
+    //         msg.reply("알 수 없는 에러입니다.")
+    //     }
+    // }
 }
 
 /////////////////////////////////////////////////////////////////////////////
