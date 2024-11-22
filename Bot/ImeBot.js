@@ -60,16 +60,6 @@ bot.addListener(Event.MESSAGE, onMessage)
  * (Array) msg.args: 명령어 인자 배열
  */
 function onCommand(msg) {
-    /**
-     * 모든 명령어는 !로 시작
-     * [] : 해당하는 내용
-     * ? : 있어도 되고, 없어도 된다.
-     * | : 나열된 문자열 중 하나
-     * ![캐릭터이름]
-     * !모험섬 [?요일]
-     * !악세 [고대|유물] [상상옵|상중옵|상하옵|상단일|중중옵|중하옵|중단일]
-     */
-
     // 공통 부분 처리
     const result = []
     result.push("@" + msg.author.name)
@@ -83,16 +73,16 @@ function onCommand(msg) {
         result.push("| : 나열된 문자열 중 하나")
         result.push("")
         result.push("![캐릭터이름]")
-        result.push("!모험섬 [?요일]")
+        result.push("!모험섬 [?요일|일주일]")
         result.push(
             "!악세 [고대|유물] [상상옵|상중옵|상하옵|상단일|중중옵|중하옵|중단일]"
         )
     } else if (cmds[0] == "모험섬") {
-        EtcUtil.getAdventureIslandForDay(msg, result, cmds[1])
+        EtcUtil.getAdventureIslandForDay(result, cmds[1])
     } else if (cmds[0] == "악세") {
-        AuctionUtil.getAcce(msg, result, cmds[1], cmds[2])
+        AuctionUtil.getAcce(result, cmds[1], cmds[2])
     } else {
-        CharacterUtil.getCharacterInfo(msg, result)
+        CharacterUtil.getCharacterInfo(result, cmds[0])
     }
 
     // 답장
@@ -134,7 +124,7 @@ const HttpUtil = {
      * 상상옵 상중옵 상하옵 상단일
      * 중중옵 중하옵 중단일
      */
-    AuctionUtil.getAcce = function (msg, result, itemGrade, simpleItemOption) {
+    AuctionUtil.getAcce = function (result, itemGrade, simpleItemOption) {
         if (itemGrade != "유물" && itemGrade != "고대") {
             result.push("명령어를 확인해주세요. [고대|유물]")
             return
@@ -471,12 +461,11 @@ const HttpUtil = {
 
 //CharacterUtil
 {
-    CharacterUtil.getCharacterInfo = function (msg, result) {
-        const cName = msg.content.slice(1)
+    CharacterUtil.getCharacterInfo = function (result, characterName) {
         const baseUrl =
             HttpUtil.Base_URL +
             "/armories/characters/" +
-            encodeURIComponent(cName)
+            encodeURIComponent(characterName)
 
         const profileUrl = (baseUrl + "/profiles").toString()
         let isValid = true
@@ -485,7 +474,7 @@ const HttpUtil = {
             if (profile == null) {
                 result.push(
                     "'" +
-                        cName +
+                        characterName +
                         "'" +
                         "은(는) 존재하지않는 캐릭터나 명령어입니다."
                 )
@@ -734,7 +723,7 @@ const HttpUtil = {
         골드: "골드",
     }
 
-    EtcUtil.getAdventureIslandForDay = function (msg, result, _day) {
+    EtcUtil.getAdventureIslandForDay = function (result, _day) {
         const days = ["일", "월", "화", "수", "목", "금", "토"]
         const today = (() => {
             const today = new Date().getDay() // 0(일요일)부터 6(토요일)까지 반환
