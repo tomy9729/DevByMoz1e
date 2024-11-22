@@ -14,7 +14,6 @@
  *  - 보석 유각 악세 등 / 재료값, 융화관련 가격
  *  - !악세 고대 상단일 반지 -> 최저가부터 10개정도 세세하게 가져오기
  *  - !유각, !유각 [?각인이름] !유각 [?직업이름]
- *  - 모험섬 일주일
  *
  * # 기타
  *  - 서버가 느릴때 로딩중
@@ -23,7 +22,6 @@
 /**
  * 고민
  *
- * # 초월이나 엘릭서 안된 캐릭들 표시 여부
  */
 
 const bot = BotManager.getCurrentBot()
@@ -42,7 +40,7 @@ const apiKey = //key 관리
  * (string) msg.packageName: 메시지를 받은 메신저의 패키지명
  * (void) msg.reply(string): 답장하기
  */
-function onMessage(msg) {}
+function onMessage(msg) { }
 bot.addListener(Event.MESSAGE, onMessage)
 
 /**
@@ -146,7 +144,7 @@ const ErrorUtil = {
         if (!simpleItemOptions.includes(simpleItemOption)) {
             result.push(
                 ErrorUtil.checkCmd +
-                    " [상상옵|상중옵|상하옵|상단일|중중옵|중하옵|중단일]"
+                " [상상옵|상중옵|상하옵|상단일|중중옵|중하옵|중단일]"
             )
             return
         }
@@ -346,11 +344,11 @@ const ErrorUtil = {
                         )[0].AuctionInfo.BuyPrice
                         result.push(
                             "- " +
-                                optionsForAcceKind[0].name +
-                                "/" +
-                                optionsForAcceKind[1].name +
-                                " " +
-                                price
+                            optionsForAcceKind[0].name +
+                            "/" +
+                            optionsForAcceKind[1].name +
+                            " " +
+                            price
                         )
                     })
 
@@ -394,11 +392,11 @@ const ErrorUtil = {
                         )[0].AuctionInfo.BuyPrice
                         result.push(
                             "- " +
-                                optionsForAcceKind[1].name +
-                                "/" +
-                                optionsForAcceKind[0].name +
-                                " " +
-                                price
+                            optionsForAcceKind[1].name +
+                            "/" +
+                            optionsForAcceKind[0].name +
+                            " " +
+                            price
                         )
                     })
                 })
@@ -449,11 +447,11 @@ const ErrorUtil = {
                         )[0].AuctionInfo.BuyPrice
                         result.push(
                             "- " +
-                                optionsForAcceKind[0].name +
-                                "/" +
-                                optionsForAcceKind[1].name +
-                                " " +
-                                price
+                            optionsForAcceKind[0].name +
+                            "/" +
+                            optionsForAcceKind[1].name +
+                            " " +
+                            price
                         )
                     })
                 })
@@ -480,9 +478,9 @@ const ErrorUtil = {
             if (profile == null) {
                 result.push(
                     "'" +
-                        characterName +
-                        "'" +
-                        "은(는) 존재하지않는 캐릭터입니다."
+                    characterName +
+                    "'" +
+                    "은(는) 존재하지않는 캐릭터입니다."
                 )
                 isValid = false
                 return
@@ -504,9 +502,9 @@ const ErrorUtil = {
              */
             result.push(
                 "※" +
-                    server +
-                    " " +
-                    (title ? "[" + title + "]" + " " + _cName : _cName)
+                server +
+                " " +
+                (title ? "[" + title + "]" + " " + _cName : _cName)
             )
             result.push(cclass + " " + itemLevel + "Lv")
 
@@ -688,13 +686,13 @@ const ErrorUtil = {
                     const allChowol = mChowol + bChowol
                     result.push(
                         "초월" +
-                            allChowol +
-                            " : " +
-                            "방초" +
-                            bChowol +
-                            "+" +
-                            "무초" +
-                            mChowol
+                        allChowol +
+                        " : " +
+                        "방초" +
+                        bChowol +
+                        "+" +
+                        "무초" +
+                        mChowol
                     )
                 }
             }
@@ -736,197 +734,146 @@ const ErrorUtil = {
 
     EtcUtil.getAdventureIslandForDay = function (result, _dayOritem) {
         const days = ["일", "월", "화", "수", "목", "금", "토"]
+        const days2 = ["일요일", "월요일", "화요일", "수요일", "목요일", "금요일", "토요일"]
         const items = ["골드", "실링", "해주", "카드"]
         if (_dayOritem) {
-            if (!days.includes(_dayOritem) && !items.includes(_dayOritem)) {
+            if (!days.includes(_dayOritem) && !days2.includes(_dayOritem) && !items.includes(_dayOritem)) {
                 result.push(ErrorUtil.checkCmd)
                 return
             }
         }
-        if (items.includes(_dayOritem)) {
-            result.push("※모험섬")
 
-            // 아이템 검색
-            const _url = (
-                HttpUtil.Base_URL + "/gamecontents/calendar"
-            ).toString()
+        const today = (() => {
+            const today = new Date().getDay()
+            return days[today]
+        })()
 
-            HttpUtil.get(_url, (calendar) => {
-                const loaDays = ["수", "목", "금", "토", "일", "월", "화"]
-                const islandInfos = loaDays.map((day) => {
+        const subTitle = (() => {
+            if (_dayOritem) {
+                if (days.includes(_dayOritem)) return _dayOritem + "요일"
+                else return _dayOritem
+            }
+            else return today + "요일"
+        })()
+        result.push("※모험섬" + " [" + subTitle + "]")
+
+        // 아이템 검색
+        const _url = (
+            HttpUtil.Base_URL + "/gamecontents/calendar"
+        ).toString()
+
+        HttpUtil.get(_url, (calendar) => {
+            const loaDays = ["수", "목", "금", "토", "일", "월", "화"]
+            const islandInfos = loaDays.map((day) => {
+                return {
+                    day: day,
+                    island: {
+                        // ([모험섬이름, 보상])[]
+                        morning: [],
+                        afternoon: [],
+                    },
+                    isWeekend: day == "토" || day == "일",
+                }
+            })
+
+            calendar.filter((c) => c.CategoryName == "모험 섬")
+                .map((i) => {
                     return {
-                        day: day,
-                        island: {
-                            // ([모험섬이름, 보상])[]
-                            morning: [],
-                            afternoon: [],
-                        },
-                        isWeekend: day == "토" || day == "일",
-                    }
-                })
-
-                calendar
-                    .filter((c) => c.CategoryName == "모험 섬")
-                    .map((i) => {
-                        return {
-                            name: EtcUtil.islandNameShort[i.ContentsName],
-                            items: i.RewardItems[0].Items.filter(
-                                (item) => !!item.StartTimes
-                            ),
-                        }
-                    })
-                    .forEach((info) => {
-                        const islandName = info.name
-                        info.items.forEach((item) => {
-                            const itemName = item.Name
+                        name: EtcUtil.islandNameShort[i.ContentsName],
+                        items: i.RewardItems[0].Items.filter(
+                            (item) => !!item.StartTimes
+                        ).map((item) => {
+                            const _times = []
+                            const seenDates = new Set()
                             item.StartTimes.forEach((time) => {
-                                result.push(time)
-                                const date = new Date(time)
-                                const dayOfWeek = days[date.getDay()]
-
-                                const islandInfo = islandInfos.find(
-                                    (i) => i.day == dayOfWeek
-                                )
-                                result.push(JSON.stringify(islandInfo))
-
-                                const timePeriod = islandInfo.isWeekend
-                                    ? date.getHours() <= 13
-                                        ? "morning"
-                                        : "afternoon"
-                                    : "morning"
-
-                                if (
-                                    islandInfo.island[timePeriod].every(
-                                        (i) => i[0] != islandName
-                                    )
-                                ) {
-                                    islandInfo.island[timePeriod].push([
-                                        islandName,
-                                        EtcUtil.rewardItemShort[itemName],
-                                    ])
+                                const date = time.split("T")[0]
+                                if (!seenDates.has(date)) {
+                                    _times.push(time)
+                                    seenDates.add(date)
                                 }
                             })
-                        })
-                    })
-
-                result.push(_dayOritem)
-                result.push(JSON.stringify(islandInfos))
-                islandInfos.forEach((info) => {
-                    const islands = []
-                    info.island.morning.forEach((i) => {
-                        if (i[1] == _dayOritem) islands.push()
-                    })
-                    result.push(info.day + "요일 : " + "")
-                })
-            })
-        } else {
-            // 요일 or default 검색
-            const today = (() => {
-                const today = new Date().getDay() // 0(일요일)부터 6(토요일)까지 반환
-                return days[today]
-            })()
-
-            const targetDay = (_dayOritem ? _dayOritem : today)[0]
-            if (!days.includes(targetDay)) {
-                result.push("요일을 다시 확인하세요.")
-                return
-            }
-            result.push("※모험섬 [" + targetDay + "요일]")
-
-            const targetDate = (() => {
-                const dayOrder = ["수", "목", "금", "토", "일", "월", "화"]
-                const todayIndex = dayOrder.indexOf(today)
-                const targetIndex = dayOrder.indexOf(targetDay)
-
-                const currentDate = new Date()
-                // today가 수목금토일월화 중 몇 번째인지에 따라 위치 조정
-                const diffDays = targetIndex - todayIndex
-                currentDate.setDate(currentDate.getDate() + diffDays)
-                return currentDate.toISOString().split("T")[0]
-            })()
-
-            const url = (
-                HttpUtil.Base_URL + "/gamecontents/calendar"
-            ).toString()
-            HttpUtil.get(url, (calendar) => {
-                /**
-                 * type adventureIslands = ai[]
-                 * type ai = {
-                 *      name : string
-                 *      itmes : item[]
-                 * }
-                 * type item = {
-                 *      name : string
-                 *      startTimes : ISOString[]
-                 * }
-                 */
-                const adventureIslands = calendar
-                    .filter((c) => c.CategoryName == "모험 섬")
-                    .map((i) => {
-                        return {
-                            name: EtcUtil.islandNameShort[i.ContentsName],
-                            items: i.RewardItems[0].Items.filter(
-                                (item) =>
-                                    !!item.StartTimes &&
-                                    item.StartTimes.some(
-                                        (st) => st.slice(0, 10) == targetDate
-                                    )
-                            ).map((item) => {
-                                return {
-                                    name: item.Name,
-                                    startTimes: item.StartTimes.filter(
-                                        (st) => st.slice(0, 10) == targetDate
-                                    ),
-                                }
-                            }),
-                        }
-                    })
-                    .filter((ai) => ai.items.length > 0)
-
-                const morning = []
-                const afternoon = []
-                adventureIslands.forEach((ai) => {
-                    if (ai.items[0].startTimes.length == 3) {
-                        if (
-                            ai.items[0].startTimes[0]
-                                .split("T")[1]
-                                .split(":")[0] == "09"
-                        ) {
-                            morning.push(ai)
-                        } else {
-                            afternoon.push(ai)
-                        }
-                    } else {
-                        morning.push(ai)
+                            return {
+                                name: item.Name,
+                                icon: item.Icon,
+                                grade: item.Grade,
+                                times: _times
+                            }
+                        }),
                     }
                 })
+                .forEach((info) => {
+                    const islandName = info.name
+                    info.items.forEach((item) => {
+                        const itemName = item.name
+                        item.times.forEach((time) => {
+                            const slpitTime = time.split("T")
+                            const timeInfo = {
+                                date: slpitTime[0],
+                                hour: Number(slpitTime[1].substr(0, 2))
+                            }
+                            const date = new Date(timeInfo.date)
+                            const dayOfWeek = days[date.getDay()]
 
+                            const islandInfo = islandInfos.find(
+                                (i) => i.day == dayOfWeek
+                            )
+
+                            const timePeriod = islandInfo.isWeekend
+                                ? timeInfo.hour <= 13
+                                    ? "morning"
+                                    : "afternoon"
+                                : "morning"
+
+                            if (
+                                islandInfo.island[timePeriod].every(
+                                    (i) => i[0] != islandName
+                                )
+                            ) {
+                                islandInfo.island[timePeriod].push([
+                                    islandName,
+                                    EtcUtil.rewardItemShort[itemName],
+                                ])
+                            }
+                        })
+                    })
+                })
+
+
+
+            if (items.includes(_dayOritem)) {
+                islandInfos.forEach((info) => {
+                    const moring = info.island.morning.find((i) => i[1] == _dayOritem)
+                    const afternoon = info.island.afternoon.find((i) => i[1] == _dayOritem)
+                    if (moring && afternoon) {
+                        result.push(info.day + "요일 : " + moring[0] + "/" + afternoon[0])
+                    }
+                    else if (afternoon) {
+                        result.push(info.day + "요일 : X/" + afternoon[0])
+                    } else if (moring) {
+                        result.push(info.day + "요일 : " + moring[0])
+                    } else {
+                        result.push(info.day + "요일 : X")
+                    }
+                })
+            } else {
+                const targetDay = _dayOritem ? _dayOritem[0] : today
+                const info = islandInfos.find((i) => i.day == targetDay).island
                 {
                     // 오전 or 하루
-                    result.push("================")
-                    morning.forEach((ai) => {
-                        const name = ai.name
-                        const rewardItem = ai.items.map((i) => i.name).join("/")
-                        result.push(
-                            name + " : " + EtcUtil.rewardItemShort[rewardItem]
-                        )
+                    info.morning.forEach((i) => {
+                        result.push(i[0] + " : " + i[1])
                     })
                 }
 
-                if (afternoon.length > 0) {
+                if (info.afternoon.length > 0) {
                     // 오후 : 주말에 한정
                     result.push("================")
-
-                    afternoon.forEach((ai) => {
-                        const name = ai.name
-                        const rewardItem = ai.items.map((i) => i.name).join("/")
-                        result.push(
-                            name + " : " + EtcUtil.rewardItemShort[rewardItem]
-                        )
+                    info.afternoon.forEach((i) => {
+                        result.push(i[0] + " : " + i[1])
                     })
                 }
-            })
-        }
+            }
+        })
     }
 }
 
@@ -996,19 +943,19 @@ function onCreate(savedInstanceState, activity) {
     activity.setContentView(textView)
 }
 
-function onStart(activity) {}
+function onStart(activity) { }
 
-function onResume(activity) {}
+function onResume(activity) { }
 
-function onPause(activity) {}
+function onPause(activity) { }
 
-function onStop(activity) {}
+function onStop(activity) { }
 
-function onRestart(activity) {}
+function onRestart(activity) { }
 
-function onDestroy(activity) {}
+function onDestroy(activity) { }
 
-function onBackPressed(activity) {}
+function onBackPressed(activity) { }
 
 bot.addListener(Event.Activity.CREATE, onCreate)
 bot.addListener(Event.Activity.START, onStart)
