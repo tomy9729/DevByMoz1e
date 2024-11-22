@@ -19,6 +19,12 @@
  *  - 명령어 정리
  */
 
+/**
+ * 고민
+ *
+ * # 초월이나 엘릭서 안된 캐릭들 표시 여부
+ */
+
 const bot = BotManager.getCurrentBot()
 const apiKey = //key 관리
     "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiIsIng1dCI6IktYMk40TkRDSTJ5NTA5NWpjTWk5TllqY2lyZyIsImtpZCI6IktYMk40TkRDSTJ5NTA5NWpjTWk5TllqY2lyZyJ9.eyJpc3MiOiJodHRwczovL2x1ZHkuZ2FtZS5vbnN0b3ZlLmNvbSIsImF1ZCI6Imh0dHBzOi8vbHVkeS5nYW1lLm9uc3RvdmUuY29tL3Jlc291cmNlcyIsImNsaWVudF9pZCI6IjEwMDAwMDAwMDAwODY2MTQifQ.PYeBEH3_CjaE7Sdf2Bfx9__W7644xFf77wiTUINTy0hVYlVO55pfOG-pWZwcXxz-8k-w1RB-eNxYJ0QYWhC9i3ShX57PZ4uu5rkzEjsNg2b3GeFensDj2NKkXHOl9EIlBhg9O3d87yaIVLk1UumgR1a_sqgXbSU594B9QpoY5Zh0EQVHBTbNb6w39EPgD2fH8POBG19AeyijRYlK6AzO6yKKed8IgfuglNRO20a1IHdyNG4GjgDfirGWTniCut0wXzkKP_motJLLHTTr3LriZSUmerzcC_9NDsQA11yO6eZQ3meEzaKXWGzSmWCoHRWezN1rBkQweZGdr-16fCPuMw"
@@ -279,6 +285,164 @@ const HttpUtil = {
                     })
                 })
             })
+        } else if (itemOptionGrades[0] != itemOptionGrades[1]) {
+            acceKinds.forEach((acceKind) => {
+                result.push("")
+                result.push(acceKind.name)
+                const categoryCode = acceKind.categoryCode
+                acceOptions[categoryCode].forEach((optionsForAcceKind) => {
+                    const data1 = {
+                        ItemGradeQuality: 70,
+                        EtcOptions: [
+                            {
+                                // 깨달음 12~13
+                                FirstOption: 8,
+                                SecondOption: 1,
+                                MinValue: itemGrade == "유물" ? 9 : 12,
+                                MaxValue: 13,
+                            },
+                            {
+                                FirstOption: 7,
+                                SecondOption:
+                                    optionsForAcceKind[0].secondOption,
+                                MinValue: itemOptionGrades[0],
+                                MaxValue: itemOptionGrades[0],
+                            },
+                            {
+                                FirstOption: 7,
+                                SecondOption:
+                                    optionsForAcceKind[1].secondOption,
+                                MinValue: itemOptionGrades[1],
+                                MaxValue: itemOptionGrades[1],
+                            },
+                        ],
+                        Sort: "BuyPrice",
+                        CategoryCode: categoryCode,
+                        CharacterClass: "",
+                        ItemTier: 4,
+                        ItemGrade: itemGrade,
+                        ItemName: "",
+                        PageNo: 0,
+                        SortCondition: "ASC",
+                    }
+                    HttpUtil.post(url, data1, (searchedItems) => {
+                        const price = searchedItems.Items.filter(
+                            (i) => i.AuctionInfo.BuyPrice != null
+                        )[0].AuctionInfo.BuyPrice
+                        result.push(
+                            "- " +
+                                optionsForAcceKind[0].name +
+                                "/" +
+                                optionsForAcceKind[1].name +
+                                " " +
+                                price
+                        )
+                    })
+
+                    const data2 = {
+                        ItemGradeQuality: 70,
+                        EtcOptions: [
+                            {
+                                // 깨달음 12~13
+                                FirstOption: 8,
+                                SecondOption: 1,
+                                MinValue: itemGrade == "유물" ? 9 : 12,
+                                MaxValue: 13,
+                            },
+                            {
+                                FirstOption: 7,
+                                SecondOption:
+                                    optionsForAcceKind[1].secondOption,
+                                MinValue: itemOptionGrades[0],
+                                MaxValue: itemOptionGrades[0],
+                            },
+                            {
+                                FirstOption: 7,
+                                SecondOption:
+                                    optionsForAcceKind[0].secondOption,
+                                MinValue: itemOptionGrades[1],
+                                MaxValue: itemOptionGrades[1],
+                            },
+                        ],
+                        Sort: "BuyPrice",
+                        CategoryCode: categoryCode,
+                        CharacterClass: "",
+                        ItemTier: 4,
+                        ItemGrade: itemGrade,
+                        ItemName: "",
+                        PageNo: 0,
+                        SortCondition: "ASC",
+                    }
+                    HttpUtil.post(url, data2, (searchedItems) => {
+                        const price = searchedItems.Items.filter(
+                            (i) => i.AuctionInfo.BuyPrice != null
+                        )[0].AuctionInfo.BuyPrice
+                        result.push(
+                            "- " +
+                                optionsForAcceKind[1].name +
+                                "/" +
+                                optionsForAcceKind[0].name +
+                                " " +
+                                price
+                        )
+                    })
+                })
+            })
+        } else if (itemOptionGrades[0] == itemOptionGrades[1]) {
+            acceKinds.forEach((acceKind) => {
+                result.push("")
+                result.push(acceKind.name)
+                const categoryCode = acceKind.categoryCode
+                acceOptions[categoryCode].forEach((optionsForAcceKind) => {
+                    const data = {
+                        ItemGradeQuality: 70,
+                        EtcOptions: [
+                            {
+                                // 깨달음 12~13
+                                FirstOption: 8,
+                                SecondOption: 1,
+                                MinValue: itemGrade == "유물" ? 9 : 12,
+                                MaxValue: 13,
+                            },
+                            {
+                                FirstOption: 7,
+                                SecondOption:
+                                    optionsForAcceKind[0].secondOption,
+                                MinValue: itemOptionGrades[0],
+                                MaxValue: itemOptionGrades[0],
+                            },
+                            {
+                                FirstOption: 7,
+                                SecondOption:
+                                    optionsForAcceKind[1].secondOption,
+                                MinValue: itemOptionGrades[1],
+                                MaxValue: itemOptionGrades[1],
+                            },
+                        ],
+                        Sort: "BuyPrice",
+                        CategoryCode: categoryCode,
+                        CharacterClass: "",
+                        ItemTier: 4,
+                        ItemGrade: itemGrade,
+                        ItemName: "",
+                        PageNo: 0,
+                        SortCondition: "ASC",
+                    }
+                    HttpUtil.post(url, data, (searchedItems) => {
+                        const price = searchedItems.Items.filter(
+                            (i) => i.AuctionInfo.BuyPrice != null
+                        )[0].AuctionInfo.BuyPrice
+                        result.push(
+                            "- " +
+                                optionsForAcceKind[0].name +
+                                "/" +
+                                optionsForAcceKind[1].name +
+                                " " +
+                                price
+                        )
+                    })
+                })
+            })
         } else {
             msg.reply("아직 구현되지 않은 기능입니다.")
             return
@@ -484,10 +648,16 @@ const HttpUtil = {
                 {
                     //초월
                     const chowol = []
-                    nasaengmuns.forEach((n) => {
-                        if (n[0]) {
+                    nasaengmuns.forEach((nasaengmun) => {
+                        const chowolInfo = nasaengmun.find((n) => {
+                            if (n && n.Element_000 && n.Element_000.topStr)
+                                return n.Element_000.topStr.includes("초월")
+                            else return false
+                        })
+
+                        if (chowolInfo) {
                             const cLv = Number(
-                                n[0].Element_000.topStr.split(" ")[4]
+                                chowolInfo.Element_000.topStr.split(" ")[4]
                             )
                             chowol.push(cLv)
                         } else {
