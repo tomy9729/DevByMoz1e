@@ -73,7 +73,7 @@ function onCommand(msg) {
         result.push("| : 나열된 문자열 중 하나")
         result.push("")
         result.push("![캐릭터이름]")
-        result.push("!모험섬 [?요일|일주일]")
+        result.push("!모험섬 [?요일|골드|실링|해주|카드]")
         result.push(
             "!악세 [고대|유물] [상상옵|상중옵|상하옵|상단일|중중옵|중하옵|중단일]"
         )
@@ -96,6 +96,7 @@ bot.addListener(Event.COMMAND, onCommand)
  * util 관리
  * - 기능 주제별 : AuctionUtil CharacterUtil EtcUtil
  * - 자주 사용되는 함수별 : HttpUtil
+ * - ErrorUtil
  */
 const AuctionUtil = {
     // 경매장
@@ -113,6 +114,10 @@ const HttpUtil = {
     authorization: ("bearer " + apiKey).toString(),
     timeout: 30 * 1000,
 }
+const ErrorUtil = {
+    notImplemented: "구현되지 않은 기능입니다.",
+    checkCmd: "명령어를 확인하세요.",
+}
 
 //AuctionUtil
 {
@@ -126,7 +131,7 @@ const HttpUtil = {
      */
     AuctionUtil.getAcce = function (result, itemGrade, simpleItemOption) {
         if (itemGrade != "유물" && itemGrade != "고대") {
-            result.push("명령어를 확인해주세요. [고대|유물]")
+            result.push(ErrorUtil.checkCmd + " [고대|유물]")
             return
         }
         const simpleItemOptions = [
@@ -140,7 +145,8 @@ const HttpUtil = {
         ]
         if (!simpleItemOptions.includes(simpleItemOption)) {
             result.push(
-                "명령어를 확인해주세요.[상상옵|상중옵|상하옵|상단일|중중옵|중하옵|중단일]"
+                ErrorUtil.checkCmd +
+                    " [상상옵|상중옵|상하옵|상단일|중중옵|중하옵|중단일]"
             )
             return
         }
@@ -476,7 +482,7 @@ const HttpUtil = {
                     "'" +
                         characterName +
                         "'" +
-                        "은(는) 존재하지않는 캐릭터나 명령어입니다."
+                        "은(는) 존재하지않는 캐릭터입니다."
                 )
                 isValid = false
                 return
@@ -718,115 +724,209 @@ const HttpUtil = {
     }
     EtcUtil.rewardItemShort = {
         "대양의 주화 상자/해적 주화": "해주",
+        "대양의 주화 상자": "해주",
+        "해적 주화": "해주",
         "전설 ~ 고급 카드 팩 III/전설 ~ 고급 카드 팩 IV/영혼의 잎사귀": "카드",
+        "전설 ~ 고급 카드 팩 III": "카드",
+        "전설 ~ 고급 카드 팩 IV": "카드",
+        "영혼의 잎사귀": "카드",
         실링: "실링",
         골드: "골드",
     }
 
-    EtcUtil.getAdventureIslandForDay = function (result, _day) {
+    EtcUtil.getAdventureIslandForDay = function (result, _dayOritem) {
         const days = ["일", "월", "화", "수", "목", "금", "토"]
-        const today = (() => {
-            const today = new Date().getDay() // 0(일요일)부터 6(토요일)까지 반환
-            return days[today]
-        })()
-
-        const targetDay = (_day ? _day : today)[0]
-        if (!days.includes(targetDay)) {
-            result.push("요일을 다시 확인하세요.")
-            return
+        const items = ["골드", "실링", "해주", "카드"]
+        if (_dayOritem) {
+            if (!days.includes(_dayOritem) && !items.includes(_dayOritem)) {
+                result.push(ErrorUtil.checkCmd)
+                return
+            }
         }
-        result.push("※모험섬 [" + targetDay + "요일]")
+        if (items.includes(_dayOritem)) {
+            result.push("※모험섬")
 
-        const targetDate = (() => {
-            const dayOrder = ["수", "목", "금", "토", "일", "월", "화"]
-            const todayIndex = dayOrder.indexOf(today)
-            const targetIndex = dayOrder.indexOf(targetDay)
+            // 아이템 검색
+            const _url = (
+                HttpUtil.Base_URL + "/gamecontents/calendar"
+            ).toString()
 
-            const currentDate = new Date()
-            // today가 수목금토일월화 중 몇 번째인지에 따라 위치 조정
-            const diffDays = targetIndex - todayIndex
-            currentDate.setDate(currentDate.getDate() + diffDays)
-            return currentDate.toISOString().split("T")[0]
-        })()
-
-        const url = (HttpUtil.Base_URL + "/gamecontents/calendar").toString()
-        HttpUtil.get(url, (calendar) => {
-            /**
-             * type adventureIslands = ai[]
-             * type ai = {
-             *      name : string
-             *      itmes : item[]
-             * }
-             * type item = {
-             *      name : string
-             *      startTimes : ISOString[]
-             * }
-             */
-            const adventureIslands = calendar
-                .filter((c) => c.CategoryName == "모험 섬")
-                .map((i) => {
+            HttpUtil.get(_url, (calendar) => {
+                const loaDays = ["수", "목", "금", "토", "일", "월", "화"]
+                const islandInfos = loaDays.map((day) => {
                     return {
-                        name: EtcUtil.islandNameShort[i.ContentsName],
-                        items: i.RewardItems[0].Items.filter(
-                            (item) =>
-                                !!item.StartTimes &&
-                                item.StartTimes.some(
-                                    (st) => st.slice(0, 10) == targetDate
-                                )
-                        ).map((item) => {
-                            return {
-                                name: item.Name,
-                                startTimes: item.StartTimes.filter(
-                                    (st) => st.slice(0, 10) == targetDate
-                                ),
-                            }
-                        }),
+                        day: day,
+                        island: {
+                            // ([모험섬이름, 보상])[]
+                            morning: [],
+                            afternoon: [],
+                        },
+                        isWeekend: day == "토" || day == "일",
                     }
                 })
-                .filter((ai) => ai.items.length > 0)
 
-            const morning = []
-            const afternoon = []
-            adventureIslands.forEach((ai) => {
-                if (ai.items[0].startTimes.length == 3) {
-                    if (
-                        ai.items[0].startTimes[0].split("T")[1].split(":")[0] ==
-                        "09"
-                    ) {
-                        morning.push(ai)
+                calendar
+                    .filter((c) => c.CategoryName == "모험 섬")
+                    .map((i) => {
+                        return {
+                            name: EtcUtil.islandNameShort[i.ContentsName],
+                            items: i.RewardItems[0].Items.filter(
+                                (item) => !!item.StartTimes
+                            ),
+                        }
+                    })
+                    .forEach((info) => {
+                        const islandName = info.name
+                        info.items.forEach((item) => {
+                            const itemName = item.Name
+                            item.StartTimes.forEach((time) => {
+                                result.push(time)
+                                const date = new Date(time)
+                                const dayOfWeek = days[date.getDay()]
+
+                                const islandInfo = islandInfos.find(
+                                    (i) => i.day == dayOfWeek
+                                )
+                                result.push(JSON.stringify(islandInfo))
+
+                                const timePeriod = islandInfo.isWeekend
+                                    ? date.getHours() <= 13
+                                        ? "morning"
+                                        : "afternoon"
+                                    : "morning"
+
+                                if (
+                                    islandInfo.island[timePeriod].every(
+                                        (i) => i[0] != islandName
+                                    )
+                                ) {
+                                    islandInfo.island[timePeriod].push([
+                                        islandName,
+                                        EtcUtil.rewardItemShort[itemName],
+                                    ])
+                                }
+                            })
+                        })
+                    })
+
+                result.push(_dayOritem)
+                result.push(JSON.stringify(islandInfos))
+                islandInfos.forEach((info) => {
+                    const islands = []
+                    info.island.morning.forEach((i) => {
+                        if (i[1] == _dayOritem) islands.push()
+                    })
+                    result.push(info.day + "요일 : " + "")
+                })
+            })
+        } else {
+            // 요일 or default 검색
+            const today = (() => {
+                const today = new Date().getDay() // 0(일요일)부터 6(토요일)까지 반환
+                return days[today]
+            })()
+
+            const targetDay = (_dayOritem ? _dayOritem : today)[0]
+            if (!days.includes(targetDay)) {
+                result.push("요일을 다시 확인하세요.")
+                return
+            }
+            result.push("※모험섬 [" + targetDay + "요일]")
+
+            const targetDate = (() => {
+                const dayOrder = ["수", "목", "금", "토", "일", "월", "화"]
+                const todayIndex = dayOrder.indexOf(today)
+                const targetIndex = dayOrder.indexOf(targetDay)
+
+                const currentDate = new Date()
+                // today가 수목금토일월화 중 몇 번째인지에 따라 위치 조정
+                const diffDays = targetIndex - todayIndex
+                currentDate.setDate(currentDate.getDate() + diffDays)
+                return currentDate.toISOString().split("T")[0]
+            })()
+
+            const url = (
+                HttpUtil.Base_URL + "/gamecontents/calendar"
+            ).toString()
+            HttpUtil.get(url, (calendar) => {
+                /**
+                 * type adventureIslands = ai[]
+                 * type ai = {
+                 *      name : string
+                 *      itmes : item[]
+                 * }
+                 * type item = {
+                 *      name : string
+                 *      startTimes : ISOString[]
+                 * }
+                 */
+                const adventureIslands = calendar
+                    .filter((c) => c.CategoryName == "모험 섬")
+                    .map((i) => {
+                        return {
+                            name: EtcUtil.islandNameShort[i.ContentsName],
+                            items: i.RewardItems[0].Items.filter(
+                                (item) =>
+                                    !!item.StartTimes &&
+                                    item.StartTimes.some(
+                                        (st) => st.slice(0, 10) == targetDate
+                                    )
+                            ).map((item) => {
+                                return {
+                                    name: item.Name,
+                                    startTimes: item.StartTimes.filter(
+                                        (st) => st.slice(0, 10) == targetDate
+                                    ),
+                                }
+                            }),
+                        }
+                    })
+                    .filter((ai) => ai.items.length > 0)
+
+                const morning = []
+                const afternoon = []
+                adventureIslands.forEach((ai) => {
+                    if (ai.items[0].startTimes.length == 3) {
+                        if (
+                            ai.items[0].startTimes[0]
+                                .split("T")[1]
+                                .split(":")[0] == "09"
+                        ) {
+                            morning.push(ai)
+                        } else {
+                            afternoon.push(ai)
+                        }
                     } else {
-                        afternoon.push(ai)
+                        morning.push(ai)
                     }
-                } else {
-                    morning.push(ai)
+                })
+
+                {
+                    // 오전 or 하루
+                    result.push("================")
+                    morning.forEach((ai) => {
+                        const name = ai.name
+                        const rewardItem = ai.items.map((i) => i.name).join("/")
+                        result.push(
+                            name + " : " + EtcUtil.rewardItemShort[rewardItem]
+                        )
+                    })
+                }
+
+                if (afternoon.length > 0) {
+                    // 오후 : 주말에 한정
+                    result.push("================")
+
+                    afternoon.forEach((ai) => {
+                        const name = ai.name
+                        const rewardItem = ai.items.map((i) => i.name).join("/")
+                        result.push(
+                            name + " : " + EtcUtil.rewardItemShort[rewardItem]
+                        )
+                    })
                 }
             })
-
-            {
-                // 오전 or 하루
-                result.push("================")
-                morning.forEach((ai) => {
-                    const name = ai.name
-                    const rewardItem = ai.items.map((i) => i.name).join("/")
-                    result.push(
-                        name + " : " + EtcUtil.rewardItemShort[rewardItem]
-                    )
-                })
-            }
-
-            if (afternoon.length > 0) {
-                // 오후 : 주말에 한정
-                result.push("================")
-
-                afternoon.forEach((ai) => {
-                    const name = ai.name
-                    const rewardItem = ai.items.map((i) => i.name).join("/")
-                    result.push(
-                        name + " : " + EtcUtil.rewardItemShort[rewardItem]
-                    )
-                })
-            }
-        })
+        }
     }
 }
 
