@@ -40,7 +40,7 @@ const apiKey = //key 관리
  * (string) msg.packageName: 메시지를 받은 메신저의 패키지명
  * (void) msg.reply(string): 답장하기
  */
-function onMessage(msg) { }
+function onMessage(msg) {}
 bot.addListener(Event.MESSAGE, onMessage)
 
 /**
@@ -75,10 +75,15 @@ function onCommand(msg) {
         result.push(
             "!악세 [고대|유물] [상상옵|상중옵|상하옵|상단일|중중옵|중하옵|중단일]"
         )
+        result.push("!악세 딜증")
     } else if (cmds[0] == "모험섬") {
         EtcUtil.getAdventureIslandForDay(result, cmds[1])
     } else if (cmds[0] == "악세") {
-        AuctionUtil.getAcce(result, cmds[1], cmds[2])
+        if (cmds[1] == "딜증") {
+            EtcUtil.getAcceDealPlus(result)
+        } else {
+            AuctionUtil.getAcce(result, cmds[1], cmds[2])
+        }
     } else {
         CharacterUtil.getCharacterInfo(result, cmds[0])
     }
@@ -106,6 +111,45 @@ const CharacterUtil = {
 }
 const EtcUtil = {
     // 모험섬
+    // 정보 : 악세 딜증
+    acceDealPlus: [
+        {
+            name: "하단일",
+            plus: 2,
+        },
+        {
+            name: "하하옵",
+            plus: 4,
+        },
+        {
+            name: "중단일",
+            plus: 4.4,
+        },
+        {
+            name: "중하옵",
+            plus: 6.4,
+        },
+        {
+            name: "상단일",
+            plus: 7.4,
+        },
+        {
+            name: "중중옵",
+            plus: 8.8,
+        },
+        {
+            name: "상하옵",
+            plus: 9.4,
+        },
+        {
+            name: "상중옵",
+            plus: 11.8,
+        },
+        {
+            name: "상상옵",
+            plus: 14.8,
+        },
+    ],
 }
 const HttpUtil = {
     Base_URL: "https://developer-lostark.game.onstove.com",
@@ -144,7 +188,7 @@ const ErrorUtil = {
         if (!simpleItemOptions.includes(simpleItemOption)) {
             result.push(
                 ErrorUtil.checkCmd +
-                " [상상옵|상중옵|상하옵|상단일|중중옵|중하옵|중단일]"
+                    " [상상옵|상중옵|상하옵|상단일|중중옵|중하옵|중단일]"
             )
             return
         }
@@ -344,11 +388,11 @@ const ErrorUtil = {
                         )[0].AuctionInfo.BuyPrice
                         result.push(
                             "- " +
-                            optionsForAcceKind[0].name +
-                            "/" +
-                            optionsForAcceKind[1].name +
-                            " " +
-                            price
+                                optionsForAcceKind[0].name +
+                                "/" +
+                                optionsForAcceKind[1].name +
+                                " " +
+                                price
                         )
                     })
 
@@ -392,11 +436,11 @@ const ErrorUtil = {
                         )[0].AuctionInfo.BuyPrice
                         result.push(
                             "- " +
-                            optionsForAcceKind[1].name +
-                            "/" +
-                            optionsForAcceKind[0].name +
-                            " " +
-                            price
+                                optionsForAcceKind[1].name +
+                                "/" +
+                                optionsForAcceKind[0].name +
+                                " " +
+                                price
                         )
                     })
                 })
@@ -447,11 +491,11 @@ const ErrorUtil = {
                         )[0].AuctionInfo.BuyPrice
                         result.push(
                             "- " +
-                            optionsForAcceKind[0].name +
-                            "/" +
-                            optionsForAcceKind[1].name +
-                            " " +
-                            price
+                                optionsForAcceKind[0].name +
+                                "/" +
+                                optionsForAcceKind[1].name +
+                                " " +
+                                price
                         )
                     })
                 })
@@ -478,9 +522,9 @@ const ErrorUtil = {
             if (profile == null) {
                 result.push(
                     "'" +
-                    characterName +
-                    "'" +
-                    "은(는) 존재하지않는 캐릭터입니다."
+                        characterName +
+                        "'" +
+                        "은(는) 존재하지않는 캐릭터입니다."
                 )
                 isValid = false
                 return
@@ -502,9 +546,9 @@ const ErrorUtil = {
              */
             result.push(
                 "※" +
-                server +
-                " " +
-                (title ? "[" + title + "]" + " " + _cName : _cName)
+                    server +
+                    " " +
+                    (title ? "[" + title + "]" + " " + _cName : _cName)
             )
             result.push(cclass + " " + itemLevel + "Lv")
 
@@ -686,13 +730,13 @@ const ErrorUtil = {
                     const allChowol = mChowol + bChowol
                     result.push(
                         "초월" +
-                        allChowol +
-                        " : " +
-                        "방초" +
-                        bChowol +
-                        "+" +
-                        "무초" +
-                        mChowol
+                            allChowol +
+                            " : " +
+                            "방초" +
+                            bChowol +
+                            "+" +
+                            "무초" +
+                            mChowol
                     )
                 }
             }
@@ -734,10 +778,22 @@ const ErrorUtil = {
 
     EtcUtil.getAdventureIslandForDay = function (result, _dayOritem) {
         const days = ["일", "월", "화", "수", "목", "금", "토"]
-        const days2 = ["일요일", "월요일", "화요일", "수요일", "목요일", "금요일", "토요일"]
+        const days2 = [
+            "일요일",
+            "월요일",
+            "화요일",
+            "수요일",
+            "목요일",
+            "금요일",
+            "토요일",
+        ]
         const items = ["골드", "실링", "해주", "카드"]
         if (_dayOritem) {
-            if (!days.includes(_dayOritem) && !days2.includes(_dayOritem) && !items.includes(_dayOritem)) {
+            if (
+                !days.includes(_dayOritem) &&
+                !days2.includes(_dayOritem) &&
+                !items.includes(_dayOritem)
+            ) {
                 result.push(ErrorUtil.checkCmd)
                 return
             }
@@ -752,15 +808,12 @@ const ErrorUtil = {
             if (_dayOritem) {
                 if (days.includes(_dayOritem)) return _dayOritem + "요일"
                 else return _dayOritem
-            }
-            else return today + "요일"
+            } else return today + "요일"
         })()
         result.push("※모험섬" + " [" + subTitle + "]")
 
         // 아이템 검색
-        const _url = (
-            HttpUtil.Base_URL + "/gamecontents/calendar"
-        ).toString()
+        const _url = (HttpUtil.Base_URL + "/gamecontents/calendar").toString()
 
         HttpUtil.get(_url, (calendar) => {
             const loaDays = ["수", "목", "금", "토", "일", "월", "화"]
@@ -776,7 +829,8 @@ const ErrorUtil = {
                 }
             })
 
-            calendar.filter((c) => c.CategoryName == "모험 섬")
+            calendar
+                .filter((c) => c.CategoryName == "모험 섬")
                 .map((i) => {
                     return {
                         name: EtcUtil.islandNameShort[i.ContentsName],
@@ -796,7 +850,7 @@ const ErrorUtil = {
                                 name: item.Name,
                                 icon: item.Icon,
                                 grade: item.Grade,
-                                times: _times
+                                times: _times,
                             }
                         }),
                     }
@@ -809,7 +863,7 @@ const ErrorUtil = {
                             const slpitTime = time.split("T")
                             const timeInfo = {
                                 date: slpitTime[0],
-                                hour: Number(slpitTime[1].substr(0, 2))
+                                hour: Number(slpitTime[1].substr(0, 2)),
                             }
                             const date = new Date(timeInfo.date)
                             const dayOfWeek = days[date.getDay()]
@@ -838,16 +892,23 @@ const ErrorUtil = {
                     })
                 })
 
-
-
             if (items.includes(_dayOritem)) {
                 islandInfos.forEach((info) => {
-                    const moring = info.island.morning.find((i) => i[1] == _dayOritem)
-                    const afternoon = info.island.afternoon.find((i) => i[1] == _dayOritem)
+                    const moring = info.island.morning.find(
+                        (i) => i[1] == _dayOritem
+                    )
+                    const afternoon = info.island.afternoon.find(
+                        (i) => i[1] == _dayOritem
+                    )
                     if (moring && afternoon) {
-                        result.push(info.day + "요일 : " + moring[0] + "/" + afternoon[0])
-                    }
-                    else if (afternoon) {
+                        result.push(
+                            info.day +
+                                "요일 : " +
+                                moring[0] +
+                                "/" +
+                                afternoon[0]
+                        )
+                    } else if (afternoon) {
                         result.push(info.day + "요일 : X/" + afternoon[0])
                     } else if (moring) {
                         result.push(info.day + "요일 : " + moring[0])
@@ -873,6 +934,13 @@ const ErrorUtil = {
                     })
                 }
             }
+        })
+    }
+
+    EtcUtil.getAcceDealPlus = function (result) {
+        result.push("※악세 딜증")
+        EtcUtil.acceDealPlus.forEach((info) => {
+            result.push(info.name + " : " + info.plus + "%")
         })
     }
 }
@@ -943,19 +1011,19 @@ function onCreate(savedInstanceState, activity) {
     activity.setContentView(textView)
 }
 
-function onStart(activity) { }
+function onStart(activity) {}
 
-function onResume(activity) { }
+function onResume(activity) {}
 
-function onPause(activity) { }
+function onPause(activity) {}
 
-function onStop(activity) { }
+function onStop(activity) {}
 
-function onRestart(activity) { }
+function onRestart(activity) {}
 
-function onDestroy(activity) { }
+function onDestroy(activity) {}
 
-function onBackPressed(activity) { }
+function onBackPressed(activity) {}
 
 bot.addListener(Event.Activity.CREATE, onCreate)
 bot.addListener(Event.Activity.START, onStart)
