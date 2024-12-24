@@ -77,6 +77,7 @@ function onCommand(msg) {
         )
         result.push("!악세 딜증")
         result.push("!유각 ?[각인명]")
+        result.push("!보석 [1~10][겁|작|멸|홍]")
     } else if (cmds[0] == "모험섬") {
         EtcUtil.getAdventureIslandForDay(result, cmds[1])
     } else if (cmds[0] == "악세") {
@@ -85,6 +86,8 @@ function onCommand(msg) {
         } else {
             AuctionUtil.getAcce(result, cmds[1], cmds[2])
         }
+    } else if (cmds[0] == "보석") {
+        AuctionUtil.getGem(result, cmds[1])
     } else if (cmds[0] == "유각") {
         MarketUtil.getUGak(result, cmds[1])
     } else {
@@ -617,6 +620,62 @@ const ErrorUtil = {
             return
         }
     }
+
+    AuctionUtil.getGem = function (result, itemName) {
+        const regex = /^(10|[1-9])(겁|작|멸|홍)$/ // 1~10의 숫자와 지정된 한글자 조합
+        if (!regex.test(itemName)) {
+            result.push(ErrorUtil.checkCmd + " [1~10][겁|작|멸|홍]")
+            return
+        }
+
+        const numberMatch = itemName.match(/^(10|[1-9])/)
+        const gemKind = itemName.match(/(겁|작|멸|홍)$/)[0]
+
+        const level = numberMatch[0]
+
+        const url = (HttpUtil.Base_URL + "/auctions/items").toString()
+        const data = {
+            ItemLevelMin: 0,
+            ItemLevelMax: 0,
+            ItemGradeQuality: null,
+            ItemUpgradeLevel: null,
+            ItemTradeAllowCount: null,
+            SkillOptions: [
+                {
+                    FirstOption: null,
+                    SecondOption: null,
+                    MinValue: null,
+                    MaxValue: null,
+                },
+            ],
+            EtcOptions: [
+                {
+                    FirstOption: null,
+                    SecondOption: null,
+                    MinValue: null,
+                    MaxValue: null,
+                },
+            ],
+            Sort: "BuyPrice",
+            CategoryCode: 210000,
+            CharacterClass: "",
+            ItemTier: null,
+            ItemGrade: "",
+            ItemName: level + "레벨 " + gemKind,
+            PageNo: 0,
+            SortCondition: "ASC",
+        }
+
+        result.push("※보석")
+        HttpUtil.post(url, data, (searchedItems) => {
+            result.push(
+                itemName +
+                    " 최저가 " +
+                    searchedItems.Items[0].AuctionInfo.BuyPrice
+            )
+            result.push("거래소 물량 " + searchedItems.TotalCount + "개")
+        })
+    }
 }
 
 //CharacterUtil
@@ -1059,6 +1118,11 @@ const ErrorUtil = {
 
 // MarketUtil
 {
+    /**
+     *
+     * @param {*} result
+     * @param {*} itemName
+     */
     MarketUtil.getUGak = function (result, itemName) {
         const url = (HttpUtil.Base_URL + "/markets/items").toString()
 
