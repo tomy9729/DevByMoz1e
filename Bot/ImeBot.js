@@ -73,9 +73,10 @@ function onCommand(msg) {
         result.push("![캐릭터이름]")
         result.push("!모험섬 [?요일|골드|실링|해주|카드]")
         result.push(
-            "!악세 [고대|유물] [상상옵|상중옵|상하옵|상단일|중중옵|중하옵|중단일]"
+            "!악세 ?[고대|유물] [상상옵|상중옵|상하옵|상단일|중중옵|중하옵|중단일]"
         )
         result.push("!악세 딜증")
+        result.push("!유각 ?[각인명]")
     } else if (cmds[0] == "모험섬") {
         EtcUtil.getAdventureIslandForDay(result, cmds[1])
     } else if (cmds[0] == "악세") {
@@ -84,6 +85,8 @@ function onCommand(msg) {
         } else {
             AuctionUtil.getAcce(result, cmds[1], cmds[2])
         }
+    } else if (cmds[0] == "유각") {
+        MarketUtil.getUGak(result, cmds[1])
     } else {
         CharacterUtil.getCharacterInfo(result, cmds[0])
     }
@@ -97,7 +100,7 @@ bot.addListener(Event.COMMAND, onCommand)
 
 /**
  * util 관리
- * - 기능 주제별 : AuctionUtil CharacterUtil EtcUtil
+ * - 기능 주제별 : AuctionUtil CharacterUtil EtcUtil MarketUtil
  * - 자주 사용되는 함수별 : HttpUtil
  * - ErrorUtil
  */
@@ -151,6 +154,54 @@ const EtcUtil = {
         },
     ],
 }
+const MarketUtil = {
+    // 거래소
+    // 유각 전압
+    uGakNameShort: {
+        "각성 각인서": "각성",
+        "강령술 각인서": "강령",
+        "강화 방패 각인서": "강방",
+        "결투의 대가 각인서": "결대",
+        "구슬동자 각인서": "구동",
+        "굳은 의지 각인서": "굳의",
+        "급소 타격 각인서": "급타",
+        "기습의 대가 각인서": "기습",
+        "긴급구조 각인서": "긴급",
+        "달인의 저력 각인서": "달저",
+        "돌격대장 각인서": "돌대",
+        "마나의 흐름 각인서": "마흐",
+        "마나 효율 증가 각인서": "마효",
+        "바리케이드 각인서": "바리",
+        "번개의 분노 각인서": "번분",
+        "부러진 뼈 각인서": "부뼈",
+        "분쇄의 주먹 각인서": "분쇄",
+        "불굴 각인서": "불굴",
+        "선수필승 각인서": "선필",
+        "속전속결 각인서": "속속",
+        "슈퍼 차지 각인서": "슈차",
+        "승부사 각인서": "승부",
+        "시선 집중 각인서": "시집",
+        "실드 관통 각인서": "실관",
+        "아드레날린 각인서": "아드",
+        "안정된 상태 각인서": "안상",
+        "약자 무시 각인서": "약무",
+        "여신의 가호 각인서": "여신",
+        "에테르 포식자 각인서": "에포",
+        "예리한 둔기 각인서": "예둔",
+        "원한 각인서": "원한",
+        "위기 모면 각인서": "위모",
+        "저주받은 인형 각인서": "저받",
+        "전문의 각인서": "전문",
+        "정기 흡수 각인서": "정흡",
+        "정밀 단도 각인서": "정단",
+        "중갑 착용 각인서": "중갑",
+        "질량 증가 각인서": "질증",
+        "최대 마나 증가 각인서": "최마",
+        "추진력 각인서": "추진",
+        "타격의 대가 각인서": "타대",
+        "폭발물 전문가 각인서": "폭전",
+    },
+}
 const HttpUtil = {
     Base_URL: "https://developer-lostark.game.onstove.com",
     authorization: ("bearer " + apiKey).toString(),
@@ -171,27 +222,35 @@ const ErrorUtil = {
      * 상상옵 상중옵 상하옵 상단일
      * 중중옵 중하옵 중단일
      */
-    AuctionUtil.getAcce = function (result, itemGrade, simpleItemOption) {
-        if (itemGrade != "유물" && itemGrade != "고대") {
-            result.push(ErrorUtil.checkCmd + " [고대|유물]")
-            return
-        }
-        const simpleItemOptions = [
-            "상상옵",
-            "상중옵",
-            "상하옵",
-            "상단일",
-            "중중옵",
-            "중하옵",
-            "중단일",
-        ]
-        if (!simpleItemOptions.includes(simpleItemOption)) {
-            result.push(
-                ErrorUtil.checkCmd +
-                    " [상상옵|상중옵|상하옵|상단일|중중옵|중하옵|중단일]"
-            )
-            return
-        }
+    AuctionUtil.getAcce = function (result, cmd1, cmd2) {
+        const [itemGrade, simpleItemOption] = (() => {
+            const simpleItemOptions = [
+                "상상옵",
+                "상중옵",
+                "상하옵",
+                "상단일",
+                "중중옵",
+                "중하옵",
+                "중단일",
+            ]
+            if (simpleItemOptions.includes(cmd1)) {
+                return ["고대", cmd1]
+            }
+
+            if (cmd1 != "유물" && cmd1 != "고대") {
+                result.push(ErrorUtil.checkCmd + " [고대|유물]")
+                return
+            }
+            if (!simpleItemOptions.includes(cmd2)) {
+                result.push(
+                    ErrorUtil.checkCmd +
+                        " [상상옵|상중옵|상하옵|상단일|중중옵|중하옵|중단일]"
+                )
+                return
+            }
+
+            return [cmd1, cmd2]
+        })()
 
         const url = (HttpUtil.Base_URL + "/auctions/items").toString()
 
@@ -216,20 +275,24 @@ const ErrorUtil = {
                     {
                         secondOption: 41,
                         name: "추피",
+                        itemGradeCode: [4, 9, 11],
                     },
                     {
                         secondOption: 42,
                         name: "적주피",
+                        itemGradeCode: [5, 10, 12],
                     },
                 ],
                 [
                     {
                         secondOption: 43,
-                        name: "조게획",
+                        name: "아덴획",
+                        itemGradeCode: [4, 10, 12],
                     },
                     {
                         secondOption: 44,
                         name: "낙인력",
+                        itemGradeCode: [4, 10, 12],
                     },
                 ],
             ],
@@ -238,10 +301,12 @@ const ErrorUtil = {
                     {
                         secondOption: 45,
                         name: "공퍼",
+                        itemGradeCode: [4, 10, 12],
                     },
                     {
                         secondOption: 46,
                         name: "무공퍼",
+                        itemGradeCode: [4, 10, 12],
                     },
                 ],
             ],
@@ -250,34 +315,39 @@ const ErrorUtil = {
                     {
                         secondOption: 49,
                         name: "치적",
+                        itemGradeCode: [4, 10, 12],
                     },
                     {
                         secondOption: 50,
                         name: "치피",
+                        itemGradeCode: [5, 10, 12],
                     },
                 ],
                 [
                     {
                         secondOption: 51,
                         name: "아공강",
+                        itemGradeCode: [4, 10, 12],
                     },
                     {
                         secondOption: 52,
                         name: "아피강",
+                        itemGradeCode: [4, 10, 12],
                     },
                 ],
             ],
         }
 
         // 상상옵 상중옵 상하옵 상단일 중중옵 중하옵 중단일
+        // 1하 2중 3상
         const itemOptionGrades = (() => {
-            if (simpleItemOption == "상상옵") return [3, 3]
-            else if (simpleItemOption == "상중옵") return [3, 2]
-            else if (simpleItemOption == "상하옵") return [3, 1]
-            else if (simpleItemOption == "상단일") return [3]
-            else if (simpleItemOption == "중중옵") return [2, 2]
-            else if (simpleItemOption == "중하옵") return [3, 1]
-            else if (simpleItemOption == "중단일") return [2]
+            if (simpleItemOption == "상상옵") return [2, 2]
+            else if (simpleItemOption == "상중옵") return [2, 1]
+            else if (simpleItemOption == "상하옵") return [2, 0]
+            else if (simpleItemOption == "상단일") return [2]
+            else if (simpleItemOption == "중중옵") return [1, 1]
+            else if (simpleItemOption == "중하옵") return [2, 0]
+            else if (simpleItemOption == "중단일") return [1]
         })()
 
         // 상단일 중단일
@@ -291,7 +361,7 @@ const ErrorUtil = {
          * - 추피 80000
          * - 적주치 70000
          * - 낙인력 80000
-         * - 조게획 70000
+         * - 아덴획 70000
          *
          * 귀걸이
          * 반지
@@ -320,8 +390,14 @@ const ErrorUtil = {
                                 {
                                     FirstOption: 7, //연마 효과
                                     SecondOption: itemOption.secondOption, // 추피, 적추피, 낙인력 등
-                                    MinValue: itemOptionGrades[0], // 1하 2중 3상
-                                    MaxValue: itemOptionGrades[0],
+                                    MinValue:
+                                        itemOption.itemGradeCode[
+                                            itemOptionGrades[0]
+                                        ],
+                                    MaxValue:
+                                        itemOption.itemGradeCode[
+                                            itemOptionGrades[0]
+                                        ],
                                 },
                             ],
                             Sort: "BuyPrice",
@@ -362,15 +438,27 @@ const ErrorUtil = {
                                 FirstOption: 7,
                                 SecondOption:
                                     optionsForAcceKind[0].secondOption,
-                                MinValue: itemOptionGrades[0],
-                                MaxValue: itemOptionGrades[0],
+                                MinValue:
+                                    optionsForAcceKind[0].itemGradeCode[
+                                        itemOptionGrades[0]
+                                    ],
+                                MaxValue:
+                                    optionsForAcceKind[0].itemGradeCode[
+                                        itemOptionGrades[0]
+                                    ],
                             },
                             {
                                 FirstOption: 7,
                                 SecondOption:
                                     optionsForAcceKind[1].secondOption,
-                                MinValue: itemOptionGrades[1],
-                                MaxValue: itemOptionGrades[1],
+                                MinValue:
+                                    optionsForAcceKind[1].itemGradeCode[
+                                        itemOptionGrades[1]
+                                    ],
+                                MaxValue:
+                                    optionsForAcceKind[1].itemGradeCode[
+                                        itemOptionGrades[1]
+                                    ],
                             },
                         ],
                         Sort: "BuyPrice",
@@ -410,15 +498,27 @@ const ErrorUtil = {
                                 FirstOption: 7,
                                 SecondOption:
                                     optionsForAcceKind[1].secondOption,
-                                MinValue: itemOptionGrades[0],
-                                MaxValue: itemOptionGrades[0],
+                                MinValue:
+                                    optionsForAcceKind[1].itemGradeCode[
+                                        itemOptionGrades[0]
+                                    ],
+                                MaxValue:
+                                    optionsForAcceKind[1].itemGradeCode[
+                                        itemOptionGrades[0]
+                                    ],
                             },
                             {
                                 FirstOption: 7,
                                 SecondOption:
                                     optionsForAcceKind[0].secondOption,
-                                MinValue: itemOptionGrades[1],
-                                MaxValue: itemOptionGrades[1],
+                                MinValue:
+                                    optionsForAcceKind[0].itemGradeCode[
+                                        itemOptionGrades[1]
+                                    ],
+                                MaxValue:
+                                    optionsForAcceKind[0].itemGradeCode[
+                                        itemOptionGrades[1]
+                                    ],
                             },
                         ],
                         Sort: "BuyPrice",
@@ -465,15 +565,27 @@ const ErrorUtil = {
                                 FirstOption: 7,
                                 SecondOption:
                                     optionsForAcceKind[0].secondOption,
-                                MinValue: itemOptionGrades[0],
-                                MaxValue: itemOptionGrades[0],
+                                MinValue:
+                                    optionsForAcceKind[0].itemGradeCode[
+                                        itemOptionGrades[0]
+                                    ],
+                                MaxValue:
+                                    optionsForAcceKind[0].itemGradeCode[
+                                        itemOptionGrades[0]
+                                    ],
                             },
                             {
                                 FirstOption: 7,
                                 SecondOption:
                                     optionsForAcceKind[1].secondOption,
-                                MinValue: itemOptionGrades[1],
-                                MaxValue: itemOptionGrades[1],
+                                MinValue:
+                                    optionsForAcceKind[1].itemGradeCode[
+                                        itemOptionGrades[1]
+                                    ],
+                                MaxValue:
+                                    optionsForAcceKind[1].itemGradeCode[
+                                        itemOptionGrades[1]
+                                    ],
                             },
                         ],
                         Sort: "BuyPrice",
@@ -941,6 +1053,36 @@ const ErrorUtil = {
         result.push("※악세 딜증")
         EtcUtil.acceDealPlus.forEach((info) => {
             result.push(info.name + " : " + info.plus + "%")
+        })
+    }
+}
+
+// MarketUtil
+{
+    MarketUtil.getUGak = function (result, itemName) {
+        const url = (HttpUtil.Base_URL + "/markets/items").toString()
+
+        result.push("※유각")
+        const data = {
+            Sort: "CURRENT_MIN_PRICE",
+            CategoryCode: 40000,
+            CharacterClass: "",
+            ItemTier: null,
+            ItemGrade: "유물",
+            ItemName: itemName ? itemName : "",
+            PageNo: 0,
+            SortCondition: "DESC",
+        }
+
+        HttpUtil.post(url, data, (searchedItems) => {
+            const items = searchedItems.Items
+            items.forEach((item, idx) => {
+                const index = idx + 1
+                const name = MarketUtil.uGakNameShort[item.Name]
+                const price = item.CurrentMinPrice
+
+                result.push(index + ". " + name + " " + price)
+            })
         })
     }
 }
