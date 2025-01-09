@@ -656,7 +656,7 @@ const ErrorUtil = {
                     MaxValue: null,
                 },
             ],
-            Sort: "BuyPrice",
+            Sort: "BUY_PRICE",
             CategoryCode: 210000,
             CharacterClass: "",
             ItemTier: null,
