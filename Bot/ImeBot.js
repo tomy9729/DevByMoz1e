@@ -278,24 +278,24 @@ const ErrorUtil = {
                     {
                         secondOption: 41,
                         name: "추피",
-                        itemGradeCode: [4, 9, 11],
+                        itemGradeCode: [70, 160, 260], //4, 9, 11
                     },
                     {
                         secondOption: 42,
                         name: "적주피",
-                        itemGradeCode: [5, 10, 12],
+                        itemGradeCode: [55, 120, 200], //5, 10, 12
                     },
                 ],
                 [
                     {
                         secondOption: 43,
                         name: "아덴획",
-                        itemGradeCode: [4, 10, 12],
+                        itemGradeCode: [160, 360, 600], //4, 10, 12
                     },
                     {
                         secondOption: 44,
                         name: "낙인력",
-                        itemGradeCode: [4, 10, 12],
+                        itemGradeCode: [215, 480, 800], //4, 10, 12
                     },
                 ],
             ],
@@ -304,12 +304,12 @@ const ErrorUtil = {
                     {
                         secondOption: 45,
                         name: "공퍼",
-                        itemGradeCode: [4, 10, 12],
+                        itemGradeCode: [40, 95, 155], //4, 10, 12
                     },
                     {
                         secondOption: 46,
                         name: "무공퍼",
-                        itemGradeCode: [4, 10, 12],
+                        itemGradeCode: [80, 180, 300], //4, 10, 12
                     },
                 ],
             ],
@@ -318,24 +318,24 @@ const ErrorUtil = {
                     {
                         secondOption: 49,
                         name: "치적",
-                        itemGradeCode: [4, 10, 12],
+                        itemGradeCode: [40, 95, 155], //4, 10, 12
                     },
                     {
                         secondOption: 50,
                         name: "치피",
-                        itemGradeCode: [5, 10, 12],
+                        itemGradeCode: [110, 240, 400], //5, 10, 12
                     },
                 ],
                 [
                     {
                         secondOption: 51,
                         name: "아공강",
-                        itemGradeCode: [4, 10, 12],
+                        itemGradeCode: [135, 300, 500], //4, 10, 12
                     },
                     {
                         secondOption: 52,
                         name: "아피강",
-                        itemGradeCode: [4, 10, 12],
+                        itemGradeCode: [200, 450, 750], //4, 10, 12
                     },
                 ],
             ],
