@@ -73,7 +73,7 @@ function onCommand(msg) {
         result.push("![캐릭터이름]")
         result.push("!모험섬 [?요일|골드|실링|해주|카드]")
         result.push(
-            "!악세 ?[고대|유물] [상상옵|상중옵|상하옵|상단일|중중옵|중하옵|중단일]"
+            "!악세 ?[고대|유물] [상상옵|상중옵|상하옵|상단일|중중옵|중하옵|중단일] ?[거불]"
         )
         result.push("!악세 딜증")
         result.push("!유각 ?[각인명]")
@@ -84,7 +84,7 @@ function onCommand(msg) {
         if (cmds[1] == "딜증") {
             EtcUtil.getAcceDealPlus(result)
         } else {
-            AuctionUtil.getAcce(result, cmds[1], cmds[2])
+            AuctionUtil.getAcce(result, cmds[1], cmds[2], cmds[3])
         }
     } else if (cmds[0] == "보석") {
         AuctionUtil.getGem(result, cmds[1])
@@ -220,13 +220,14 @@ const ErrorUtil = {
     /**
      *
      * @param {*} msg
-     * @param {string} itemGrade 유물 | 고대
-     * @param {*} simpleItemOption
-     * 상상옵 상중옵 상하옵 상단일
-     * 중중옵 중하옵 중단일
+     * @param {itemGrade | simpleItemOption} itemGrade
+     * @param {simpleItemOption | etcOption} simpleItemOption
+     * type itemGrade =  유물 | 고대
+     * type simpleItemOption = 상상옵|상중옵|상하옵|상단일|중중옵|중하옵|중단일
+     * type etcOption = 거불
      */
-    AuctionUtil.getAcce = function (result, cmd1, cmd2) {
-        const [itemGrade, simpleItemOption] = (() => {
+    AuctionUtil.getAcce = function (result, cmd1, cmd2, cmd3) {
+        const [itemGrade, simpleItemOption, etcOption] = (() => {
             const simpleItemOptions = [
                 "상상옵",
                 "상중옵",
@@ -237,7 +238,7 @@ const ErrorUtil = {
                 "중단일",
             ]
             if (simpleItemOptions.includes(cmd1)) {
-                return ["고대", cmd1]
+                return ["고대", cmd1, cmd2]
             }
 
             if (cmd1 != "유물" && cmd1 != "고대") {
@@ -252,7 +253,7 @@ const ErrorUtil = {
                 return
             }
 
-            return [cmd1, cmd2]
+            return [cmd1, cmd2, cmd3]
         })()
 
         const url = (HttpUtil.Base_URL + "/auctions/items").toString()
@@ -353,6 +354,19 @@ const ErrorUtil = {
             else if (simpleItemOption == "중단일") return [1]
         })()
 
+        function getVisibleItemAuctionInfo(searchedItems) {
+            const buyPriceMoreThan0 = searchedItems.Items.filter(
+                (i) => i.AuctionInfo.BuyPrice != null
+            )
+            const tradeAllowCountOption =
+                etcOption == "거불"
+                    ? buyPriceMoreThan0.filter(
+                          (i) => i.AuctionInfo.TradeAllowCount > 0
+                      )
+                    : buyPriceMoreThan0
+            return tradeAllowCountOption[0].AuctionInfo
+        }
+
         // 상단일 중단일
         /**
          * @병장망치
@@ -372,6 +386,7 @@ const ErrorUtil = {
         result.push("※악세")
         result.push("- " + itemGrade + " " + simpleItemOption)
         result.push("- 품질70↑ 3연마 최저가")
+        if (etcOption == "거불") result.push("- 거래 불가 제외")
 
         if (itemOptionGrades.length == 1) {
             acceKinds.forEach((acceKind) => {
@@ -413,10 +428,17 @@ const ErrorUtil = {
                             SortCondition: "ASC",
                         }
                         HttpUtil.post(url, data, (searchedItems) => {
-                            const price = searchedItems.Items.filter(
-                                (i) => i.AuctionInfo.BuyPrice != null
-                            )[0].AuctionInfo.BuyPrice
-                            result.push("- " + itemOption.name + " " + price)
+                            const item =
+                                getVisibleItemAuctionInfo(searchedItems)
+                            result.push(
+                                "- " +
+                                    itemOption.name +
+                                    " " +
+                                    item.BuyPrice +
+                                    " (거가" +
+                                    item.TradeAllowCount +
+                                    "회)"
+                            )
                         })
                     })
                 })
@@ -474,16 +496,17 @@ const ErrorUtil = {
                         SortCondition: "ASC",
                     }
                     HttpUtil.post(url, data1, (searchedItems) => {
-                        const price = searchedItems.Items.filter(
-                            (i) => i.AuctionInfo.BuyPrice != null
-                        )[0].AuctionInfo.BuyPrice
+                        const item = getVisibleItemAuctionInfo(searchedItems)
                         result.push(
                             "- " +
                                 optionsForAcceKind[0].name +
                                 "/" +
                                 optionsForAcceKind[1].name +
                                 " " +
-                                price
+                                item.BuyPrice +
+                                " (거가" +
+                                item.TradeAllowCount +
+                                "회)"
                         )
                     })
 
@@ -534,16 +557,17 @@ const ErrorUtil = {
                         SortCondition: "ASC",
                     }
                     HttpUtil.post(url, data2, (searchedItems) => {
-                        const price = searchedItems.Items.filter(
-                            (i) => i.AuctionInfo.BuyPrice != null
-                        )[0].AuctionInfo.BuyPrice
+                        const item = getVisibleItemAuctionInfo(searchedItems)
                         result.push(
                             "- " +
                                 optionsForAcceKind[1].name +
                                 "/" +
                                 optionsForAcceKind[0].name +
                                 " " +
-                                price
+                                item.BuyPrice +
+                                " (거가" +
+                                item.TradeAllowCount +
+                                "회)"
                         )
                     })
                 })
@@ -601,16 +625,17 @@ const ErrorUtil = {
                         SortCondition: "ASC",
                     }
                     HttpUtil.post(url, data, (searchedItems) => {
-                        const price = searchedItems.Items.filter(
-                            (i) => i.AuctionInfo.BuyPrice != null
-                        )[0].AuctionInfo.BuyPrice
+                        const item = getVisibleItemAuctionInfo(searchedItems)
                         result.push(
                             "- " +
                                 optionsForAcceKind[0].name +
                                 "/" +
                                 optionsForAcceKind[1].name +
                                 " " +
-                                price
+                                item.BuyPrice +
+                                " (거가" +
+                                item.TradeAllowCount +
+                                "회)"
                         )
                     })
                 })
