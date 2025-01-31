@@ -76,8 +76,10 @@ function onCommand(msg) {
             "!악세 ?[고대|유물] [상상옵|상중옵|상하옵|상단일|중중옵|중하옵|중단일] ?[거불]"
         )
         result.push("!악세 딜증")
+        result.push("!거래소 : 거래소 주요 아이템 검색")
         result.push("!유각 ?[각인명]")
         result.push("!보석 [1~10][겁|작|멸|홍]")
+        // result.push("!zloa [캐릭터이름]")
     } else if (cmds[0] == "모험섬") {
         EtcUtil.getAdventureIslandForDay(result, cmds[1])
     } else if (cmds[0] == "악세") {
@@ -88,8 +90,12 @@ function onCommand(msg) {
         }
     } else if (cmds[0] == "보석") {
         AuctionUtil.getGem(result, cmds[1])
+    } else if (cmds[0] == "거래소") {
+        MarketUtil.searchFavoriteMarketItems(result, cmds[1])
     } else if (cmds[0] == "유각") {
         MarketUtil.getUGak(result, cmds[1])
+    } else if (cmds[0] == "zloa") {
+        CrawlingUtil.getZloa(result, cmds[1])
     } else {
         CharacterUtil.getCharacterInfo(result, cmds[0])
     }
@@ -205,6 +211,11 @@ const MarketUtil = {
         "폭발물 전문가 각인서": "폭전",
     },
 }
+
+const CrawlingUtil = {
+    // Zloa
+}
+
 const HttpUtil = {
     Base_URL: "https://developer-lostark.game.onstove.com",
     authorization: ("bearer " + apiKey).toString(),
@@ -698,7 +709,7 @@ const ErrorUtil = {
                     " 최저가 " +
                     searchedItems.Items[0].AuctionInfo.BuyPrice
             )
-            result.push("거래소 물량 " + searchedItems.TotalCount + "개")
+            result.push("경매장 물량 " + searchedItems.TotalCount + "개")
         })
     }
 }
@@ -867,6 +878,7 @@ const ErrorUtil = {
                         const highLv = tooltip.Element_005.value
                             .toString()
                             .split(" ")[2]
+                            .split("\n")[0] // 상재 30 40 추가 효과 split
                         result.push(
                             [
                                 cloth.Type,
@@ -1173,6 +1185,50 @@ const ErrorUtil = {
                 result.push(index + ". " + name + " " + price)
             })
         })
+    }
+
+    MarketUtil.searchFavoriteMarketItems = function (result) {
+        const url = (HttpUtil.Base_URL + "/markets/items").toString()
+
+        result.push("※거래소")
+        const data = {
+            Sort: "CURRENT_MIN_PRICE",
+            CategoryCode: 50010,
+            CharacterClass: "",
+            ItemTier: null,
+            ItemGrade: null,
+            ItemName: "",
+            PageNo: 0,
+            SortCondition: "DESC",
+        }
+
+        HttpUtil.post(url, data, (searchedItems) => {
+            const items = searchedItems.Items
+            items.forEach((item, idx) => {
+                const index = idx + 1
+                const name = MarketUtil.uGakNameShort[item.Name]
+                const price = item.CurrentMinPrice
+
+                result.push(index + ". " + name + " " + price)
+            })
+        })
+    }
+}
+
+// CrawlingUtil
+{
+    CrawlingUtil.getZloa = function (result, characterName) {
+        // const zloaUrl = "https://zloa.net/char/" + characterName
+        // const doc = org.jsoup.Jsoup.connect(zloaUrl)
+        //     .userAgent(
+        //         "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)"
+        //     )
+        //     .get()
+        // const table = doc
+        //     .select("tr:has(th:contains(딜러 환산 점수)) td")
+        //     .first()
+        // const charData = { table: table }
+        // result.push(JSON.stringify(charData))
     }
 }
 
