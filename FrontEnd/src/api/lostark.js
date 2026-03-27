@@ -2,28 +2,30 @@ import { getShortIslandName, getShortRewardName } from "../mappings/lostark.js";
 
 const LOSTARK_EVENTS_ENDPOINT = "/api/lostark/news/events";
 const LOSTARK_GAME_CONTENTS_ENDPOINT = "/api/lostark/gamecontents/calendar";
+
 const DISPLAYABLE_GAME_CONTENT_TYPES = [
     {
         key: "adventureIsland",
-        label: "\ubaa8\ud5d8\uc12c",
-        keywords: ["\ubaa8\ud5d8\uc12c", "\ubaa8\ud5d8 \uc12c"],
+        label: "모험섬",
+        keywords: ["모험섬", "모험 섬"],
     },
     {
         key: "chaosGate",
-        label: "\uce74\uc624\uc2a4\uac8c\uc774\ud2b8",
-        keywords: ["\uce74\uc624\uc2a4\uac8c\uc774\ud2b8", "\uce74\uc624\uc2a4 \uac8c\uc774\ud2b8"],
+        label: "카오스게이트",
+        keywords: ["카오스게이트", "카오스 게이트"],
     },
     {
         key: "fieldBoss",
-        label: "\ud544\ub4dc\ubcf4\uc2a4",
-        keywords: ["\ud544\ub4dc\ubcf4\uc2a4", "\ud544\ub4dc \ubcf4\uc2a4"],
+        label: "필드보스",
+        keywords: ["필드보스", "필드 보스"],
     },
 ];
-const ADVENTURE_ISLAND_REWARD_TYPES = [
-    { key: "gold", label: "골드", keywords: ["골드"] },
-    { key: "card", label: "카드", keywords: ["카드"] },
-    { key: "shilling", label: "실링", keywords: ["실링"] },
-    { key: "pirateCoin", label: "해적주화", keywords: ["해적주화", "해적 주화"] },
+
+const ADVENTURE_ISLAND_MAJOR_REWARDS = [
+    { key: "gold", sourceNames: ["골드"] },
+    { key: "shilling", sourceNames: ["실링"] },
+    { key: "oceanCoinChest", sourceNames: ["대양의 주화 상자", "대륙의 주화 상자"] },
+    { key: "legendCardPackIv", sourceNames: ["전설 ~ 고급 카드 팩 IV"] },
 ];
 
 function toDateOnly(dateTime) {
@@ -115,10 +117,35 @@ function normalizeContentText(value = "") {
     return value.replace(/\s+/g, "").toLowerCase();
 }
 
+function getGameContentTypeByKey(typeKey) {
+    return DISPLAYABLE_GAME_CONTENT_TYPES.find((type) => type.key === typeKey) ?? null;
+}
+
+function isAdventureIslandContent(content) {
+    const categoryName = normalizeContentText(content.CategoryName);
+    const contentsName = normalizeContentText(content.ContentsName);
+    const adventureIslandType = getGameContentTypeByKey("adventureIsland");
+
+    if (!adventureIslandType) {
+        return false;
+    }
+
+    return adventureIslandType.keywords.some((keyword) => {
+        const normalizedKeyword = normalizeContentText(keyword);
+
+        return (
+            categoryName === normalizedKeyword ||
+            contentsName === normalizedKeyword ||
+            categoryName.includes(normalizedKeyword) ||
+            contentsName.includes(normalizedKeyword)
+        );
+    });
+}
+
 function isIslandContent(content) {
     const categoryName = normalizeContentText(content.CategoryName);
     const contentsName = normalizeContentText(content.ContentsName);
-    const bracketIslandKeyword = normalizeContentText("[\uc12c]");
+    const bracketIslandKeyword = normalizeContentText("[섬]");
 
     return (
         categoryName.includes(bracketIslandKeyword) ||
@@ -126,33 +153,9 @@ function isIslandContent(content) {
     );
 }
 
-function isAdventureIslandContent(content) {
-    const adventureIslandType = DISPLAYABLE_GAME_CONTENT_TYPES.find(
-        (type) => type.key === "adventureIsland",
-    );
-
-    if (!adventureIslandType) {
-        return false;
-    }
-
-    const categoryName = normalizeContentText(content.CategoryName);
-    const contentsName = normalizeContentText(content.ContentsName);
-
-    return adventureIslandType.keywords.some((keyword) => {
-        const normalizedKeyword = normalizeContentText(keyword);
-
-        return (
-            categoryName.includes(normalizedKeyword) ||
-            contentsName.includes(normalizedKeyword)
-        );
-    });
-}
-
 function getDisplayableGameContentType(content) {
     if (isAdventureIslandContent(content)) {
-        return DISPLAYABLE_GAME_CONTENT_TYPES.find(
-            (type) => type.key === "adventureIsland",
-        );
+        return getGameContentTypeByKey("adventureIsland");
     }
 
     if (isIslandContent(content)) {
@@ -168,6 +171,8 @@ function getDisplayableGameContentType(content) {
                 const normalizedKeyword = normalizeContentText(keyword);
 
                 return (
+                    categoryName === normalizedKeyword ||
+                    contentsName === normalizedKeyword ||
                     categoryName.includes(normalizedKeyword) ||
                     contentsName.includes(normalizedKeyword)
                 );
@@ -176,7 +181,19 @@ function getDisplayableGameContentType(content) {
     );
 }
 
-function getAdventureIslandRewardNames(content) {
+function getAdventureIslandMajorRewardType(rewardName) {
+    const normalizedRewardName = normalizeContentText(rewardName);
+
+    return (
+        ADVENTURE_ISLAND_MAJOR_REWARDS.find((type) =>
+            type.sourceNames.some(
+                (sourceName) => normalizedRewardName === normalizeContentText(sourceName),
+            ),
+        ) ?? null
+    );
+}
+
+function getAdventureIslandRewardName(content, startTime) {
     const rewardItems = Array.isArray(content.RewardItems) ? content.RewardItems : [];
     const flattenedRewardItems = rewardItems.flatMap((rewardGroup) => {
         if (Array.isArray(rewardGroup?.Items)) {
@@ -189,38 +206,35 @@ function getAdventureIslandRewardNames(content) {
 
         return rewardGroup ? [rewardGroup] : [];
     });
-    const rewardLabelsByType = new Map();
 
-    flattenedRewardItems.forEach((rewardItem) => {
+    for (const rewardItem of flattenedRewardItems) {
         if (!Array.isArray(rewardItem?.StartTimes) || rewardItem.StartTimes.length === 0) {
-            return;
+            continue;
         }
 
-        const rewardName = normalizeContentText(rewardItem?.Name ?? "");
-        const rewardType = ADVENTURE_ISLAND_REWARD_TYPES.find((type) =>
-            type.keywords.some((keyword) =>
-                rewardName.includes(normalizeContentText(keyword))
-            )
-        );
-
-        if (rewardType && !rewardLabelsByType.has(rewardType.key)) {
-            rewardLabelsByType.set(
-                rewardType.key,
-                getShortRewardName(rewardItem?.Name ?? rewardType.label),
-            );
+        if (!rewardItem.StartTimes.includes(startTime)) {
+            continue;
         }
-    });
 
-    return [...rewardLabelsByType.values()];
+        const rewardType = getAdventureIslandMajorRewardType(rewardItem?.Name ?? "");
+
+        if (!rewardType) {
+            continue;
+        }
+
+        return getShortRewardName(rewardItem.Name);
+    }
+
+    return "";
 }
 
-function getGameContentEventTitle(content, displayType) {
+function getGameContentEventTitle(content, displayType, startTime) {
     if (displayType.key !== "adventureIsland") {
         return displayType.label;
     }
 
-    const rewardNames = getAdventureIslandRewardNames(content);
-    const rewardText = rewardNames.length > 0 ? ` (${rewardNames.join(", ")})` : "";
+    const rewardName = getAdventureIslandRewardName(content, startTime);
+    const rewardText = rewardName ? ` (${rewardName})` : "";
 
     return `${getShortIslandName(content.ContentsName)}${rewardText}`;
 }
@@ -256,7 +270,7 @@ export function mapLostArkGameContentToCalendarEvents(content) {
 
         return {
             id: `${displayType.key}-${lostArkDate}-${content.ContentsName}`,
-            title: getGameContentEventTitle(content, displayType),
+            title: getGameContentEventTitle(content, displayType, startTime),
             start: lostArkDate,
             allDay: true,
             extendedProps: {
@@ -311,7 +325,7 @@ function dedupeGameContentEvents(events) {
         .filter(([, event]) => event.extendedProps.contentType !== "adventureIsland")
         .map(([, event]) => event);
     const adventureIslandEvents = [...adventureIslandGroups.values()].flatMap((group) =>
-        group.slice(0, 3)
+        group.slice(0, 3),
     );
 
     return [...nonAdventureIslandEvents, ...adventureIslandEvents];
