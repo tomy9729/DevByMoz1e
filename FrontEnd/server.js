@@ -9,6 +9,7 @@ const __dirname = path.dirname(__filename);
 const distPath = path.resolve(__dirname, "dist");
 const indexHtmlPath = path.join(distPath, "index.html");
 const lostArkEventsUrl = "https://developer-lostark.game.onstove.com/news/events";
+const lostArkCalendarUrl = "https://developer-lostark.game.onstove.com/gamecontents/calendar";
 
 function loadLocalEnv() {
     const envFilePath = path.resolve(__dirname, ".env.local");
@@ -77,6 +78,43 @@ app.get("/api/lostark/news/events", async (req, res) => {
     } catch (error) {
         console.error("Failed to fetch Lost Ark events.", error);
         res.status(500).json({ message: "Failed to fetch Lost Ark events." });
+    }
+});
+
+app.get("/api/lostark/gamecontents/calendar", async (req, res) => {
+    if (!lostArkApiKey) {
+        res.status(500).json({ message: "LOSTARK_API_KEY is not configured." });
+        return;
+    }
+
+    try {
+        const response = await fetch(lostArkCalendarUrl, {
+            headers: {
+                accept: "application/json",
+                Authorization: `bearer ${lostArkApiKey}`,
+            },
+        });
+
+        if (!response.ok) {
+            const errorBody = await response.text();
+            res.status(response.status).send(errorBody);
+            return;
+        }
+
+        const calendarContents = await response.json();
+        const normalizedCalendarContents = calendarContents.map(
+            ({ CategoryName, ContentsName, StartTimes, RewardItems }) => ({
+                CategoryName,
+                ContentsName,
+                StartTimes,
+                RewardItems,
+            })
+        );
+
+        res.json(normalizedCalendarContents);
+    } catch (error) {
+        console.error("Failed to fetch Lost Ark calendar contents.", error);
+        res.status(500).json({ message: "Failed to fetch Lost Ark calendar contents." });
     }
 });
 
