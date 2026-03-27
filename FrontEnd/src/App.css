@@ -44,6 +44,28 @@
   color: #6b5747;
 }
 
+.calendar-settings {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 18px;
+}
+
+.calendar-settings-label {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #5b4636;
+}
+
+.calendar-settings-select {
+  min-width: 140px;
+  padding: 10px 14px;
+  border: 1px solid rgba(108, 88, 76, 0.2);
+  border-radius: 999px;
+  background: #fffdf8;
+  color: #35261b;
+}
+
 .calendar-frame {
   padding: 18px;
   border-radius: 22px;
@@ -102,6 +124,11 @@
 
   .calendar-frame {
     padding: 12px;
+  }
+
+  .calendar-settings {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .fc .fc-toolbar {
