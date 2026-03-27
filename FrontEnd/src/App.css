@@ -1,0 +1,123 @@
+.app-shell {
+  min-height: 100vh;
+  padding: 32px;
+  background:
+    radial-gradient(circle at top left, rgba(255, 214, 102, 0.45), transparent 28%),
+    linear-gradient(180deg, #f7f1e3 0%, #f3ede2 100%);
+}
+
+.calendar-panel {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 28px;
+  border: 1px solid rgba(108, 88, 76, 0.16);
+  border-radius: 28px;
+  background: rgba(255, 251, 245, 0.9);
+  box-shadow: 0 24px 60px rgba(85, 65, 44, 0.12);
+}
+
+.calendar-copy {
+  margin-bottom: 24px;
+}
+
+.eyebrow {
+  margin: 0 0 8px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #aa6c39;
+}
+
+.calendar-copy h1 {
+  margin: 0;
+  font-size: clamp(2rem, 4vw, 3.4rem);
+  line-height: 1;
+  color: #35261b;
+}
+
+.description {
+  max-width: 680px;
+  margin: 14px 0 0;
+  font-size: 1rem;
+  line-height: 1.6;
+  color: #6b5747;
+}
+
+.calendar-frame {
+  padding: 18px;
+  border-radius: 22px;
+  background: #fffdf8;
+  border: 1px solid rgba(108, 88, 76, 0.12);
+}
+
+.fc {
+  --fc-border-color: #eadfce;
+  --fc-button-bg-color: #aa6c39;
+  --fc-button-border-color: #aa6c39;
+  --fc-button-hover-bg-color: #8f592d;
+  --fc-button-hover-border-color: #8f592d;
+  --fc-button-active-bg-color: #7c4d28;
+  --fc-button-active-border-color: #7c4d28;
+  --fc-today-bg-color: rgba(255, 214, 102, 0.28);
+  --fc-neutral-bg-color: #f8f2e8;
+  color: #35261b;
+}
+
+.fc .fc-toolbar.fc-header-toolbar {
+  margin-bottom: 1.2rem;
+}
+
+.fc .fc-toolbar-title {
+  font-size: clamp(1.3rem, 3vw, 2rem);
+  font-weight: 700;
+}
+
+.fc .fc-button {
+  border-radius: 999px;
+  padding: 0.55em 0.9em;
+  text-transform: capitalize;
+  box-shadow: none;
+}
+
+.fc .fc-col-header-cell-cushion,
+.fc .fc-daygrid-day-number {
+  padding: 10px 12px;
+}
+
+.fc .fc-daygrid-day-frame {
+  min-height: 110px;
+  background: rgba(255, 252, 246, 0.85);
+}
+
+@media (max-width: 768px) {
+  .app-shell {
+    padding: 16px;
+  }
+
+  .calendar-panel {
+    padding: 18px;
+    border-radius: 22px;
+  }
+
+  .calendar-frame {
+    padding: 12px;
+  }
+
+  .fc .fc-toolbar {
+    gap: 12px;
+    align-items: flex-start;
+  }
+
+  .fc .fc-toolbar.fc-header-toolbar {
+    margin-bottom: 1rem;
+  }
+
+  .fc .fc-toolbar-title {
+    font-size: 1.2rem;
+  }
+
+  .fc .fc-daygrid-day-frame {
+    min-height: 84px;
+  }
+}
