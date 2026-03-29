@@ -38,10 +38,7 @@ import {
     AccordionItem,
     AccordionTrigger,
 } from "./components/ui/accordion";
-import {
-    ChaosGateIcon,
-    FieldBossIcon,
-} from "./components/LostArkContentIcons";
+import { ChaosGateIcon, FieldBossIcon } from "./components/LostArkContentIcons";
 import { Button } from "./components/ui/button";
 import { Checkbox } from "./components/ui/checkbox";
 import {
@@ -58,6 +55,19 @@ import "./App.css";
 const CALENDAR_FIRST_DAY_STORAGE_KEY = "calendar-first-day";
 const CALENDAR_DISPLAY_ORDER_STORAGE_KEY = "calendar-display-order";
 const CALENDAR_FIRST_DAY_OPTION_VALUES = [0, 1, 3];
+const CALENDAR_CONTENT_DISPLAY_TARGETS = ["chaosGate", "fieldBoss", "adventureIsland"];
+
+function getDefaultCalendarContentDisplayOptions() {
+    return Object.fromEntries(
+        CALENDAR_CONTENT_DISPLAY_TARGETS.map((targetKey) => [
+            targetKey,
+            {
+                text: true,
+                icon: true,
+            },
+        ])
+    );
+}
 
 function getStoredCalendarFirstDay() {
     const storedValue = window.localStorage.getItem(CALENDAR_FIRST_DAY_STORAGE_KEY);
@@ -109,9 +119,7 @@ function getEventDateKeys(events) {
         }
 
         const startDate = new Date(`${event.start}T00:00:00`);
-        const endDate = event.end
-            ? new Date(`${event.end}T00:00:00`)
-            : addDays(startDate, 1);
+        const endDate = event.end ? new Date(`${event.end}T00:00:00`) : addDays(startDate, 1);
 
         for (
             let currentDate = new Date(startDate);
@@ -188,6 +196,22 @@ function isSingleDayCalendarEvent(event) {
 }
 
 /**
+ * 역할: 콘텐츠 타입별 글자/아이콘 표시 옵션을 반환한다.
+ * 파라미터 설명:
+ * - displayOptions: 콘텐츠 타입별 표시 옵션 상태 객체
+ * - targetKey: 조회할 콘텐츠 타입 키
+ * 반환값 설명: 글자/아이콘 표시 여부 객체
+ */
+function getCalendarContentDisplayOption(displayOptions, targetKey) {
+    return (
+        displayOptions?.[targetKey] ?? {
+            text: true,
+            icon: true,
+        }
+    );
+}
+
+/**
  * 역할: 리모콘 표시 항목 한 줄을 dnd-kit 정렬 대상 컴포넌트로 렌더링한다.
  * 파라미터 설명:
  * - target: 현재 표시 항목 정보 객체
@@ -251,8 +275,7 @@ function SortableDisplayTarget({
 
     const style = {
         transform: CSS.Transform.toString(transform),
-        transition:
-            transition ?? "transform 220ms cubic-bezier(0.22, 1, 0.36, 1)",
+        transition: transition ?? "transform 220ms cubic-bezier(0.22, 1, 0.36, 1)",
         width: isDragging && dragSize ? `${dragSize.width}px` : undefined,
         minWidth: isDragging && dragSize ? `${dragSize.width}px` : undefined,
         maxWidth: isDragging && dragSize ? `${dragSize.width}px` : undefined,
@@ -268,7 +291,7 @@ function SortableDisplayTarget({
                 isDragging ? "z-10" : "",
                 isOver
                     ? "rounded-md bg-accent/60 pl-2 shadow-[inset_3px_0_0_hsl(var(--primary))]"
-                    : "",
+                    : ""
             )}
         >
             <div className="flex items-center justify-between gap-3">
@@ -320,12 +343,15 @@ function App() {
     const [allEvents, setAllEvents] = useState([]);
     const [calendarFirstDay, setCalendarFirstDay] = useState(() => getStoredCalendarFirstDay());
     const [calendarDisplayOrder, setCalendarDisplayOrder] = useState(() =>
-        getStoredCalendarDisplayOrder(),
+        getStoredCalendarDisplayOrder()
     );
     const [calendarFilters, setCalendarFilters] = useState({
         targets: {},
         groups: {},
     });
+    const [calendarContentDisplayOptions, setCalendarContentDisplayOptions] = useState(() =>
+        getDefaultCalendarContentDisplayOptions()
+    );
     const sensors = useSensors(
         useSensor(MouseSensor, {
             activationConstraint: {
@@ -340,7 +366,7 @@ function App() {
         }),
         useSensor(KeyboardSensor, {
             coordinateGetter: sortableKeyboardCoordinates,
-        }),
+        })
     );
 
     const filterOptions = buildCalendarFilterOptions(allEvents);
@@ -361,8 +387,8 @@ function App() {
                     setCalendarFilters((previousFilters) =>
                         mergeCalendarFilterState(
                             previousFilters,
-                            buildCalendarFilterOptions(calendarEvents),
-                        ),
+                            buildCalendarFilterOptions(calendarEvents)
+                        )
                     );
                 }
             } catch (error) {
@@ -378,16 +404,13 @@ function App() {
     }, []);
 
     useEffect(() => {
-        window.localStorage.setItem(
-            CALENDAR_FIRST_DAY_STORAGE_KEY,
-            String(calendarFirstDay),
-        );
+        window.localStorage.setItem(CALENDAR_FIRST_DAY_STORAGE_KEY, String(calendarFirstDay));
     }, [calendarFirstDay]);
 
     useEffect(() => {
         window.localStorage.setItem(
             CALENDAR_DISPLAY_ORDER_STORAGE_KEY,
-            JSON.stringify(calendarDisplayOrder),
+            JSON.stringify(calendarDisplayOrder)
         );
     }, [calendarDisplayOrder]);
 
@@ -418,6 +441,24 @@ function App() {
     }
 
     /**
+     * 역할: 콘텐츠 타입별 글자/아이콘 표시 옵션 상태를 갱신한다.
+     * 파라미터 설명:
+     * - targetKey: 설정을 변경할 콘텐츠 타입 키
+     * - optionKey: 변경할 옵션 키
+     * - checked: 적용할 표시 여부
+     * 반환값 설명: 없음
+     */
+    function updateContentDisplayOption(targetKey, optionKey, checked) {
+        setCalendarContentDisplayOptions((previousOptions) => ({
+            ...previousOptions,
+            [targetKey]: {
+                ...previousOptions[targetKey],
+                [optionKey]: checked,
+            },
+        }));
+    }
+
+    /**
      * 역할: dnd-kit 드래그 종료 시 현재 순서를 삽입 이동 결과로 반영한다.
      * 파라미터 설명:
      * - event: dnd-kit 드래그 종료 이벤트 객체
@@ -434,7 +475,7 @@ function App() {
         setCalendarDisplayOrder((previousOrder) => {
             const normalizedOrder = normalizeCalendarDisplayOrder(
                 previousOrder,
-                DEFAULT_CALENDAR_DISPLAY_ORDER,
+                DEFAULT_CALENDAR_DISPLAY_ORDER
             );
             const activeIndex = normalizedOrder.indexOf(activeTargetKey);
             const overIndex = normalizedOrder.indexOf(overTargetKey);
@@ -454,9 +495,7 @@ function App() {
      * 반환값 설명: 하루 일정이면 overflow 제한용 클래스 배열, 아니면 빈 배열
      */
     function getCalendarEventClassNames(eventClassInfo) {
-        return isSingleDayCalendarEvent(eventClassInfo.event)
-            ? ["calendar-event-single-day"]
-            : [];
+        return isSingleDayCalendarEvent(eventClassInfo.event) ? ["calendar-event-single-day"] : [];
     }
 
     /**
@@ -469,19 +508,26 @@ function App() {
         const { event } = eventInfo;
         const contentType = event.extendedProps?.contentType ?? event.extendedProps?.filterTarget;
         const ContentIconComponent = getCalendarContentIconComponent(contentType);
+        const displayOption = getCalendarContentDisplayOption(
+            calendarContentDisplayOptions,
+            contentType
+        );
         const rewardIconUrls = getCalendarEventRewardIconUrls(
-            event.extendedProps?.rewardIconUrl ??
-                "",
+            event.extendedProps?.rewardIconUrl ?? ""
         );
         const rewardName = event.extendedProps?.rewardName ?? "";
         const baseTitle = getCalendarEventBaseTitle(event.title);
+        const shouldShowText = displayOption.text !== false;
+        const shouldShowIcon = displayOption.icon !== false;
 
         return (
             <span className="calendar-event-inline">
-                <span className="calendar-event-title">
-                    {contentType === "adventureIsland" ? baseTitle : event.title}
-                </span>
-                {rewardIconUrls.length > 0 ? (
+                {shouldShowText ? (
+                    <span className="calendar-event-title">
+                        {contentType === "adventureIsland" ? baseTitle : event.title}
+                    </span>
+                ) : null}
+                {shouldShowIcon && rewardIconUrls.length > 0 ? (
                     <span className="calendar-event-reward-icons">
                         {rewardIconUrls.map((iconUrl) => (
                             <img
@@ -493,13 +539,14 @@ function App() {
                             />
                         ))}
                     </span>
-                ) : ContentIconComponent ? (
+                ) : shouldShowIcon && ContentIconComponent ? (
                     <span className="calendar-event-reward-icons">
                         <ContentIconComponent className="calendar-event-content-icon" />
                     </span>
-                ) : rewardName ? (
-                    <span className="calendar-event-reward-text">{rewardName}</span>
-                ) : null}
+                ) : // : shouldShowText && rewardName ? (
+                //     <span className="calendar-event-reward-text">{rewardName}</span>
+                // )
+                null}
             </span>
         );
     }
@@ -552,24 +599,90 @@ function App() {
                         <div className="space-y-4">
                             {orderedFilterTargets.map((target) => {
                                 const targetGroups = filterOptions.groups[target.key] ?? {};
-                                const isTargetEnabled =
-                                    calendarFilters.targets[target.key] ?? true;
-                                const hasTargetGroups =
-                                    Object.keys(targetGroups).length > 0;
+                                const isTargetEnabled = calendarFilters.targets[target.key] ?? true;
+                                const displayOption = getCalendarContentDisplayOption(
+                                    calendarContentDisplayOptions,
+                                    target.key
+                                );
+                                const hasTargetGroups = Object.keys(targetGroups).length > 0;
+                                const hasDisplayOptions = CALENDAR_CONTENT_DISPLAY_TARGETS.includes(
+                                    target.key
+                                );
                                 const orderedTargetGroups =
                                     target.key === "adventureIsland"
                                         ? ["rewards", "islands"]
                                               .filter((groupKey) => targetGroups[groupKey])
-                                              .map((groupKey) => [
-                                                  groupKey,
-                                                  targetGroups[groupKey],
-                                              ])
+                                              .map((groupKey) => [groupKey, targetGroups[groupKey]])
                                         : Object.entries(targetGroups);
-                                const groupsContent = hasTargetGroups ? (
+                                const displayOptionsContent = hasDisplayOptions ? (
                                     <div
                                         className={cn(
                                             "space-y-3 pl-7",
-                                            isTargetEnabled ? "" : "opacity-55",
+                                            isTargetEnabled ? "" : "opacity-55"
+                                        )}
+                                    >
+                                        <Accordion
+                                            type="single"
+                                            collapsible
+                                            className="rounded-lg border"
+                                        >
+                                            <AccordionItem value={`${target.key}-display-options`}>
+                                                <AccordionTrigger className="px-4 py-3 hover:no-underline">
+                                                    <span className="text-sm font-medium">
+                                                        {t("displayOptions.title", language)}
+                                                    </span>
+                                                </AccordionTrigger>
+                                                <AccordionContent>
+                                                    <div className="space-y-2 px-4">
+                                                        <label className="flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-2 text-sm text-foreground">
+                                                            <Checkbox
+                                                                checked={displayOption.text}
+                                                                disabled={!isTargetEnabled}
+                                                                onCheckedChange={(checked) => {
+                                                                    updateContentDisplayOption(
+                                                                        target.key,
+                                                                        "text",
+                                                                        checked === true
+                                                                    );
+                                                                }}
+                                                            />
+                                                            <span>
+                                                                {t(
+                                                                    "displayOptions.options.text",
+                                                                    language
+                                                                )}
+                                                            </span>
+                                                        </label>
+                                                        <label className="flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-2 text-sm text-foreground">
+                                                            <Checkbox
+                                                                checked={displayOption.icon}
+                                                                disabled={!isTargetEnabled}
+                                                                onCheckedChange={(checked) => {
+                                                                    updateContentDisplayOption(
+                                                                        target.key,
+                                                                        "icon",
+                                                                        checked === true
+                                                                    );
+                                                                }}
+                                                            />
+                                                            <span>
+                                                                {t(
+                                                                    "displayOptions.options.icon",
+                                                                    language
+                                                                )}
+                                                            </span>
+                                                        </label>
+                                                    </div>
+                                                </AccordionContent>
+                                            </AccordionItem>
+                                        </Accordion>
+                                    </div>
+                                ) : null;
+                                const targetFilterGroupsContent = hasTargetGroups ? (
+                                    <div
+                                        className={cn(
+                                            "space-y-3 pl-7",
+                                            isTargetEnabled ? "" : "opacity-55"
                                         )}
                                     >
                                         {orderedTargetGroups.map(([groupKey, group]) => (
@@ -594,17 +707,22 @@ function App() {
                                                                 >
                                                                     <Checkbox
                                                                         checked={
-                                                                            calendarFilters.groups?.[target.key]?.[
-                                                                                groupKey
-                                                                            ]?.[option.value] ?? true
+                                                                            calendarFilters
+                                                                                .groups?.[
+                                                                                target.key
+                                                                            ]?.[groupKey]?.[
+                                                                                option.value
+                                                                            ] ?? true
                                                                         }
                                                                         disabled={!isTargetEnabled}
-                                                                        onCheckedChange={(checked) => {
+                                                                        onCheckedChange={(
+                                                                            checked
+                                                                        ) => {
                                                                             updateGroupFilter(
                                                                                 target.key,
                                                                                 groupKey,
                                                                                 option.value,
-                                                                                checked === true,
+                                                                                checked === true
                                                                             );
                                                                         }}
                                                                     />
@@ -618,13 +736,20 @@ function App() {
                                         ))}
                                     </div>
                                 ) : null;
+                                const groupsContent =
+                                    displayOptionsContent || targetFilterGroupsContent ? (
+                                        <div className="space-y-3">
+                                            {displayOptionsContent}
+                                            {targetFilterGroupsContent}
+                                        </div>
+                                    ) : null;
 
                                 return (
                                     <SortableDisplayTarget
                                         key={target.key}
                                         target={target}
                                         isTargetEnabled={isTargetEnabled}
-                                        hasTargetGroups={hasTargetGroups}
+                                        hasTargetGroups={Boolean(groupsContent)}
                                         groupsContent={groupsContent}
                                         label={t(target.labelPath, language)}
                                         onTargetCheckedChange={(checked) => {
@@ -689,9 +814,7 @@ function App() {
                                 today: t("calendar.buttons.today", language),
                             }}
                             dayCellClassNames={(arg) =>
-                                eventDateKeys.has(toDateKey(arg.date))
-                                    ? []
-                                    : ["calendar-day-empty"]
+                                eventDateKeys.has(toDateKey(arg.date)) ? [] : ["calendar-day-empty"]
                             }
                             eventClassNames={getCalendarEventClassNames}
                             eventContent={renderCalendarEventContent}
@@ -708,10 +831,7 @@ function App() {
                         />
                     </div>
 
-                    <CalendarRemote
-                        title={t("remote.title", language)}
-                        sections={remoteSections}
-                    />
+                    <CalendarRemote title={t("remote.title", language)} sections={remoteSections} />
                 </div>
             </section>
         </main>
