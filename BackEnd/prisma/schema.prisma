@@ -1,0 +1,32 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum AdventureIslandPeriod {
+  weekday
+  weekendMorning
+  weekendAfternoon
+}
+
+model AdventureIsland {
+  id              String                @id @default(cuid())
+  lostArkDate     String
+  period          AdventureIslandPeriod
+  categoryName    String
+  contentsName    String
+  shortName       String
+  rewardName      String?
+  rewardShortName String?
+  startTime       String
+  rawData         Json
+  collectedAt     DateTime
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+
+  @@unique([lostArkDate, period, contentsName])
+  @@index([lostArkDate, period])
+}
