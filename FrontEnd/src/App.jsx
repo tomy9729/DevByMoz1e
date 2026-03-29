@@ -1,24 +1,6 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import {
-    closestCenter,
-    DndContext,
-    KeyboardSensor,
-    MouseSensor,
-    TouchSensor,
-    useSensor,
-    useSensors,
-} from "@dnd-kit/core";
-import {
-    arrayMove,
-    SortableContext,
-    sortableKeyboardCoordinates,
-    useSortable,
-    verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
+import { useEffect, useState } from "react";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
-import { GripVertical } from "lucide-react";
 import { fetchLostArkCalendarEvents } from "./api/lostark";
 import {
     buildCalendarFilterOptions,
@@ -28,7 +10,6 @@ import {
 import {
     DEFAULT_CALENDAR_DISPLAY_ORDER,
     getCalendarDisplayOrderMap,
-    normalizeCalendarDisplayOrder,
     sortCalendarTargets,
 } from "./calendarDisplayOrder";
 import CalendarRemote from "./components/CalendarRemote";
@@ -39,7 +20,6 @@ import {
     AccordionTrigger,
 } from "./components/ui/accordion";
 import { ChaosGateIcon, FieldBossIcon } from "./components/LostArkContentIcons";
-import { Button } from "./components/ui/button";
 import { Checkbox } from "./components/ui/checkbox";
 import {
     Select,
@@ -53,7 +33,6 @@ import { cn } from "./lib/utils";
 import "./App.css";
 
 const CALENDAR_FIRST_DAY_STORAGE_KEY = "calendar-first-day";
-const CALENDAR_DISPLAY_ORDER_STORAGE_KEY = "calendar-display-order";
 const CALENDAR_FIRST_DAY_OPTION_VALUES = [0, 1, 3];
 const CALENDAR_CONTENT_DISPLAY_TARGETS = ["chaosGate", "fieldBoss", "adventureIsland"];
 
@@ -65,7 +44,7 @@ function getDefaultCalendarContentDisplayOptions() {
                 text: true,
                 icon: true,
             },
-        ])
+        ]),
     );
 }
 
@@ -75,27 +54,6 @@ function getStoredCalendarFirstDay() {
     const isValidOption = CALENDAR_FIRST_DAY_OPTION_VALUES.includes(parsedValue);
 
     return isValidOption ? parsedValue : 0;
-}
-
-/**
- * 역할: 저장된 표시 순서를 읽고 기본 순서와 합쳐서 반환한다.
- * 파라미터 설명: 없음
- * 반환값 설명: 리모콘과 달력에서 공통으로 사용하는 표시 순서 배열
- */
-function getStoredCalendarDisplayOrder() {
-    const storedValue = window.localStorage.getItem(CALENDAR_DISPLAY_ORDER_STORAGE_KEY);
-
-    if (!storedValue) {
-        return DEFAULT_CALENDAR_DISPLAY_ORDER;
-    }
-
-    try {
-        const parsedValue = JSON.parse(storedValue);
-
-        return normalizeCalendarDisplayOrder(parsedValue, DEFAULT_CALENDAR_DISPLAY_ORDER);
-    } catch {
-        return DEFAULT_CALENDAR_DISPLAY_ORDER;
-    }
 }
 
 function toDateKey(date) {
@@ -211,119 +169,6 @@ function getCalendarContentDisplayOption(displayOptions, targetKey) {
     );
 }
 
-/**
- * 역할: 리모콘 표시 항목 한 줄을 dnd-kit 정렬 대상 컴포넌트로 렌더링한다.
- * 파라미터 설명:
- * - target: 현재 표시 항목 정보 객체
- * - isTargetEnabled: 현재 표시 항목 활성화 여부
- * - hasTargetGroups: 하위 그룹 존재 여부
- * - groupsContent: 하위 그룹 렌더링 결과 JSX
- * - label: 표시 항목 라벨 문자열
- * - onTargetCheckedChange: 상위 표시 체크박스 변경 핸들러
- * 반환값 설명: dnd-kit 정렬이 연결된 표시 항목 JSX
- */
-function SortableDisplayTarget({
-    target,
-    isTargetEnabled,
-    hasTargetGroups,
-    groupsContent,
-    label,
-    onTargetCheckedChange,
-}) {
-    const [dragSize, setDragSize] = useState(null);
-    const itemRef = useRef(null);
-    const {
-        attributes,
-        listeners,
-        setNodeRef,
-        setActivatorNodeRef,
-        transform,
-        transition,
-        isDragging,
-        isOver,
-    } = useSortable({
-        id: target.key,
-        transition: {
-            duration: 220,
-            easing: "cubic-bezier(0.22, 1, 0.36, 1)",
-        },
-    });
-
-    useLayoutEffect(() => {
-        if (!isDragging || !itemRef.current) {
-            return;
-        }
-
-        const { offsetWidth, offsetHeight } = itemRef.current;
-
-        setDragSize({
-            width: offsetWidth,
-            height: offsetHeight,
-        });
-    }, [isDragging]);
-
-    /**
-     * 역할: dnd-kit 정렬 ref와 로컬 측정 ref를 같은 DOM 요소에 연결한다.
-     * 파라미터 설명:
-     * - element: 현재 표시 항목 루트 DOM 요소
-     * 반환값 설명: 없음
-     */
-    function handleItemRef(element) {
-        itemRef.current = element;
-        setNodeRef(element);
-    }
-
-    const style = {
-        transform: CSS.Transform.toString(transform),
-        transition: transition ?? "transform 220ms cubic-bezier(0.22, 1, 0.36, 1)",
-        width: isDragging && dragSize ? `${dragSize.width}px` : undefined,
-        minWidth: isDragging && dragSize ? `${dragSize.width}px` : undefined,
-        maxWidth: isDragging && dragSize ? `${dragSize.width}px` : undefined,
-        height: isDragging && dragSize ? `${dragSize.height}px` : undefined,
-    };
-
-    return (
-        <div
-            ref={handleItemRef}
-            style={style}
-            className={cn(
-                "space-y-3 border-t pt-4 first:border-t-0 first:pt-0 transition-[opacity,transform,margin] duration-150",
-                isDragging ? "z-10" : "",
-                isOver
-                    ? "rounded-md bg-accent/60 pl-2 shadow-[inset_3px_0_0_hsl(var(--primary))]"
-                    : ""
-            )}
-        >
-            <div className="flex items-center justify-between gap-3">
-                <label className="flex flex-1 cursor-pointer items-center gap-2 rounded-md px-2 py-2 text-sm text-foreground">
-                    <Checkbox
-                        checked={isTargetEnabled}
-                        onCheckedChange={(checked) => {
-                            onTargetCheckedChange(checked === true);
-                        }}
-                    />
-                    <span>{label}</span>
-                </label>
-                <Button
-                    ref={setActivatorNodeRef}
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    className="cursor-grab active:cursor-grabbing"
-                    aria-label={`${label} 순서 이동`}
-                    title={`${label} 순서 이동`}
-                    {...attributes}
-                    {...listeners}
-                >
-                    <GripVertical aria-hidden="true" className="h-4 w-4" />
-                </Button>
-            </div>
-
-            {hasTargetGroups ? groupsContent : null}
-        </div>
-    );
-}
-
 function App() {
     const language = currentLanguage;
     const calendarFirstDayOptions = [
@@ -342,38 +187,24 @@ function App() {
     ];
     const [allEvents, setAllEvents] = useState([]);
     const [calendarFirstDay, setCalendarFirstDay] = useState(() => getStoredCalendarFirstDay());
-    const [calendarDisplayOrder, setCalendarDisplayOrder] = useState(() =>
-        getStoredCalendarDisplayOrder()
-    );
     const [calendarFilters, setCalendarFilters] = useState({
         targets: {},
         groups: {},
     });
     const [calendarContentDisplayOptions, setCalendarContentDisplayOptions] = useState(() =>
-        getDefaultCalendarContentDisplayOptions()
-    );
-    const sensors = useSensors(
-        useSensor(MouseSensor, {
-            activationConstraint: {
-                distance: 6,
-            },
-        }),
-        useSensor(TouchSensor, {
-            activationConstraint: {
-                delay: 120,
-                tolerance: 6,
-            },
-        }),
-        useSensor(KeyboardSensor, {
-            coordinateGetter: sortableKeyboardCoordinates,
-        })
+        getDefaultCalendarContentDisplayOptions(),
     );
 
     const filterOptions = buildCalendarFilterOptions(allEvents);
-    const orderedFilterTargets = sortCalendarTargets(filterOptions.targets, calendarDisplayOrder);
+    const orderedFilterTargets = sortCalendarTargets(
+        filterOptions.targets,
+        DEFAULT_CALENDAR_DISPLAY_ORDER,
+    );
     const visibleEvents = filterCalendarEvents(allEvents, calendarFilters);
     const eventDateKeys = getEventDateKeys(visibleEvents);
-    const calendarDisplayOrderMap = getCalendarDisplayOrderMap(calendarDisplayOrder);
+    const calendarDisplayOrderMap = getCalendarDisplayOrderMap(
+        DEFAULT_CALENDAR_DISPLAY_ORDER,
+    );
 
     useEffect(() => {
         let isMounted = true;
@@ -387,8 +218,8 @@ function App() {
                     setCalendarFilters((previousFilters) =>
                         mergeCalendarFilterState(
                             previousFilters,
-                            buildCalendarFilterOptions(calendarEvents)
-                        )
+                            buildCalendarFilterOptions(calendarEvents),
+                        ),
                     );
                 }
             } catch (error) {
@@ -406,13 +237,6 @@ function App() {
     useEffect(() => {
         window.localStorage.setItem(CALENDAR_FIRST_DAY_STORAGE_KEY, String(calendarFirstDay));
     }, [calendarFirstDay]);
-
-    useEffect(() => {
-        window.localStorage.setItem(
-            CALENDAR_DISPLAY_ORDER_STORAGE_KEY,
-            JSON.stringify(calendarDisplayOrder)
-        );
-    }, [calendarDisplayOrder]);
 
     function updateTargetFilter(targetKey, checked) {
         setCalendarFilters((previousFilters) => ({
@@ -459,36 +283,6 @@ function App() {
     }
 
     /**
-     * 역할: dnd-kit 드래그 종료 시 현재 순서를 삽입 이동 결과로 반영한다.
-     * 파라미터 설명:
-     * - event: dnd-kit 드래그 종료 이벤트 객체
-     * 반환값 설명: 없음
-     */
-    function handleDisplayTargetDragEnd(event) {
-        const activeTargetKey = String(event.active.id);
-        const overTargetKey = event.over?.id ? String(event.over.id) : "";
-
-        if (!overTargetKey || activeTargetKey === overTargetKey) {
-            return;
-        }
-
-        setCalendarDisplayOrder((previousOrder) => {
-            const normalizedOrder = normalizeCalendarDisplayOrder(
-                previousOrder,
-                DEFAULT_CALENDAR_DISPLAY_ORDER
-            );
-            const activeIndex = normalizedOrder.indexOf(activeTargetKey);
-            const overIndex = normalizedOrder.indexOf(overTargetKey);
-
-            if (activeIndex === -1 || overIndex === -1) {
-                return normalizedOrder;
-            }
-
-            return arrayMove(normalizedOrder, activeIndex, overIndex);
-        });
-    }
-
-    /**
      * 역할: 하루 일정 여부에 따라 이벤트 표시 클래스를 부여한다.
      * 파라미터 설명:
      * - eventClassInfo: FullCalendar가 전달하는 이벤트 클래스 계산 정보 객체
@@ -510,10 +304,10 @@ function App() {
         const ContentIconComponent = getCalendarContentIconComponent(contentType);
         const displayOption = getCalendarContentDisplayOption(
             calendarContentDisplayOptions,
-            contentType
+            contentType,
         );
         const rewardIconUrls = getCalendarEventRewardIconUrls(
-            event.extendedProps?.rewardIconUrl ?? ""
+            event.extendedProps?.rewardIconUrl ?? "",
         );
         const rewardName = event.extendedProps?.rewardName ?? "";
         const baseTitle = getCalendarEventBaseTitle(event.title);
@@ -543,10 +337,7 @@ function App() {
                     <span className="calendar-event-reward-icons">
                         <ContentIconComponent className="calendar-event-content-icon" />
                     </span>
-                ) : // : shouldShowText && rewardName ? (
-                //     <span className="calendar-event-reward-text">{rewardName}</span>
-                // )
-                null}
+                ) : null}
             </span>
         );
     }
@@ -587,180 +378,164 @@ function App() {
             key: "filters",
             title: t("filters.title", language),
             content: (
-                <DndContext
-                    sensors={sensors}
-                    collisionDetection={closestCenter}
-                    onDragEnd={handleDisplayTargetDragEnd}
-                >
-                    <SortableContext
-                        items={orderedFilterTargets.map((target) => target.key)}
-                        strategy={verticalListSortingStrategy}
-                    >
-                        <div className="space-y-4">
-                            {orderedFilterTargets.map((target) => {
-                                const targetGroups = filterOptions.groups[target.key] ?? {};
-                                const isTargetEnabled = calendarFilters.targets[target.key] ?? true;
-                                const displayOption = getCalendarContentDisplayOption(
-                                    calendarContentDisplayOptions,
-                                    target.key
-                                );
-                                const hasTargetGroups = Object.keys(targetGroups).length > 0;
-                                const hasDisplayOptions = CALENDAR_CONTENT_DISPLAY_TARGETS.includes(
-                                    target.key
-                                );
-                                const orderedTargetGroups =
-                                    target.key === "adventureIsland"
-                                        ? ["rewards", "islands"]
-                                              .filter((groupKey) => targetGroups[groupKey])
-                                              .map((groupKey) => [groupKey, targetGroups[groupKey]])
-                                        : Object.entries(targetGroups);
-                                const displayOptionsContent = hasDisplayOptions ? (
-                                    <div
-                                        className={cn(
-                                            "space-y-3 pl-7",
-                                            isTargetEnabled ? "" : "opacity-55"
-                                        )}
-                                    >
-                                        <Accordion
-                                            type="single"
-                                            collapsible
-                                            className="rounded-lg border"
-                                        >
-                                            <AccordionItem value={`${target.key}-display-options`}>
-                                                <AccordionTrigger className="px-4 py-3 hover:no-underline">
-                                                    <span className="text-sm font-medium">
-                                                        {t("displayOptions.title", language)}
+                <div className="space-y-4">
+                    {orderedFilterTargets.map((target) => {
+                        const targetGroups = filterOptions.groups[target.key] ?? {};
+                        const isTargetEnabled = calendarFilters.targets[target.key] ?? true;
+                        const displayOption = getCalendarContentDisplayOption(
+                            calendarContentDisplayOptions,
+                            target.key,
+                        );
+                        const hasTargetGroups = Object.keys(targetGroups).length > 0;
+                        const hasDisplayOptions = CALENDAR_CONTENT_DISPLAY_TARGETS.includes(
+                            target.key,
+                        );
+                        const orderedTargetGroups =
+                            target.key === "adventureIsland"
+                                ? ["rewards", "islands"]
+                                      .filter((groupKey) => targetGroups[groupKey])
+                                      .map((groupKey) => [groupKey, targetGroups[groupKey]])
+                                : Object.entries(targetGroups);
+                        const displayOptionsContent = hasDisplayOptions ? (
+                            <div
+                                className={cn(
+                                    "space-y-3 pl-7",
+                                    isTargetEnabled ? "" : "opacity-55",
+                                )}
+                            >
+                                <Accordion
+                                    type="single"
+                                    collapsible
+                                    className="rounded-lg border"
+                                >
+                                    <AccordionItem value={`${target.key}-display-options`}>
+                                        <AccordionTrigger className="px-4 py-3 hover:no-underline">
+                                            <span className="text-sm font-medium">
+                                                {t("displayOptions.title", language)}
+                                            </span>
+                                        </AccordionTrigger>
+                                        <AccordionContent>
+                                            <div className="space-y-2 px-4">
+                                                <label className="flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-2 text-sm text-foreground">
+                                                    <Checkbox
+                                                        checked={displayOption.text}
+                                                        disabled={!isTargetEnabled}
+                                                        onCheckedChange={(checked) => {
+                                                            updateContentDisplayOption(
+                                                                target.key,
+                                                                "text",
+                                                                checked === true,
+                                                            );
+                                                        }}
+                                                    />
+                                                    <span>
+                                                        {t("displayOptions.options.text", language)}
                                                     </span>
-                                                </AccordionTrigger>
-                                                <AccordionContent>
-                                                    <div className="space-y-2 px-4">
-                                                        <label className="flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-2 text-sm text-foreground">
-                                                            <Checkbox
-                                                                checked={displayOption.text}
-                                                                disabled={!isTargetEnabled}
-                                                                onCheckedChange={(checked) => {
-                                                                    updateContentDisplayOption(
-                                                                        target.key,
-                                                                        "text",
-                                                                        checked === true
-                                                                    );
-                                                                }}
-                                                            />
-                                                            <span>
-                                                                {t(
-                                                                    "displayOptions.options.text",
-                                                                    language
-                                                                )}
-                                                            </span>
-                                                        </label>
-                                                        <label className="flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-2 text-sm text-foreground">
-                                                            <Checkbox
-                                                                checked={displayOption.icon}
-                                                                disabled={!isTargetEnabled}
-                                                                onCheckedChange={(checked) => {
-                                                                    updateContentDisplayOption(
-                                                                        target.key,
-                                                                        "icon",
-                                                                        checked === true
-                                                                    );
-                                                                }}
-                                                            />
-                                                            <span>
-                                                                {t(
-                                                                    "displayOptions.options.icon",
-                                                                    language
-                                                                )}
-                                                            </span>
-                                                        </label>
-                                                    </div>
-                                                </AccordionContent>
-                                            </AccordionItem>
-                                        </Accordion>
-                                    </div>
-                                ) : null;
-                                const targetFilterGroupsContent = hasTargetGroups ? (
-                                    <div
-                                        className={cn(
-                                            "space-y-3 pl-7",
-                                            isTargetEnabled ? "" : "opacity-55"
-                                        )}
+                                                </label>
+                                                <label className="flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-2 text-sm text-foreground">
+                                                    <Checkbox
+                                                        checked={displayOption.icon}
+                                                        disabled={!isTargetEnabled}
+                                                        onCheckedChange={(checked) => {
+                                                            updateContentDisplayOption(
+                                                                target.key,
+                                                                "icon",
+                                                                checked === true,
+                                                            );
+                                                        }}
+                                                    />
+                                                    <span>
+                                                        {t("displayOptions.options.icon", language)}
+                                                    </span>
+                                                </label>
+                                            </div>
+                                        </AccordionContent>
+                                    </AccordionItem>
+                                </Accordion>
+                            </div>
+                        ) : null;
+                        const targetFilterGroupsContent = hasTargetGroups ? (
+                            <div
+                                className={cn(
+                                    "space-y-3 pl-7",
+                                    isTargetEnabled ? "" : "opacity-55",
+                                )}
+                            >
+                                {orderedTargetGroups.map(([groupKey, group]) => (
+                                    <Accordion
+                                        key={`${target.key}-${groupKey}`}
+                                        type="single"
+                                        collapsible
+                                        className="rounded-lg border"
                                     >
-                                        {orderedTargetGroups.map(([groupKey, group]) => (
-                                            <Accordion
-                                                key={`${target.key}-${groupKey}`}
-                                                type="single"
-                                                collapsible
-                                                className="rounded-lg border"
-                                            >
-                                                <AccordionItem value={`${target.key}-${groupKey}`}>
-                                                    <AccordionTrigger className="px-4 py-3 hover:no-underline">
-                                                        <span className="text-sm font-medium">
-                                                            {t(group.labelPath, language)}
-                                                        </span>
-                                                    </AccordionTrigger>
-                                                    <AccordionContent>
-                                                        <div className="space-y-2 px-4">
-                                                            {group.options.map((option) => (
-                                                                <label
-                                                                    key={`${target.key}-${groupKey}-${option.value}`}
-                                                                    className="flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-2 text-sm text-foreground"
-                                                                >
-                                                                    <Checkbox
-                                                                        checked={
-                                                                            calendarFilters
-                                                                                .groups?.[
-                                                                                target.key
-                                                                            ]?.[groupKey]?.[
-                                                                                option.value
-                                                                            ] ?? true
-                                                                        }
-                                                                        disabled={!isTargetEnabled}
-                                                                        onCheckedChange={(
-                                                                            checked
-                                                                        ) => {
-                                                                            updateGroupFilter(
-                                                                                target.key,
-                                                                                groupKey,
-                                                                                option.value,
-                                                                                checked === true
-                                                                            );
-                                                                        }}
-                                                                    />
-                                                                    <span>{option.label}</span>
-                                                                </label>
-                                                            ))}
-                                                        </div>
-                                                    </AccordionContent>
-                                                </AccordionItem>
-                                            </Accordion>
-                                        ))}
-                                    </div>
-                                ) : null;
-                                const groupsContent =
-                                    displayOptionsContent || targetFilterGroupsContent ? (
-                                        <div className="space-y-3">
-                                            {displayOptionsContent}
-                                            {targetFilterGroupsContent}
-                                        </div>
-                                    ) : null;
+                                        <AccordionItem value={`${target.key}-${groupKey}`}>
+                                            <AccordionTrigger className="px-4 py-3 hover:no-underline">
+                                                <span className="text-sm font-medium">
+                                                    {t(group.labelPath, language)}
+                                                </span>
+                                            </AccordionTrigger>
+                                            <AccordionContent>
+                                                <div className="space-y-2 px-4">
+                                                    {group.options.map((option) => (
+                                                        <label
+                                                            key={`${target.key}-${groupKey}-${option.value}`}
+                                                            className="flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-2 text-sm text-foreground"
+                                                        >
+                                                            <Checkbox
+                                                                checked={
+                                                                    calendarFilters.groups?.[
+                                                                        target.key
+                                                                    ]?.[groupKey]?.[option.value] ??
+                                                                    true
+                                                                }
+                                                                disabled={!isTargetEnabled}
+                                                                onCheckedChange={(checked) => {
+                                                                    updateGroupFilter(
+                                                                        target.key,
+                                                                        groupKey,
+                                                                        option.value,
+                                                                        checked === true,
+                                                                    );
+                                                                }}
+                                                            />
+                                                            <span>{option.label}</span>
+                                                        </label>
+                                                    ))}
+                                                </div>
+                                            </AccordionContent>
+                                        </AccordionItem>
+                                    </Accordion>
+                                ))}
+                            </div>
+                        ) : null;
+                        const groupsContent =
+                            displayOptionsContent || targetFilterGroupsContent ? (
+                                <div className="space-y-3">
+                                    {displayOptionsContent}
+                                    {targetFilterGroupsContent}
+                                </div>
+                            ) : null;
 
-                                return (
-                                    <SortableDisplayTarget
-                                        key={target.key}
-                                        target={target}
-                                        isTargetEnabled={isTargetEnabled}
-                                        hasTargetGroups={Boolean(groupsContent)}
-                                        groupsContent={groupsContent}
-                                        label={t(target.labelPath, language)}
-                                        onTargetCheckedChange={(checked) => {
-                                            updateTargetFilter(target.key, checked);
+                        return (
+                            <div
+                                key={target.key}
+                                className="space-y-3 border-t pt-4 first:border-t-0 first:pt-0"
+                            >
+                                <label className="flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-2 text-sm text-foreground">
+                                    <Checkbox
+                                        checked={isTargetEnabled}
+                                        onCheckedChange={(checked) => {
+                                            updateTargetFilter(target.key, checked === true);
                                         }}
                                     />
-                                );
-                            })}
-                        </div>
-                    </SortableContext>
-                </DndContext>
+                                    <span>{t(target.labelPath, language)}</span>
+                                </label>
+
+                                {groupsContent}
+                            </div>
+                        );
+                    })}
+                </div>
             ),
         },
     ];
