@@ -298,7 +298,7 @@ function getAdventureIslandMajorRewardType(rewardName) {
  * - startTime: 현재 이벤트 시작 시각
  * 반환값 설명: 짧게 변환된 보상명 또는 빈 문자열
  */
-function getAdventureIslandRewardName(content, startTime) {
+function getAdventureIslandReward(content, startTime) {
     const rewardItems = Array.isArray(content.RewardItems) ? content.RewardItems : [];
     const flattenedRewardItems = rewardItems.flatMap((rewardGroup) => {
         if (Array.isArray(rewardGroup?.Items)) {
@@ -327,10 +327,16 @@ function getAdventureIslandRewardName(content, startTime) {
             continue;
         }
 
-        return getShortRewardName(rewardItem.Name);
+        return {
+            rewardTypeKey: rewardType.key,
+            rewardName: getShortRewardName(rewardItem.Name),
+        };
     }
 
-    return "";
+    return {
+        rewardTypeKey: "",
+        rewardName: "",
+    };
 }
 
 /**
@@ -346,7 +352,7 @@ function getGameContentEventTitle(content, displayType, startTime) {
         return displayType.label;
     }
 
-    const rewardName = getAdventureIslandRewardName(content, startTime);
+    const { rewardName } = getAdventureIslandReward(content, startTime);
     const rewardText = rewardName ? ` (${rewardName})` : "";
 
     return `${getShortIslandName(content.ContentsName)}${rewardText}`;
@@ -373,6 +379,7 @@ export function mapLostArkEventToCalendarEvent(event) {
             link: event.Link,
             sourceStartDate: event.StartDate,
             sourceEndDate: event.EndDate,
+            filterTarget: "event",
         },
     };
 }
@@ -392,6 +399,13 @@ export function mapLostArkGameContentToCalendarEvents(content) {
 
     return (content.StartTimes ?? []).map((startTime) => {
         const lostArkDate = toLostArkDateOnly(startTime);
+        const adventureIslandReward =
+            displayType.key === "adventureIsland"
+                ? getAdventureIslandReward(content, startTime)
+                : {
+                      rewardTypeKey: "",
+                      rewardName: "",
+                  };
 
         return {
             id: `${displayType.key}-${lostArkDate}-${content.ContentsName}`,
@@ -407,6 +421,11 @@ export function mapLostArkGameContentToCalendarEvents(content) {
                         ? getAdventureIslandPeriod(startTime)
                         : null,
                 sourceStartTime: startTime,
+                filterTarget: displayType.key,
+                islandName:
+                    displayType.key === "adventureIsland" ? content.ContentsName : "",
+                rewardTypeKey: adventureIslandReward.rewardTypeKey,
+                rewardName: adventureIslandReward.rewardName,
             },
         };
     });

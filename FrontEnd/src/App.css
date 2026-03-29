@@ -44,11 +44,102 @@
   color: #6b5747;
 }
 
+.calendar-controls {
+  display: grid;
+  grid-template-columns: minmax(180px, 220px) minmax(0, 1fr);
+  gap: 18px;
+  margin: 0 0 18px;
+}
+
 .calendar-settings {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
+  flex-direction: column;
   gap: 12px;
-  margin: 0 0 18px;
+}
+
+.calendar-filter-panel {
+  padding: 16px 18px;
+  border: 1px solid rgba(108, 88, 76, 0.12);
+  border-radius: 20px;
+  background: rgba(255, 252, 246, 0.9);
+}
+
+.calendar-filter-copy h2 {
+  margin: 0;
+  font-size: 1rem;
+  color: #35261b;
+}
+
+.calendar-filter-copy p {
+  margin: 6px 0 0;
+  font-size: 0.92rem;
+  line-height: 1.5;
+  color: #6b5747;
+}
+
+.calendar-filter-groups {
+  display: grid;
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.calendar-filter-group {
+  display: grid;
+  gap: 10px;
+  padding: 14px 0;
+  border-top: 1px solid rgba(108, 88, 76, 0.12);
+}
+
+.calendar-filter-group:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.calendar-filter-subgroups {
+  display: grid;
+  gap: 12px;
+  padding-left: 28px;
+}
+
+.calendar-filter-subgroups-disabled {
+  opacity: 0.55;
+}
+
+.calendar-filter-subgroup {
+  padding: 12px 14px;
+  border: 1px solid rgba(108, 88, 76, 0.12);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.62);
+}
+
+.calendar-filter-subgroup-title {
+  margin: 0 0 8px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #7b614c;
+}
+
+.calendar-filter-option-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+}
+
+.calendar-filter-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.95rem;
+  color: #4b382a;
+}
+
+.calendar-filter-checkbox input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: #aa6c39;
+  flex: 0 0 auto;
 }
 
 .calendar-settings-label {
@@ -126,9 +217,16 @@
     padding: 12px;
   }
 
-  .calendar-settings {
-    align-items: flex-start;
-    flex-direction: column;
+  .calendar-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .calendar-filter-subgroup {
+    padding: 12px;
+  }
+
+  .calendar-filter-subgroups {
+    padding-left: 0;
   }
 
   .fc .fc-toolbar {
