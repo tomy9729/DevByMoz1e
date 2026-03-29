@@ -96,7 +96,7 @@ function toLostArkDateOnly(dateTime) {
     return formatDateParts(
         targetDate.getFullYear(),
         targetDate.getMonth() + 1,
-        targetDate.getDate(),
+        targetDate.getDate()
     );
 }
 
@@ -142,6 +142,24 @@ function getAdventureIslandPeriod(startTime) {
     return getLostArkMinutesFromDayStart(startTime) <= 7 * 60
         ? "weekendMorning"
         : "weekendAfternoon";
+}
+
+/**
+ * 역할: 주말 모험섬 구간값을 사용자 표시용 오전/오후 문자열로 변환한다.
+ * 파라미터 설명:
+ * - period: `weekday`, `weekendMorning`, `weekendAfternoon` 중 하나인 모험섬 구간값
+ * 반환값 설명: 주말 구간이면 `오전` 또는 `오후`, 평일 구간이면 빈 문자열
+ */
+function getAdventureIslandPeriodLabel(period) {
+    if (period === "weekendMorning") {
+        return "오전";
+    }
+
+    if (period === "weekendAfternoon") {
+        return "오후";
+    }
+
+    return "";
 }
 
 /**
@@ -235,8 +253,7 @@ function isIslandContent(content) {
     const bracketIslandKeyword = normalizeContentText("[섬]");
 
     return (
-        categoryName.includes(bracketIslandKeyword) ||
-        contentsName.includes(bracketIslandKeyword)
+        categoryName.includes(bracketIslandKeyword) || contentsName.includes(bracketIslandKeyword)
     );
 }
 
@@ -269,7 +286,7 @@ function getDisplayableGameContentType(content) {
                     categoryName.includes(normalizedKeyword) ||
                     contentsName.includes(normalizedKeyword)
                 );
-            }),
+            })
         ) ?? null
     );
 }
@@ -286,8 +303,8 @@ function getAdventureIslandMajorRewardType(rewardName) {
     return (
         ADVENTURE_ISLAND_MAJOR_REWARDS.find((type) =>
             type.sourceNames.some(
-                (sourceName) => normalizedRewardName === normalizeContentText(sourceName),
-            ),
+                (sourceName) => normalizedRewardName === normalizeContentText(sourceName)
+            )
         ) ?? null
     );
 }
@@ -353,10 +370,16 @@ function getGameContentEventTitle(content, displayType, startTime) {
         return displayType.label;
     }
 
+    // 20260330 khs
+    // 제목 조합 시작: 주말 모험섬은 오전/오후를 가장 앞에 붙이고, 뒤에 섬 이름과 주요 보상을 연결한다.
     const { rewardName } = getAdventureIslandReward(content, startTime);
+    const periodLabel = getAdventureIslandPeriodLabel(getAdventureIslandPeriod(startTime));
+    const periodText = periodLabel ? `[${periodLabel}] ` : "";
     const rewardText = rewardName ? ` (${rewardName})` : "";
 
-    return `${getShortIslandName(content.ContentsName)}${rewardText}`;
+    return `${periodText}${getShortIslandName(content.ContentsName)}${rewardText}`;
+    // 20260330 khs
+    // 제목 조합 끝
 }
 
 /**
@@ -411,7 +434,7 @@ export function mapLostArkGameContentToCalendarEvents(content) {
                   };
         const eventColors = getCalendarEventColors(
             displayType.key,
-            adventureIslandReward.rewardTypeKey,
+            adventureIslandReward.rewardTypeKey
         );
 
         return {
@@ -430,8 +453,7 @@ export function mapLostArkGameContentToCalendarEvents(content) {
                         : null,
                 sourceStartTime: startTime,
                 filterTarget: displayType.key,
-                islandName:
-                    displayType.key === "adventureIsland" ? content.ContentsName : "",
+                islandName: displayType.key === "adventureIsland" ? content.ContentsName : "",
                 rewardTypeKey: adventureIslandReward.rewardTypeKey,
                 rewardName: adventureIslandReward.rewardName,
             },
@@ -485,7 +507,7 @@ function dedupeGameContentEvents(events) {
         .filter(([, event]) => event.extendedProps.contentType !== "adventureIsland")
         .map(([, event]) => event);
     const adventureIslandEvents = [...adventureIslandGroups.values()].flatMap((group) =>
-        group.slice(0, 3),
+        group.slice(0, 3)
     );
 
     return [...nonAdventureIslandEvents, ...adventureIslandEvents];
@@ -548,7 +570,7 @@ export async function fetchLostArkCalendarEvents() {
 
     // 게임 콘텐츠 일정 가공 시작
     const contentEvents = dedupeGameContentEvents(
-        gameContents.flatMap((content) => mapLostArkGameContentToCalendarEvents(content)),
+        gameContents.flatMap((content) => mapLostArkGameContentToCalendarEvents(content))
     );
     // 게임 콘텐츠 일정 가공 끝
 
