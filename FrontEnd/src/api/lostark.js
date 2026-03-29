@@ -1,4 +1,5 @@
 import { getShortIslandName, getShortRewardName } from "../mappings/lostark.js";
+import { getCalendarEventColors } from "../calendarEventColors.js";
 
 const LOSTARK_EVENTS_ENDPOINT = "/api/lostark/news/events";
 const LOSTARK_GAME_CONTENTS_ENDPOINT = "/api/lostark/gamecontents/calendar";
@@ -367,6 +368,7 @@ function getGameContentEventTitle(content, displayType, startTime) {
 export function mapLostArkEventToCalendarEvent(event) {
     const start = toDateOnly(event.StartDate);
     const inclusiveEnd = toDateOnly(event.EndDate);
+    const eventColors = getCalendarEventColors("event");
 
     return {
         id: `${event.Title}-${event.StartDate}`,
@@ -375,6 +377,7 @@ export function mapLostArkEventToCalendarEvent(event) {
         end: addOneDay(inclusiveEnd),
         allDay: true,
         url: event.Link,
+        ...eventColors,
         extendedProps: {
             link: event.Link,
             sourceStartDate: event.StartDate,
@@ -406,12 +409,17 @@ export function mapLostArkGameContentToCalendarEvents(content) {
                       rewardTypeKey: "",
                       rewardName: "",
                   };
+        const eventColors = getCalendarEventColors(
+            displayType.key,
+            adventureIslandReward.rewardTypeKey,
+        );
 
         return {
             id: `${displayType.key}-${lostArkDate}-${content.ContentsName}`,
             title: getGameContentEventTitle(content, displayType, startTime),
             start: lostArkDate,
             allDay: true,
+            ...eventColors,
             extendedProps: {
                 categoryName: content.CategoryName,
                 contentsName: content.ContentsName,
