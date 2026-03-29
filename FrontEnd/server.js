@@ -8,8 +8,6 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const distPath = path.resolve(__dirname, "dist");
 const indexHtmlPath = path.join(distPath, "index.html");
-const lostArkEventsUrl = "https://developer-lostark.game.onstove.com/news/events";
-const lostArkCalendarUrl = "https://developer-lostark.game.onstove.com/gamecontents/calendar";
 
 /**
  * 역할: 로컬 `.env.local` 파일을 읽어 process.env에 주입한다.
@@ -49,89 +47,55 @@ loadLocalEnv();
 
 const app = express();
 const port = Number(process.env.PORT) || 4173;
-const lostArkApiKey = process.env.LOSTARK_API_KEY ?? "";
+const backendBaseUrl = process.env.BACKEND_BASE_URL ?? "http://localhost:3000";
 
-// 뉴스 이벤트 프록시 라우트 시작
-app.get("/api/lostark/news/events", async (req, res) => {
-    if (!lostArkApiKey) {
-        res.status(500).json({ message: "LOSTARK_API_KEY is not configured." });
-        return;
-    }
+app.use(express.json());
 
+/**
+ * 역할: 프런트 서버로 들어온 `/api` 요청을 백엔드 서버로 전달한다.
+ * 파라미터 설명:
+ * - req: Express 요청 객체
+ * - res: Express 응답 객체
+ * 반환값 설명: Promise<void>
+ */
+async function forwardApiRequest(req, res) {
     try {
-        const response = await fetch(lostArkEventsUrl, {
+        const targetUrl = new URL(req.originalUrl, backendBaseUrl);
+        const response = await fetch(targetUrl, {
+            method: req.method,
             headers: {
-                accept: "application/json",
-                Authorization: `bearer ${lostArkApiKey}`,
+                accept: req.headers.accept ?? "application/json",
+                "content-type": req.headers["content-type"] ?? "application/json",
             },
+            body:
+                req.method === "GET" || req.method === "HEAD"
+                    ? undefined
+                    : JSON.stringify(req.body ?? {}),
         });
+        const contentType = response.headers.get("content-type");
 
-        if (!response.ok) {
-            const errorBody = await response.text();
-            res.status(response.status).send(errorBody);
+        res.status(response.status);
+
+        if (contentType) {
+            res.setHeader("content-type", contentType);
+        }
+
+        if (contentType?.includes("application/json")) {
+            res.json(await response.json());
             return;
         }
 
-        const events = await response.json();
-        const normalizedEvents = events.map(({ Title, StartDate, EndDate, Link }) => ({
-            Title,
-            StartDate,
-            EndDate,
-            Link,
-        }));
-
-        res.json(normalizedEvents);
+        res.send(await response.text());
     } catch (error) {
-        console.error("Failed to fetch Lost Ark events.", error);
-        res.status(500).json({ message: "Failed to fetch Lost Ark events." });
+        console.error("Failed to forward API request to backend.", error);
+        res.status(500).json({ message: "Failed to forward API request to backend." });
     }
-});
-// 뉴스 이벤트 프록시 라우트 끝
+}
 
-// 게임 콘텐츠 일정 프록시 라우트 시작
-app.get("/api/lostark/gamecontents/calendar", async (req, res) => {
-    if (!lostArkApiKey) {
-        res.status(500).json({ message: "LOSTARK_API_KEY is not configured." });
-        return;
-    }
+app.use("/api", forwardApiRequest);
 
-    try {
-        const response = await fetch(lostArkCalendarUrl, {
-            headers: {
-                accept: "application/json",
-                Authorization: `bearer ${lostArkApiKey}`,
-            },
-        });
-
-        if (!response.ok) {
-            const errorBody = await response.text();
-            res.status(response.status).send(errorBody);
-            return;
-        }
-
-        const calendarContents = await response.json();
-        const normalizedCalendarContents = calendarContents.map(
-            ({ CategoryName, ContentsName, StartTimes, RewardItems }) => ({
-                CategoryName,
-                ContentsName,
-                StartTimes,
-                RewardItems,
-            })
-        );
-
-        res.json(normalizedCalendarContents);
-    } catch (error) {
-        console.error("Failed to fetch Lost Ark calendar contents.", error);
-        res.status(500).json({ message: "Failed to fetch Lost Ark calendar contents." });
-    }
-});
-// 게임 콘텐츠 일정 프록시 라우트 끝
-
-// 정적 파일 서빙 시작
 app.use(express.static(distPath));
-// 정적 파일 서빙 끝
 
-// SPA fallback 라우트 시작
 app.use((req, res) => {
     if (!fs.existsSync(indexHtmlPath)) {
         res.status(404).send("Build output not found. Run npm run build first.");
@@ -140,7 +104,6 @@ app.use((req, res) => {
 
     res.sendFile(indexHtmlPath);
 });
-// SPA fallback 라우트 끝
 
 app.listen(port, () => {
     console.log(`Production server is running on port ${port}`);
