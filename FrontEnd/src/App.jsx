@@ -7,6 +7,7 @@ import {
     filterCalendarEvents,
     mergeCalendarFilterState,
 } from "./calendarFilters";
+import CalendarRemote from "./components/CalendarRemote";
 import { currentLanguage, getCalendarLocale, t } from "./i18n";
 import "./App.css";
 
@@ -108,83 +109,84 @@ function App() {
         }));
     }
 
-    return (
-        <main className="app-shell">
-            <section className="calendar-panel">
-                <div className="calendar-copy">
-                    <p className="eyebrow">{t("app.eyebrow", language)}</p>
-                    <h1>{t("app.title", language)}</h1>
-                    <p className="description">{t("app.description", language)}</p>
+    const remoteSections = [
+        {
+            key: "firstDay",
+            title: t("remote.sections.firstDay.title", language),
+            content: (
+                <div className="calendar-settings">
+                    <label className="calendar-settings-label" htmlFor="calendar-first-day">
+                        {t("calendar.firstDayLabel", language)}
+                    </label>
+                    <select
+                        id="calendar-first-day"
+                        className="calendar-settings-select"
+                        value={calendarFirstDay}
+                        onChange={(event) => {
+                            setCalendarFirstDay(Number(event.target.value));
+                        }}
+                    >
+                        {calendarFirstDayOptions.map((option) => (
+                            <option key={option.value} value={option.value}>
+                                {option.label}
+                            </option>
+                        ))}
+                    </select>
                 </div>
+            ),
+        },
+        {
+            key: "filters",
+            title: t("filters.title", language),
+            content: (
+                <div className="calendar-filter-groups">
+                    {filterOptions.targets.map((target) => {
+                        const targetGroups = filterOptions.groups[target.key] ?? {};
+                        const isTargetEnabled = calendarFilters.targets[target.key] ?? true;
+                        const hasTargetGroups = Object.keys(targetGroups).length > 0;
+                        const orderedTargetGroups =
+                            target.key === "adventureIsland"
+                                ? ["rewards", "islands"]
+                                      .filter((groupKey) => targetGroups[groupKey])
+                                      .map((groupKey) => [groupKey, targetGroups[groupKey]])
+                                : Object.entries(targetGroups);
 
-                <div className="calendar-controls">
-                    <div className="calendar-settings">
-                        <label className="calendar-settings-label" htmlFor="calendar-first-day">
-                            {t("calendar.firstDayLabel", language)}
-                        </label>
-                        <select
-                            id="calendar-first-day"
-                            className="calendar-settings-select"
-                            value={calendarFirstDay}
-                            onChange={(event) => {
-                                setCalendarFirstDay(Number(event.target.value));
-                            }}
-                        >
-                            {calendarFirstDayOptions.map((option) => (
-                                <option key={option.value} value={option.value}>
-                                    {option.label}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-
-                    <section className="calendar-filter-panel" aria-label={t("filters.title", language)}>
-                        <div className="calendar-filter-copy">
-                            <h2>{t("filters.title", language)}</h2>
-                            <p>{t("filters.description", language)}</p>
-                        </div>
-
-                        <div className="calendar-filter-groups">
-                            {filterOptions.targets.map((target) => {
-                                const targetGroups = filterOptions.groups[target.key] ?? {};
-                                const isTargetEnabled = calendarFilters.targets[target.key] ?? true;
-                                const hasTargetGroups = Object.keys(targetGroups).length > 0;
-
-                                return (
-                                    <div key={target.key} className="calendar-filter-group">
-                                        <label className="calendar-filter-checkbox">
-                                            <input
-                                                type="checkbox"
-                                                checked={isTargetEnabled}
-                                                onChange={(event) => {
-                                                    updateTargetFilter(target.key, event.target.checked);
-                                                }}
-                                            />
-                                            <span>{t(target.labelPath, language)}</span>
-                                        </label>
+                        return (
+                            <div key={target.key} className="calendar-filter-group">
+                                <label className="calendar-filter-checkbox">
+                                    <input
+                                        type="checkbox"
+                                        checked={isTargetEnabled}
+                                        onChange={(event) => {
+                                            updateTargetFilter(target.key, event.target.checked);
+                                        }}
+                                    />
+                                    <span>{t(target.labelPath, language)}</span>
+                                </label>
 
                                         {hasTargetGroups && (
                                             <div
-                                                className={`calendar-filter-subgroups ${
-                                                    isTargetEnabled
-                                                        ? ""
-                                                        : "calendar-filter-subgroups-disabled"
-                                                }`}
-                                            >
-                                                {Object.entries(targetGroups).map(([groupKey, group]) => (
-                                                    <section
-                                                        key={`${target.key}-${groupKey}`}
-                                                        className="calendar-filter-subgroup"
-                                                        aria-label={t(group.labelPath, language)}
+                                        className={`calendar-filter-subgroups ${
+                                            isTargetEnabled
+                                                ? ""
+                                                : "calendar-filter-subgroups-disabled"
+                                        }`}
+                                    >
+                                        {orderedTargetGroups.map(([groupKey, group]) => (
+                                            <details
+                                                key={`${target.key}-${groupKey}`}
+                                                className="calendar-filter-subgroup"
                                                     >
-                                                        <p className="calendar-filter-subgroup-title">
-                                                            {t(group.labelPath, language)}
-                                                        </p>
+                                                        <summary className="calendar-filter-subgroup-summary">
+                                                            <span className="calendar-filter-subgroup-title">
+                                                                {t(group.labelPath, language)}
+                                                            </span>
+                                                        </summary>
                                                         <div className="calendar-filter-option-list">
                                                             {group.options.map((option) => (
                                                                 <label
                                                                     key={`${target.key}-${groupKey}-${option.value}`}
-                                                                    className="calendar-filter-checkbox"
+                                                                    className="calendar-filter-checkbox calendar-filter-checkbox-block"
                                                                 >
                                                                     <input
                                                                         type="checkbox"
@@ -207,42 +209,59 @@ function App() {
                                                                 </label>
                                                             ))}
                                                         </div>
-                                                    </section>
+                                                    </details>
                                                 ))}
                                             </div>
                                         )}
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </section>
+                            </div>
+                        );
+                    })}
+                </div>
+            ),
+        },
+    ];
+
+    return (
+        <main className="app-shell">
+            <section className="calendar-panel">
+                <div className="calendar-copy">
+                    <p className="eyebrow">{t("app.eyebrow", language)}</p>
+                    <h1>{t("app.title", language)}</h1>
+                    <p className="description">{t("app.description", language)}</p>
                 </div>
 
-                <div className="calendar-frame">
-                    <FullCalendar
-                        plugins={[dayGridPlugin]}
-                        initialView="dayGridMonth"
-                        firstDay={calendarFirstDay}
-                        locale={language}
-                        locales={[getCalendarLocale(language)]}
-                        headerToolbar={{
-                            left: "prev,next today",
-                            center: "title",
-                            right: "",
-                        }}
-                        buttonText={{
-                            today: t("calendar.buttons.today", language),
-                        }}
-                        eventClick={(info) => {
-                            if (!info.event.url) {
-                                return;
-                            }
+                <div className="calendar-workspace">
+                    <div className="calendar-frame">
+                        <FullCalendar
+                            plugins={[dayGridPlugin]}
+                            initialView="dayGridMonth"
+                            firstDay={calendarFirstDay}
+                            locale={language}
+                            locales={[getCalendarLocale(language)]}
+                            headerToolbar={{
+                                left: "prev,next today",
+                                center: "title",
+                                right: "",
+                            }}
+                            buttonText={{
+                                today: t("calendar.buttons.today", language),
+                            }}
+                            eventClick={(info) => {
+                                if (!info.event.url) {
+                                    return;
+                                }
 
-                            info.jsEvent.preventDefault();
-                            window.open(info.event.url, "_blank", "noopener,noreferrer");
-                        }}
-                        height="auto"
-                        events={visibleEvents}
+                                info.jsEvent.preventDefault();
+                                window.open(info.event.url, "_blank", "noopener,noreferrer");
+                            }}
+                            height="auto"
+                            events={visibleEvents}
+                        />
+                    </div>
+
+                    <CalendarRemote
+                        title={t("remote.title", language)}
+                        sections={remoteSections}
                     />
                 </div>
             </section>
