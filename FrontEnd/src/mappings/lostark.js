@@ -31,10 +31,22 @@ export const rewardItemShort = {
     카드: "카드",
 };
 
+/**
+ * 역할: 모험섬 이름을 짧은 표시명으로 변환한다.
+ * 파라미터 설명:
+ * - name: 원본 모험섬 이름
+ * 반환값 설명: 매핑된 짧은 이름, 없으면 원본 이름
+ */
 export function getShortIslandName(name) {
     return islandNameShort[name] ?? name;
 }
 
+/**
+ * 역할: 보상 이름을 짧은 표시명으로 변환한다.
+ * 파라미터 설명:
+ * - name: 원본 보상 이름
+ * 반환값 설명: 매핑된 짧은 이름, 없으면 원본 이름
+ */
 export function getShortRewardName(name) {
     return rewardItemShort[name] ?? name;
 }
