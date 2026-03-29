@@ -40,6 +40,13 @@ const ko = {
             islands: "섬별 표시",
         },
     },
+    displayOptions: {
+        title: "세부 내용",
+        options: {
+            text: "이름",
+            icon: "아이콘",
+        },
+    },
 };
 
 export default ko;
