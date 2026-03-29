@@ -59,12 +59,18 @@ async function main() {
         "shortName" TEXT NOT NULL,
         "rewardName" TEXT,
         "rewardShortName" TEXT,
+        "rewardIconUrl" TEXT,
+        "contentIconUrl" TEXT,
+        "contentImageUrl" TEXT,
         "startTime" TEXT NOT NULL,
         "rawData" JSONB NOT NULL,
         "collectedAt" TIMESTAMP(3) NOT NULL,
         "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
         "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
     );`);
+    await client.query('ALTER TABLE "AdventureIsland" ADD COLUMN IF NOT EXISTS "rewardIconUrl" TEXT;');
+    await client.query('ALTER TABLE "AdventureIsland" ADD COLUMN IF NOT EXISTS "contentIconUrl" TEXT;');
+    await client.query('ALTER TABLE "AdventureIsland" ADD COLUMN IF NOT EXISTS "contentImageUrl" TEXT;');
     await client.query(
         'CREATE UNIQUE INDEX IF NOT EXISTS "AdventureIsland_lostArkDate_period_contentsName_key" ON "AdventureIsland"("lostArkDate", "period", "contentsName");',
     );

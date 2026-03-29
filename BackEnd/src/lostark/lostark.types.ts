@@ -7,6 +7,7 @@ export interface LostArkEvent {
 
 export interface LostArkRewardItem {
     Name?: string;
+    Icon?: string;
     StartTimes?: string[];
 }
 
@@ -17,6 +18,9 @@ export interface LostArkRewardGroup {
 export interface LostArkGameContent {
     CategoryName: string;
     ContentsName: string;
+    ContentsIcon?: string;
+    Icon?: string;
+    Image?: string;
     StartTimes?: string[];
     RewardItems?: Array<LostArkRewardGroup | LostArkRewardItem[] | LostArkRewardItem>;
 }

@@ -15,6 +15,9 @@ export interface AdventureIslandRecordInput {
     shortName: string;
     rewardName: string | null;
     rewardShortName: string | null;
+    rewardIconUrl: string | null;
+    contentIconUrl: string | null;
+    contentImageUrl: string | null;
     startTime: string;
     rawData: LostArkGameContent;
 }
@@ -100,7 +103,7 @@ function flattenRewardItems(content: LostArkGameContent): LostArkRewardItem[] {
     });
 }
 
-function getAdventureIslandRewardName(content: LostArkGameContent, startTime: string) {
+function getAdventureIslandReward(content: LostArkGameContent, startTime: string) {
     for (const rewardItem of flattenRewardItems(content)) {
         if (!Array.isArray(rewardItem?.StartTimes) || rewardItem.StartTimes.length === 0) {
             continue;
@@ -121,10 +124,24 @@ function getAdventureIslandRewardName(content: LostArkGameContent, startTime: st
             continue;
         }
 
-        return rewardItem.Name ?? "";
+        return {
+            rewardName: rewardItem.Name ?? "",
+            rewardIconUrl: rewardItem.Icon ?? "",
+        };
     }
 
-    return "";
+    return {
+        rewardName: "",
+        rewardIconUrl: "",
+    };
+}
+
+function getGameContentIconUrl(content: LostArkGameContent) {
+    return content.ContentsIcon ?? content.Icon ?? "";
+}
+
+function getGameContentImageUrl(content: LostArkGameContent) {
+    return content.Image ?? content.ContentsIcon ?? content.Icon ?? "";
 }
 
 function isAdventureIslandContent(content: LostArkGameContent) {
@@ -163,7 +180,8 @@ export function extractAdventureIslandRecords(
                 continue;
             }
 
-            const rewardName = getAdventureIslandRewardName(content, startTime);
+            const reward = getAdventureIslandReward(content, startTime);
+            const rewardName = reward.rewardName;
             const record: AdventureIslandRecordInput = {
                 lostArkDate,
                 period,
@@ -174,6 +192,9 @@ export function extractAdventureIslandRecords(
                 rewardShortName: rewardName
                     ? ADVENTURE_ISLAND_REWARD_SHORT_NAMES[rewardName] ?? rewardName
                     : null,
+                rewardIconUrl: reward.rewardIconUrl || null,
+                contentIconUrl: getGameContentIconUrl(content) || null,
+                contentImageUrl: getGameContentImageUrl(content) || null,
                 startTime,
                 rawData: content,
             };

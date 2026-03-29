@@ -21,6 +21,9 @@ model AdventureIsland {
   shortName       String
   rewardName      String?
   rewardShortName String?
+  rewardIconUrl   String?
+  contentIconUrl  String?
+  contentImageUrl String?
   startTime       String
   rawData         Json
   collectedAt     DateTime

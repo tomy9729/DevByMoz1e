@@ -99,11 +99,16 @@ export class LostArkClient {
             "Lost Ark calendar contents",
         );
 
-        return contents.map(({ CategoryName, ContentsName, StartTimes, RewardItems }) => ({
+        return contents.map(
+            ({ CategoryName, ContentsName, ContentsIcon, Icon, Image, StartTimes, RewardItems }) => ({
             CategoryName,
             ContentsName,
+            ContentsIcon,
+            Icon,
+            Image,
             StartTimes,
             RewardItems,
-        }));
+        }),
+        );
     }
 }
