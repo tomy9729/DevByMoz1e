@@ -16,6 +16,16 @@ const ko = {
             today: "오늘",
         },
     },
+    remote: {
+        title: "캘린더 리모콘",
+        description: "달력 표시 기준을 한 곳에서 조정할 수 있습니다.",
+        sections: {
+            firstDay: {
+                title: "달력 형태",
+                description: "달력의 가장 왼쪽에 표시될 요일을 선택합니다.",
+            },
+        },
+    },
     filters: {
         title: "표시 필터",
         description: "달력에 표시할 항목만 선택해서 볼 수 있습니다.",
@@ -26,8 +36,8 @@ const ko = {
             fieldBoss: "필드보스",
         },
         adventureIsland: {
+            rewards: "보상별 표시",
             islands: "섬별 표시",
-            rewards: "주요 보상별 표시",
         },
     },
 };
