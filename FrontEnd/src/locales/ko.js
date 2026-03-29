@@ -22,7 +22,7 @@ const ko = {
         sections: {
             firstDay: {
                 title: "달력 형태",
-                description: "달력의 가장 왼쪽에 표시될 요일을 선택합니다.",
+                description: "달력의 가장 왼쪽에 표시되는 요일을 선택합니다.",
             },
         },
     },
@@ -36,15 +36,17 @@ const ko = {
             fieldBoss: "필드보스",
         },
         adventureIsland: {
-            rewards: "보상별 표시",
-            islands: "섬별 표시",
+            rewards: "보상",
+            islands: "섬",
         },
     },
     displayOptions: {
-        title: "세부 내용",
+        title: "표시 옵션",
         options: {
-            text: "이름",
+            text: "글자",
             icon: "아이콘",
+            image: "이미지",
+            period: "오전/오후",
         },
     },
 };

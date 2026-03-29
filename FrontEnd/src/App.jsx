@@ -43,6 +43,8 @@ function getDefaultCalendarContentDisplayOptions() {
             {
                 text: true,
                 icon: true,
+                image: targetKey === "adventureIsland",
+                period: targetKey === "adventureIsland",
             },
         ]),
     );
@@ -165,8 +167,20 @@ function getCalendarContentDisplayOption(displayOptions, targetKey) {
         displayOptions?.[targetKey] ?? {
             text: true,
             icon: true,
+            image: targetKey === "adventureIsland",
+            period: targetKey === "adventureIsland",
         }
     );
+}
+
+/**
+ * 역할: 모험섬 제목에서 주말 오전/오후 접두어를 제거한 표시용 제목을 반환한다.
+ * 파라미터 설명:
+ * - title: 현재 달력에 저장된 모험섬 제목 문자열
+ * 반환값 설명: 오전/오후 접두어가 제거된 모험섬 제목 문자열
+ */
+function getAdventureIslandTitleWithoutPeriod(title = "") {
+    return title.replace(/^\[(오전|오후)\]\s*/, "");
 }
 
 function App() {
@@ -309,17 +323,36 @@ function App() {
         const rewardIconUrls = getCalendarEventRewardIconUrls(
             event.extendedProps?.rewardIconUrl ?? "",
         );
+        const islandImageUrl = event.extendedProps?.contentIconUrl ?? "";
         const rewardName = event.extendedProps?.rewardName ?? "";
         const baseTitle = getCalendarEventBaseTitle(event.title);
+        const shouldShowPeriod =
+            contentType !== "adventureIsland" || displayOption.period !== false;
+        const visibleTitle =
+            contentType === "adventureIsland" && !shouldShowPeriod
+                ? getAdventureIslandTitleWithoutPeriod(baseTitle)
+                : baseTitle;
         const shouldShowText = displayOption.text !== false;
         const shouldShowIcon = displayOption.icon !== false;
+        const shouldShowImage =
+            contentType === "adventureIsland" &&
+            displayOption.image !== false &&
+            Boolean(islandImageUrl);
 
         return (
             <span className="calendar-event-inline">
                 {shouldShowText ? (
                     <span className="calendar-event-title">
-                        {contentType === "adventureIsland" ? baseTitle : event.title}
+                        {contentType === "adventureIsland" ? visibleTitle : event.title}
                     </span>
+                ) : null}
+                {shouldShowImage ? (
+                    <img
+                        className="calendar-event-island-image"
+                        src={islandImageUrl}
+                        alt={baseTitle}
+                        title={baseTitle}
+                    />
                 ) : null}
                 {shouldShowIcon && rewardIconUrls.length > 0 ? (
                     <span className="calendar-event-reward-icons">
@@ -448,6 +481,42 @@ function App() {
                                                         {t("displayOptions.options.icon", language)}
                                                     </span>
                                                 </label>
+                                                {target.key === "adventureIsland" ? (
+                                                    <label className="flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-2 text-sm text-foreground">
+                                                        <Checkbox
+                                                            checked={displayOption.image}
+                                                            disabled={!isTargetEnabled}
+                                                            onCheckedChange={(checked) => {
+                                                                updateContentDisplayOption(
+                                                                    target.key,
+                                                                    "image",
+                                                                    checked === true,
+                                                                );
+                                                            }}
+                                                        />
+                                                        <span>
+                                                            {t("displayOptions.options.image", language)}
+                                                        </span>
+                                                    </label>
+                                                ) : null}
+                                                {target.key === "adventureIsland" ? (
+                                                    <label className="flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-2 text-sm text-foreground">
+                                                        <Checkbox
+                                                            checked={displayOption.period}
+                                                            disabled={!isTargetEnabled}
+                                                            onCheckedChange={(checked) => {
+                                                                updateContentDisplayOption(
+                                                                    target.key,
+                                                                    "period",
+                                                                    checked === true,
+                                                                );
+                                                            }}
+                                                        />
+                                                        <span>
+                                                            {t("displayOptions.options.period", language)}
+                                                        </span>
+                                                    </label>
+                                                ) : null}
                                             </div>
                                         </AccordionContent>
                                     </AccordionItem>
