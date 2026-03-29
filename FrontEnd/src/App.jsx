@@ -22,6 +22,43 @@ function getStoredCalendarFirstDay() {
     return isValidOption ? parsedValue : 0;
 }
 
+function toDateKey(date) {
+    return date.toISOString().split("T")[0];
+}
+
+function addDays(date, days) {
+    const nextDate = new Date(date);
+
+    nextDate.setDate(nextDate.getDate() + days);
+
+    return nextDate;
+}
+
+function getEventDateKeys(events) {
+    const dateKeys = new Set();
+
+    events.forEach((event) => {
+        if (!event.start) {
+            return;
+        }
+
+        const startDate = new Date(`${event.start}T00:00:00`);
+        const endDate = event.end
+            ? new Date(`${event.end}T00:00:00`)
+            : addDays(startDate, 1);
+
+        for (
+            let currentDate = new Date(startDate);
+            currentDate < endDate;
+            currentDate = addDays(currentDate, 1)
+        ) {
+            dateKeys.add(toDateKey(currentDate));
+        }
+    });
+
+    return dateKeys;
+}
+
 function App() {
     const language = currentLanguage;
     const calendarFirstDayOptions = [
@@ -47,6 +84,7 @@ function App() {
 
     const filterOptions = buildCalendarFilterOptions(allEvents);
     const visibleEvents = filterCalendarEvents(allEvents, calendarFilters);
+    const eventDateKeys = getEventDateKeys(visibleEvents);
 
     useEffect(() => {
         let isMounted = true;
@@ -243,13 +281,18 @@ function App() {
                                 center: "title",
                                 right: "",
                             }}
-                            buttonText={{
-                                today: t("calendar.buttons.today", language),
-                            }}
-                            eventClick={(info) => {
-                                if (!info.event.url) {
-                                    return;
-                                }
+                        buttonText={{
+                            today: t("calendar.buttons.today", language),
+                        }}
+                        dayCellClassNames={(arg) =>
+                            eventDateKeys.has(toDateKey(arg.date))
+                                ? []
+                                : ["calendar-day-empty"]
+                        }
+                        eventClick={(info) => {
+                            if (!info.event.url) {
+                                return;
+                            }
 
                                 info.jsEvent.preventDefault();
                                 window.open(info.event.url, "_blank", "noopener,noreferrer");

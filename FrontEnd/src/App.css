@@ -261,6 +261,20 @@
   background: rgba(255, 252, 246, 0.85);
 }
 
+.fc .calendar-day-empty .fc-daygrid-day-frame {
+  min-height: 72px;
+  background: rgba(255, 252, 246, 0.55);
+}
+
+.fc .calendar-day-empty .fc-daygrid-day-events {
+  min-height: 0;
+  margin-top: 0;
+}
+
+.fc .calendar-day-empty .fc-daygrid-day-bottom {
+  padding-top: 0;
+}
+
 @media (max-width: 768px) {
   .app-shell {
     padding: 16px;
@@ -306,5 +320,9 @@
 
   .fc .fc-daygrid-day-frame {
     min-height: 84px;
+  }
+
+  .fc .calendar-day-empty .fc-daygrid-day-frame {
+    min-height: 60px;
   }
 }
