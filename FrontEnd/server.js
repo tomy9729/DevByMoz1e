@@ -11,6 +11,11 @@ const indexHtmlPath = path.join(distPath, "index.html");
 const lostArkEventsUrl = "https://developer-lostark.game.onstove.com/news/events";
 const lostArkCalendarUrl = "https://developer-lostark.game.onstove.com/gamecontents/calendar";
 
+/**
+ * 역할: 로컬 `.env.local` 파일을 읽어 process.env에 주입한다.
+ * 파라미터 설명: 없음
+ * 반환값 설명: 없음
+ */
 function loadLocalEnv() {
     const envFilePath = path.resolve(__dirname, ".env.local");
 
@@ -46,6 +51,7 @@ const app = express();
 const port = Number(process.env.PORT) || 4173;
 const lostArkApiKey = process.env.LOSTARK_API_KEY ?? "";
 
+// 뉴스 이벤트 프록시 라우트 시작
 app.get("/api/lostark/news/events", async (req, res) => {
     if (!lostArkApiKey) {
         res.status(500).json({ message: "LOSTARK_API_KEY is not configured." });
@@ -80,7 +86,9 @@ app.get("/api/lostark/news/events", async (req, res) => {
         res.status(500).json({ message: "Failed to fetch Lost Ark events." });
     }
 });
+// 뉴스 이벤트 프록시 라우트 끝
 
+// 게임 콘텐츠 일정 프록시 라우트 시작
 app.get("/api/lostark/gamecontents/calendar", async (req, res) => {
     if (!lostArkApiKey) {
         res.status(500).json({ message: "LOSTARK_API_KEY is not configured." });
@@ -117,9 +125,13 @@ app.get("/api/lostark/gamecontents/calendar", async (req, res) => {
         res.status(500).json({ message: "Failed to fetch Lost Ark calendar contents." });
     }
 });
+// 게임 콘텐츠 일정 프록시 라우트 끝
 
+// 정적 파일 서빙 시작
 app.use(express.static(distPath));
+// 정적 파일 서빙 끝
 
+// SPA fallback 라우트 시작
 app.use((req, res) => {
     if (!fs.existsSync(indexHtmlPath)) {
         res.status(404).send("Build output not found. Run npm run build first.");
@@ -128,6 +140,7 @@ app.use((req, res) => {
 
     res.sendFile(indexHtmlPath);
 });
+// SPA fallback 라우트 끝
 
 app.listen(port, () => {
     console.log(`Production server is running on port ${port}`);
