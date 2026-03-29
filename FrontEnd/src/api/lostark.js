@@ -348,13 +348,32 @@ function getAdventureIslandReward(content, startTime) {
         return {
             rewardTypeKey: rewardType.key,
             rewardName: getShortRewardName(rewardItem.Name),
+            rewardIconUrl: rewardItem.Icon ?? "",
         };
     }
 
     return {
         rewardTypeKey: "",
         rewardName: "",
+        rewardIconUrl: "",
     };
+}
+
+/**
+ * 역할: 게임 콘텐츠 응답에서 표시용 아이콘 URL을 추출한다.
+ * 파라미터 설명:
+ * - content: 로스트아크 게임 콘텐츠 원본 데이터
+ * 반환값 설명: 표시용 콘텐츠 아이콘 URL 또는 빈 문자열
+ */
+function getGameContentIconUrl(content) {
+    /*
+     * 확인한 필드 기준:
+     * - /gamecontents/calendar 응답 최상위의 ContentsIcon
+     * - 최상위 Icon
+     * - 최상위 Image
+     * 실제 조회 샘플에서는 ContentsIcon이 존재했고 Icon, Image는 비어 있었다.
+     */
+    return content.ContentsIcon ?? content.Icon ?? content.Image ?? "";
 }
 
 /**
@@ -372,12 +391,10 @@ function getGameContentEventTitle(content, displayType, startTime) {
 
     // 20260330 khs
     // 제목 조합 시작: 주말 모험섬은 오전/오후를 가장 앞에 붙이고, 뒤에 섬 이름과 주요 보상을 연결한다.
-    const { rewardName } = getAdventureIslandReward(content, startTime);
     const periodLabel = getAdventureIslandPeriodLabel(getAdventureIslandPeriod(startTime));
     const periodText = periodLabel ? `[${periodLabel}] ` : "";
-    const rewardText = rewardName ? ` (${rewardName})` : "";
 
-    return `${periodText}${getShortIslandName(content.ContentsName)}${rewardText}`;
+    return `${periodText}${getShortIslandName(content.ContentsName)}`;
     // 20260330 khs
     // 제목 조합 끝
 }
@@ -456,6 +473,8 @@ export function mapLostArkGameContentToCalendarEvents(content) {
                 islandName: displayType.key === "adventureIsland" ? content.ContentsName : "",
                 rewardTypeKey: adventureIslandReward.rewardTypeKey,
                 rewardName: adventureIslandReward.rewardName,
+                rewardIconUrl: adventureIslandReward.rewardIconUrl,
+                contentIconUrl: getGameContentIconUrl(content),
             },
         };
     });

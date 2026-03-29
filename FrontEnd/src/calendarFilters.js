@@ -4,6 +4,14 @@ const CALENDAR_FILTER_TARGET_DEFINITIONS = [
         labelPath: "filters.targets.event",
     },
     {
+        key: "chaosGate",
+        labelPath: "filters.targets.chaosGate",
+    },
+    {
+        key: "fieldBoss",
+        labelPath: "filters.targets.fieldBoss",
+    },
+    {
         key: "adventureIsland",
         labelPath: "filters.targets.adventureIsland",
         groups: [
@@ -20,14 +28,6 @@ const CALENDAR_FILTER_TARGET_DEFINITIONS = [
                 optionLabelFromEvent: (event) => getAdventureIslandFilterValues(event).rewardName,
             },
         ],
-    },
-    {
-        key: "chaosGate",
-        labelPath: "filters.targets.chaosGate",
-    },
-    {
-        key: "fieldBoss",
-        labelPath: "filters.targets.fieldBoss",
     },
 ];
 

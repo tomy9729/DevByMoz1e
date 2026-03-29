@@ -1,8 +1,8 @@
 const CALENDAR_EVENT_COLORS = {
     event: {
-        backgroundColor: "#d97f32",
-        borderColor: "#b96521",
-        textColor: "#fff8f0",
+        backgroundColor: "#5b7c99",
+        borderColor: "#446178",
+        textColor: "#f6fbff",
     },
     chaosGate: {
         backgroundColor: "#7b3fe4",
@@ -32,14 +32,14 @@ const CALENDAR_EVENT_COLORS = {
                 textColor: "#f8fbff",
             },
             legendCardPackIv: {
-                backgroundColor: "#7a4bc2",
-                borderColor: "#5b3698",
-                textColor: "#f8f1ff",
+                backgroundColor: "#c84f7a",
+                borderColor: "#a3385f",
+                textColor: "#fff4f8",
             },
             oceanCoinChest: {
-                backgroundColor: "#2d7dd2",
-                borderColor: "#1f5d9f",
-                textColor: "#f2f8ff",
+                backgroundColor: "#d97f32",
+                borderColor: "#b96521",
+                textColor: "#fff8f0",
             },
         },
     },
