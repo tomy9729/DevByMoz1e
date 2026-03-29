@@ -1,21 +1,29 @@
+import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+
 function CalendarRemote({ title, sections }) {
     return (
-        <aside className="calendar-remote" aria-label={title}>
-            <div className="calendar-remote-copy">
-                <p className="calendar-remote-eyebrow">{title}</p>
-            </div>
+        <Card asChild className="sticky top-6">
+            <aside aria-label={title}>
+                <CardHeader className="pb-4">
+                    <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                        {title}
+                    </p>
+                </CardHeader>
 
-            <div className="calendar-remote-sections">
-                {sections.map((section) => (
-                    <section key={section.key} className="calendar-remote-section">
-                        <div className="calendar-remote-section-copy">
-                            <h3>{section.title}</h3>
-                        </div>
-                        <div className="calendar-remote-section-body">{section.content}</div>
-                    </section>
-                ))}
-            </div>
-        </aside>
+                <CardContent className="space-y-4">
+                    {sections.map((section) => (
+                        <Card key={section.key}>
+                            <CardHeader className="pb-4">
+                                <CardTitle>{section.title}</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                {section.content}
+                            </CardContent>
+                        </Card>
+                    ))}
+                </CardContent>
+            </aside>
+        </Card>
     );
 }
 

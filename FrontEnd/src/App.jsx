@@ -1,17 +1,62 @@
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+    closestCenter,
+    DndContext,
+    KeyboardSensor,
+    MouseSensor,
+    TouchSensor,
+    useSensor,
+    useSensors,
+} from "@dnd-kit/core";
+import {
+    arrayMove,
+    SortableContext,
+    sortableKeyboardCoordinates,
+    useSortable,
+    verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
+import { GripVertical } from "lucide-react";
 import { fetchLostArkCalendarEvents } from "./api/lostark";
 import {
     buildCalendarFilterOptions,
     filterCalendarEvents,
     mergeCalendarFilterState,
 } from "./calendarFilters";
+import {
+    DEFAULT_CALENDAR_DISPLAY_ORDER,
+    getCalendarDisplayOrderMap,
+    normalizeCalendarDisplayOrder,
+    sortCalendarTargets,
+} from "./calendarDisplayOrder";
 import CalendarRemote from "./components/CalendarRemote";
+import {
+    Accordion,
+    AccordionContent,
+    AccordionItem,
+    AccordionTrigger,
+} from "./components/ui/accordion";
+import {
+    ChaosGateIcon,
+    FieldBossIcon,
+} from "./components/LostArkContentIcons";
+import { Button } from "./components/ui/button";
+import { Checkbox } from "./components/ui/checkbox";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "./components/ui/select";
 import { currentLanguage, getCalendarLocale, t } from "./i18n";
+import { cn } from "./lib/utils";
 import "./App.css";
 
 const CALENDAR_FIRST_DAY_STORAGE_KEY = "calendar-first-day";
+const CALENDAR_DISPLAY_ORDER_STORAGE_KEY = "calendar-display-order";
 const CALENDAR_FIRST_DAY_OPTION_VALUES = [0, 1, 3];
 
 function getStoredCalendarFirstDay() {
@@ -20,6 +65,27 @@ function getStoredCalendarFirstDay() {
     const isValidOption = CALENDAR_FIRST_DAY_OPTION_VALUES.includes(parsedValue);
 
     return isValidOption ? parsedValue : 0;
+}
+
+/**
+ * 역할: 저장된 표시 순서를 읽고 기본 순서와 합쳐서 반환한다.
+ * 파라미터 설명: 없음
+ * 반환값 설명: 리모콘과 달력에서 공통으로 사용하는 표시 순서 배열
+ */
+function getStoredCalendarDisplayOrder() {
+    const storedValue = window.localStorage.getItem(CALENDAR_DISPLAY_ORDER_STORAGE_KEY);
+
+    if (!storedValue) {
+        return DEFAULT_CALENDAR_DISPLAY_ORDER;
+    }
+
+    try {
+        const parsedValue = JSON.parse(storedValue);
+
+        return normalizeCalendarDisplayOrder(parsedValue, DEFAULT_CALENDAR_DISPLAY_ORDER);
+    } catch {
+        return DEFAULT_CALENDAR_DISPLAY_ORDER;
+    }
 }
 
 function toDateKey(date) {
@@ -59,6 +125,182 @@ function getEventDateKeys(events) {
     return dateKeys;
 }
 
+/**
+ * 역할: 이벤트 제목에서 보상 괄호 텍스트를 제거한 기본 제목을 반환한다.
+ * 파라미터 설명:
+ * - title: FullCalendar 이벤트 제목 문자열
+ * 반환값 설명: 보상 괄호가 제거된 제목 문자열
+ */
+function getCalendarEventBaseTitle(title = "") {
+    return title.replace(/\s+\([^)]+\)$/, "");
+}
+
+/**
+ * 역할: 보상 아이콘 URL 값을 배열 형태로 정규화한다.
+ * 파라미터 설명:
+ * - rewardIconUrl: 문자열 또는 배열 형태의 보상 아이콘 URL
+ * 반환값 설명: 비어 있지 않은 보상 아이콘 URL 배열
+ */
+function getCalendarEventRewardIconUrls(rewardIconUrl) {
+    if (Array.isArray(rewardIconUrl)) {
+        return rewardIconUrl.filter(Boolean);
+    }
+
+    return rewardIconUrl ? [rewardIconUrl] : [];
+}
+
+/**
+ * 역할: 콘텐츠 타입에 맞는 자체 제작 아이콘 컴포넌트를 반환한다.
+ * 파라미터 설명:
+ * - contentType: 현재 이벤트의 콘텐츠 타입 문자열
+ * 반환값 설명: 콘텐츠 타입에 맞는 아이콘 컴포넌트 또는 null
+ */
+function getCalendarContentIconComponent(contentType = "") {
+    if (contentType === "chaosGate") {
+        return ChaosGateIcon;
+    }
+
+    if (contentType === "fieldBoss") {
+        return FieldBossIcon;
+    }
+
+    return null;
+}
+
+/**
+ * 역할: 이벤트가 하루 일정인지 판별한다.
+ * 파라미터 설명:
+ * - event: FullCalendar 이벤트 객체
+ * 반환값 설명: 하루 일정이면 true, 아니면 false
+ */
+function isSingleDayCalendarEvent(event) {
+    if (!event.start) {
+        return false;
+    }
+
+    if (!event.end) {
+        return true;
+    }
+
+    const millisecondsPerDay = 24 * 60 * 60 * 1000;
+
+    return event.end.getTime() - event.start.getTime() <= millisecondsPerDay;
+}
+
+/**
+ * 역할: 리모콘 표시 항목 한 줄을 dnd-kit 정렬 대상 컴포넌트로 렌더링한다.
+ * 파라미터 설명:
+ * - target: 현재 표시 항목 정보 객체
+ * - isTargetEnabled: 현재 표시 항목 활성화 여부
+ * - hasTargetGroups: 하위 그룹 존재 여부
+ * - groupsContent: 하위 그룹 렌더링 결과 JSX
+ * - label: 표시 항목 라벨 문자열
+ * - onTargetCheckedChange: 상위 표시 체크박스 변경 핸들러
+ * 반환값 설명: dnd-kit 정렬이 연결된 표시 항목 JSX
+ */
+function SortableDisplayTarget({
+    target,
+    isTargetEnabled,
+    hasTargetGroups,
+    groupsContent,
+    label,
+    onTargetCheckedChange,
+}) {
+    const [dragSize, setDragSize] = useState(null);
+    const itemRef = useRef(null);
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        setActivatorNodeRef,
+        transform,
+        transition,
+        isDragging,
+        isOver,
+    } = useSortable({
+        id: target.key,
+        transition: {
+            duration: 220,
+            easing: "cubic-bezier(0.22, 1, 0.36, 1)",
+        },
+    });
+
+    useLayoutEffect(() => {
+        if (!isDragging || !itemRef.current) {
+            return;
+        }
+
+        const { offsetWidth, offsetHeight } = itemRef.current;
+
+        setDragSize({
+            width: offsetWidth,
+            height: offsetHeight,
+        });
+    }, [isDragging]);
+
+    /**
+     * 역할: dnd-kit 정렬 ref와 로컬 측정 ref를 같은 DOM 요소에 연결한다.
+     * 파라미터 설명:
+     * - element: 현재 표시 항목 루트 DOM 요소
+     * 반환값 설명: 없음
+     */
+    function handleItemRef(element) {
+        itemRef.current = element;
+        setNodeRef(element);
+    }
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition:
+            transition ?? "transform 220ms cubic-bezier(0.22, 1, 0.36, 1)",
+        width: isDragging && dragSize ? `${dragSize.width}px` : undefined,
+        minWidth: isDragging && dragSize ? `${dragSize.width}px` : undefined,
+        maxWidth: isDragging && dragSize ? `${dragSize.width}px` : undefined,
+        height: isDragging && dragSize ? `${dragSize.height}px` : undefined,
+    };
+
+    return (
+        <div
+            ref={handleItemRef}
+            style={style}
+            className={cn(
+                "space-y-3 border-t pt-4 first:border-t-0 first:pt-0 transition-[opacity,transform,margin] duration-150",
+                isDragging ? "z-10" : "",
+                isOver
+                    ? "rounded-md bg-accent/60 pl-2 shadow-[inset_3px_0_0_hsl(var(--primary))]"
+                    : "",
+            )}
+        >
+            <div className="flex items-center justify-between gap-3">
+                <label className="flex flex-1 cursor-pointer items-center gap-2 rounded-md px-2 py-2 text-sm text-foreground">
+                    <Checkbox
+                        checked={isTargetEnabled}
+                        onCheckedChange={(checked) => {
+                            onTargetCheckedChange(checked === true);
+                        }}
+                    />
+                    <span>{label}</span>
+                </label>
+                <Button
+                    ref={setActivatorNodeRef}
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="cursor-grab active:cursor-grabbing"
+                    aria-label={`${label} 순서 이동`}
+                    title={`${label} 순서 이동`}
+                    {...attributes}
+                    {...listeners}
+                >
+                    <GripVertical aria-hidden="true" className="h-4 w-4" />
+                </Button>
+            </div>
+
+            {hasTargetGroups ? groupsContent : null}
+        </div>
+    );
+}
+
 function App() {
     const language = currentLanguage;
     const calendarFirstDayOptions = [
@@ -77,14 +319,35 @@ function App() {
     ];
     const [allEvents, setAllEvents] = useState([]);
     const [calendarFirstDay, setCalendarFirstDay] = useState(() => getStoredCalendarFirstDay());
+    const [calendarDisplayOrder, setCalendarDisplayOrder] = useState(() =>
+        getStoredCalendarDisplayOrder(),
+    );
     const [calendarFilters, setCalendarFilters] = useState({
         targets: {},
         groups: {},
     });
+    const sensors = useSensors(
+        useSensor(MouseSensor, {
+            activationConstraint: {
+                distance: 6,
+            },
+        }),
+        useSensor(TouchSensor, {
+            activationConstraint: {
+                delay: 120,
+                tolerance: 6,
+            },
+        }),
+        useSensor(KeyboardSensor, {
+            coordinateGetter: sortableKeyboardCoordinates,
+        }),
+    );
 
     const filterOptions = buildCalendarFilterOptions(allEvents);
+    const orderedFilterTargets = sortCalendarTargets(filterOptions.targets, calendarDisplayOrder);
     const visibleEvents = filterCalendarEvents(allEvents, calendarFilters);
     const eventDateKeys = getEventDateKeys(visibleEvents);
+    const calendarDisplayOrderMap = getCalendarDisplayOrderMap(calendarDisplayOrder);
 
     useEffect(() => {
         let isMounted = true;
@@ -121,6 +384,13 @@ function App() {
         );
     }, [calendarFirstDay]);
 
+    useEffect(() => {
+        window.localStorage.setItem(
+            CALENDAR_DISPLAY_ORDER_STORAGE_KEY,
+            JSON.stringify(calendarDisplayOrder),
+        );
+    }, [calendarDisplayOrder]);
+
     function updateTargetFilter(targetKey, checked) {
         setCalendarFilters((previousFilters) => ({
             ...previousFilters,
@@ -147,29 +417,122 @@ function App() {
         }));
     }
 
+    /**
+     * 역할: dnd-kit 드래그 종료 시 현재 순서를 삽입 이동 결과로 반영한다.
+     * 파라미터 설명:
+     * - event: dnd-kit 드래그 종료 이벤트 객체
+     * 반환값 설명: 없음
+     */
+    function handleDisplayTargetDragEnd(event) {
+        const activeTargetKey = String(event.active.id);
+        const overTargetKey = event.over?.id ? String(event.over.id) : "";
+
+        if (!overTargetKey || activeTargetKey === overTargetKey) {
+            return;
+        }
+
+        setCalendarDisplayOrder((previousOrder) => {
+            const normalizedOrder = normalizeCalendarDisplayOrder(
+                previousOrder,
+                DEFAULT_CALENDAR_DISPLAY_ORDER,
+            );
+            const activeIndex = normalizedOrder.indexOf(activeTargetKey);
+            const overIndex = normalizedOrder.indexOf(overTargetKey);
+
+            if (activeIndex === -1 || overIndex === -1) {
+                return normalizedOrder;
+            }
+
+            return arrayMove(normalizedOrder, activeIndex, overIndex);
+        });
+    }
+
+    /**
+     * 역할: 하루 일정 여부에 따라 이벤트 표시 클래스를 부여한다.
+     * 파라미터 설명:
+     * - eventClassInfo: FullCalendar가 전달하는 이벤트 클래스 계산 정보 객체
+     * 반환값 설명: 하루 일정이면 overflow 제한용 클래스 배열, 아니면 빈 배열
+     */
+    function getCalendarEventClassNames(eventClassInfo) {
+        return isSingleDayCalendarEvent(eventClassInfo.event)
+            ? ["calendar-event-single-day"]
+            : [];
+    }
+
+    /**
+     * 역할: FullCalendar 이벤트를 현재 UI 규칙에 맞는 내용으로 렌더링한다.
+     * 파라미터 설명:
+     * - eventInfo: FullCalendar가 전달하는 이벤트 렌더링 정보 객체
+     * 반환값 설명: 이벤트 셀에 표시할 JSX
+     */
+    function renderCalendarEventContent(eventInfo) {
+        const { event } = eventInfo;
+        const contentType = event.extendedProps?.contentType ?? event.extendedProps?.filterTarget;
+        const ContentIconComponent = getCalendarContentIconComponent(contentType);
+        const rewardIconUrls = getCalendarEventRewardIconUrls(
+            event.extendedProps?.rewardIconUrl ??
+                "",
+        );
+        const rewardName = event.extendedProps?.rewardName ?? "";
+        const baseTitle = getCalendarEventBaseTitle(event.title);
+
+        return (
+            <span className="calendar-event-inline">
+                <span className="calendar-event-title">
+                    {contentType === "adventureIsland" ? baseTitle : event.title}
+                </span>
+                {rewardIconUrls.length > 0 ? (
+                    <span className="calendar-event-reward-icons">
+                        {rewardIconUrls.map((iconUrl) => (
+                            <img
+                                key={iconUrl}
+                                className="calendar-event-reward-icon"
+                                src={iconUrl}
+                                alt={rewardName}
+                                title={rewardName}
+                            />
+                        ))}
+                    </span>
+                ) : ContentIconComponent ? (
+                    <span className="calendar-event-reward-icons">
+                        <ContentIconComponent className="calendar-event-content-icon" />
+                    </span>
+                ) : rewardName ? (
+                    <span className="calendar-event-reward-text">{rewardName}</span>
+                ) : null}
+            </span>
+        );
+    }
+
     const remoteSections = [
         {
             key: "firstDay",
             title: t("remote.sections.firstDay.title", language),
             content: (
-                <div className="calendar-settings">
-                    <label className="calendar-settings-label" htmlFor="calendar-first-day">
+                <div className="space-y-3">
+                    <label
+                        className="text-sm font-medium leading-none"
+                        htmlFor="calendar-first-day"
+                    >
                         {t("calendar.firstDayLabel", language)}
                     </label>
-                    <select
-                        id="calendar-first-day"
-                        className="calendar-settings-select"
-                        value={calendarFirstDay}
-                        onChange={(event) => {
-                            setCalendarFirstDay(Number(event.target.value));
+                    <Select
+                        value={String(calendarFirstDay)}
+                        onValueChange={(value) => {
+                            setCalendarFirstDay(Number(value));
                         }}
                     >
-                        {calendarFirstDayOptions.map((option) => (
-                            <option key={option.value} value={option.value}>
-                                {option.label}
-                            </option>
-                        ))}
-                    </select>
+                        <SelectTrigger id="calendar-first-day">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {calendarFirstDayOptions.map((option) => (
+                                <SelectItem key={option.value} value={String(option.value)}>
+                                    {option.label}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
                 </div>
             ),
         },
@@ -177,69 +540,71 @@ function App() {
             key: "filters",
             title: t("filters.title", language),
             content: (
-                <div className="calendar-filter-groups">
-                    {filterOptions.targets.map((target) => {
-                        const targetGroups = filterOptions.groups[target.key] ?? {};
-                        const isTargetEnabled = calendarFilters.targets[target.key] ?? true;
-                        const hasTargetGroups = Object.keys(targetGroups).length > 0;
-                        const orderedTargetGroups =
-                            target.key === "adventureIsland"
-                                ? ["rewards", "islands"]
-                                      .filter((groupKey) => targetGroups[groupKey])
-                                      .map((groupKey) => [groupKey, targetGroups[groupKey]])
-                                : Object.entries(targetGroups);
-
-                        return (
-                            <div key={target.key} className="calendar-filter-group">
-                                <label className="calendar-filter-checkbox">
-                                    <input
-                                        type="checkbox"
-                                        checked={isTargetEnabled}
-                                        onChange={(event) => {
-                                            updateTargetFilter(target.key, event.target.checked);
-                                        }}
-                                    />
-                                    <span>{t(target.labelPath, language)}</span>
-                                </label>
-
-                                        {hasTargetGroups && (
-                                            <div
-                                        className={`calendar-filter-subgroups ${
-                                            isTargetEnabled
-                                                ? ""
-                                                : "calendar-filter-subgroups-disabled"
-                                        }`}
+                <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={handleDisplayTargetDragEnd}
+                >
+                    <SortableContext
+                        items={orderedFilterTargets.map((target) => target.key)}
+                        strategy={verticalListSortingStrategy}
+                    >
+                        <div className="space-y-4">
+                            {orderedFilterTargets.map((target) => {
+                                const targetGroups = filterOptions.groups[target.key] ?? {};
+                                const isTargetEnabled =
+                                    calendarFilters.targets[target.key] ?? true;
+                                const hasTargetGroups =
+                                    Object.keys(targetGroups).length > 0;
+                                const orderedTargetGroups =
+                                    target.key === "adventureIsland"
+                                        ? ["rewards", "islands"]
+                                              .filter((groupKey) => targetGroups[groupKey])
+                                              .map((groupKey) => [
+                                                  groupKey,
+                                                  targetGroups[groupKey],
+                                              ])
+                                        : Object.entries(targetGroups);
+                                const groupsContent = hasTargetGroups ? (
+                                    <div
+                                        className={cn(
+                                            "space-y-3 pl-7",
+                                            isTargetEnabled ? "" : "opacity-55",
+                                        )}
                                     >
                                         {orderedTargetGroups.map(([groupKey, group]) => (
-                                            <details
+                                            <Accordion
                                                 key={`${target.key}-${groupKey}`}
-                                                className="calendar-filter-subgroup"
-                                                    >
-                                                        <summary className="calendar-filter-subgroup-summary">
-                                                            <span className="calendar-filter-subgroup-title">
-                                                                {t(group.labelPath, language)}
-                                                            </span>
-                                                        </summary>
-                                                        <div className="calendar-filter-option-list">
+                                                type="single"
+                                                collapsible
+                                                className="rounded-lg border"
+                                            >
+                                                <AccordionItem value={`${target.key}-${groupKey}`}>
+                                                    <AccordionTrigger className="px-4 py-3 hover:no-underline">
+                                                        <span className="text-sm font-medium">
+                                                            {t(group.labelPath, language)}
+                                                        </span>
+                                                    </AccordionTrigger>
+                                                    <AccordionContent>
+                                                        <div className="space-y-2 px-4">
                                                             {group.options.map((option) => (
                                                                 <label
                                                                     key={`${target.key}-${groupKey}-${option.value}`}
-                                                                    className="calendar-filter-checkbox calendar-filter-checkbox-block"
+                                                                    className="flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-2 text-sm text-foreground"
                                                                 >
-                                                                    <input
-                                                                        type="checkbox"
+                                                                    <Checkbox
                                                                         checked={
                                                                             calendarFilters.groups?.[target.key]?.[
                                                                                 groupKey
                                                                             ]?.[option.value] ?? true
                                                                         }
                                                                         disabled={!isTargetEnabled}
-                                                                        onChange={(event) => {
+                                                                        onCheckedChange={(checked) => {
                                                                             updateGroupFilter(
                                                                                 target.key,
                                                                                 groupKey,
                                                                                 option.value,
-                                                                                event.target.checked,
+                                                                                checked === true,
                                                                             );
                                                                         }}
                                                                     />
@@ -247,29 +612,51 @@ function App() {
                                                                 </label>
                                                             ))}
                                                         </div>
-                                                    </details>
-                                                ))}
-                                            </div>
-                                        )}
-                            </div>
-                        );
-                    })}
-                </div>
+                                                    </AccordionContent>
+                                                </AccordionItem>
+                                            </Accordion>
+                                        ))}
+                                    </div>
+                                ) : null;
+
+                                return (
+                                    <SortableDisplayTarget
+                                        key={target.key}
+                                        target={target}
+                                        isTargetEnabled={isTargetEnabled}
+                                        hasTargetGroups={hasTargetGroups}
+                                        groupsContent={groupsContent}
+                                        label={t(target.labelPath, language)}
+                                        onTargetCheckedChange={(checked) => {
+                                            updateTargetFilter(target.key, checked);
+                                        }}
+                                    />
+                                );
+                            })}
+                        </div>
+                    </SortableContext>
+                </DndContext>
             ),
         },
     ];
 
     return (
-        <main className="app-shell">
-            <section className="calendar-panel">
-                <div className="calendar-copy">
-                    <p className="eyebrow">{t("app.eyebrow", language)}</p>
-                    <h1>{t("app.title", language)}</h1>
-                    <p className="description">{t("app.description", language)}</p>
+        <main className="min-h-screen bg-background px-4 py-8 md:px-8">
+            <section className="mx-auto max-w-7xl space-y-6">
+                <div className="space-y-3">
+                    <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                        {t("app.eyebrow", language)}
+                    </p>
+                    <h1 className="text-3xl font-semibold tracking-tight md:text-5xl">
+                        {t("app.title", language)}
+                    </h1>
+                    <p className="max-w-3xl text-sm leading-6 text-muted-foreground md:text-base">
+                        {t("app.description", language)}
+                    </p>
                 </div>
 
-                <div className="calendar-workspace">
-                    <div className="calendar-frame">
+                <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
+                    <div className="rounded-xl border bg-card p-3 text-card-foreground shadow-sm md:p-5">
                         <FullCalendar
                             plugins={[dayGridPlugin]}
                             initialView="dayGridMonth"
@@ -281,18 +668,37 @@ function App() {
                                 center: "title",
                                 right: "",
                             }}
-                        buttonText={{
-                            today: t("calendar.buttons.today", language),
-                        }}
-                        dayCellClassNames={(arg) =>
-                            eventDateKeys.has(toDateKey(arg.date))
-                                ? []
-                                : ["calendar-day-empty"]
-                        }
-                        eventClick={(info) => {
-                            if (!info.event.url) {
-                                return;
+                            eventOrder={(left, right) => {
+                                const leftTargetKey =
+                                    left.extendedProps?.filterTarget ??
+                                    left.extendedProps?.contentType;
+                                const rightTargetKey =
+                                    right.extendedProps?.filterTarget ??
+                                    right.extendedProps?.contentType;
+                                const displayOrderDifference =
+                                    (calendarDisplayOrderMap[leftTargetKey] ?? 99) -
+                                    (calendarDisplayOrderMap[rightTargetKey] ?? 99);
+
+                                if (displayOrderDifference !== 0) {
+                                    return displayOrderDifference;
+                                }
+
+                                return left.title.localeCompare(right.title, "ko");
+                            }}
+                            buttonText={{
+                                today: t("calendar.buttons.today", language),
+                            }}
+                            dayCellClassNames={(arg) =>
+                                eventDateKeys.has(toDateKey(arg.date))
+                                    ? []
+                                    : ["calendar-day-empty"]
                             }
+                            eventClassNames={getCalendarEventClassNames}
+                            eventContent={renderCalendarEventContent}
+                            eventClick={(info) => {
+                                if (!info.event.url) {
+                                    return;
+                                }
 
                                 info.jsEvent.preventDefault();
                                 window.open(info.event.url, "_blank", "noopener,noreferrer");

@@ -27,7 +27,7 @@ const ko = {
         },
     },
     filters: {
-        title: "표시 필터",
+        title: "표시",
         description: "달력에 표시할 항목만 선택해서 볼 수 있습니다.",
         targets: {
             event: "이벤트",
