@@ -1,5 +1,6 @@
 export const DEFAULT_CALENDAR_DISPLAY_ORDER = [
     "event",
+    "notice",
     "chaosGate",
     "fieldBoss",
     "adventureIsland",

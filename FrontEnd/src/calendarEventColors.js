@@ -4,6 +4,11 @@ const CALENDAR_EVENT_COLORS = {
         borderColor: "#446178",
         textColor: "#f6fbff",
     },
+    notice: {
+        backgroundColor: "#2f6f7e",
+        borderColor: "#225360",
+        textColor: "#f2fcff",
+    },
     chaosGate: {
         backgroundColor: "#7b3fe4",
         borderColor: "#5e2db8",

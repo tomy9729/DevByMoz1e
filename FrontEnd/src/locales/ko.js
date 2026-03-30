@@ -31,13 +31,18 @@ const ko = {
         description: "달력에 표시할 항목만 선택해서 볼 수 있습니다.",
         targets: {
             event: "이벤트",
+            notice: "공지",
             adventureIsland: "모험섬",
             chaosGate: "카오스게이트",
             fieldBoss: "필드보스",
         },
+        notice: {
+            categories: "카테고리",
+        },
         adventureIsland: {
             rewards: "보상",
             islands: "섬",
+            selectAll: "전체 선택/해제",
         },
     },
     displayOptions: {

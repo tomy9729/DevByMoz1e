@@ -4,6 +4,24 @@ const CALENDAR_FILTER_TARGET_DEFINITIONS = [
         labelPath: "filters.targets.event",
     },
     {
+        key: "notice",
+        labelPath: "filters.targets.notice",
+        groups: [
+            {
+                key: "categories",
+                labelPath: "filters.notice.categories",
+                staticOptions: [
+                    { value: "공지", label: "공지" },
+                    { value: "이벤트", label: "이벤트" },
+                    { value: "상점", label: "상점" },
+                    { value: "점검", label: "점검" },
+                ],
+                optionValueFromEvent: (event) => getNoticeCategoryFilterValue(event),
+                optionLabelFromEvent: (event) => getNoticeCategoryFilterValue(event),
+            },
+        ],
+    },
+    {
         key: "chaosGate",
         labelPath: "filters.targets.chaosGate",
     },
@@ -65,6 +83,10 @@ function getAdventureIslandFilterValues(event) {
     };
 }
 
+function getNoticeCategoryFilterValue(event) {
+    return event.extendedProps?.noticeCategory ?? event.extendedProps?.noticeType ?? "";
+}
+
 export function buildCalendarFilterOptions(events) {
     const groupOptions = new Map();
 
@@ -77,15 +99,20 @@ export function buildCalendarFilterOptions(events) {
         }
 
         targetDefinition.groups?.forEach((groupDefinition) => {
+            const groupKey = `${targetKey}:${groupDefinition.key}`;
+            const optionsForGroup = groupOptions.get(groupKey) ?? new Map();
+
+            groupDefinition.staticOptions?.forEach((option) => {
+                optionsForGroup.set(option.value, option);
+            });
+
             const optionValue = groupDefinition.optionValueFromEvent(event);
             const optionLabel = groupDefinition.optionLabelFromEvent(event);
 
             if (!optionValue || !optionLabel) {
+                groupOptions.set(groupKey, optionsForGroup);
                 return;
             }
-
-            const groupKey = `${targetKey}:${groupDefinition.key}`;
-            const optionsForGroup = groupOptions.get(groupKey) ?? new Map();
 
             optionsForGroup.set(optionValue, {
                 value: optionValue,
@@ -165,6 +192,17 @@ export function filterCalendarEvents(events, filterState) {
         }
 
         if (targetKey !== "adventureIsland") {
+            if (targetKey === "notice") {
+                const noticeCategory = getNoticeCategoryFilterValue(event);
+
+                if (
+                    noticeCategory &&
+                    filterState.groups?.notice?.categories?.[noticeCategory] === false
+                ) {
+                    return false;
+                }
+            }
+
             return true;
         }
 

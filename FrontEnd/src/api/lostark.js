@@ -2,6 +2,7 @@ import { getShortIslandName, getShortRewardName } from "../mappings/lostark.js";
 import { getCalendarEventColors } from "../calendarEventColors.js";
 
 const LOSTARK_EVENTS_ENDPOINT = "/api/lostark/news/events";
+const LOSTARK_NOTICES_ENDPOINT = "/api/lostark/news/notices";
 const LOSTARK_GAME_CONTENTS_ENDPOINT = "/api/lostark/gamecontents/calendar";
 const DISPLAYABLE_GAME_CONTENT_TYPES = [
     {
@@ -179,6 +180,25 @@ function addOneDay(dateText) {
 }
 
 /**
+ * 역할: 공지 제목에 포함될 수 있는 날짜 표현을 제거해 표시용 제목으로 정리한다.
+ * 파라미터 설명:
+ * - title: notice 원본 제목 문자열
+ * 반환값 설명: 날짜 표현이 제거된 notice 제목 문자열
+ */
+function getNoticeDisplayTitle(title = "") {
+    return title
+        .replace(
+            /^\s*(?:(\[\s*)?\d{4}[./-]\d{1,2}[./-]\d{1,2}(\s*\])?|(\[\s*)?\d{1,2}\s*월\s*\d{1,2}\s*일(?:\s*\([^)]+\))?(\s*\])?)\s*/u,
+            "",
+        )
+        .replace(
+            /\s*(?:(\[\s*)?\d{4}[./-]\d{1,2}[./-]\d{1,2}(\s*\])?|(\[\s*)?\d{1,2}\s*월\s*\d{1,2}\s*일(?:\s*\([^)]+\))?(\s*\])?)\s*$/u,
+            "",
+        )
+        .trim();
+}
+
+/**
  * 역할: 진행 중인 공지 이벤트인지 날짜 기준으로 판별한다.
  * 파라미터 설명:
  * - startDate: 이벤트 시작일 문자열
@@ -202,6 +222,30 @@ function isOngoingEvent(startDate, endDate, now = new Date()) {
  */
 function normalizeContentText(value = "") {
     return value.replace(/\s+/g, "").toLowerCase();
+}
+
+/**
+ * 역할: notice Type 값을 달력 필터에서 사용할 고정 카테고리명으로 정리한다.
+ * 파라미터 설명:
+ * - noticeType: notice API가 반환한 Type 문자열
+ * 반환값 설명: 공지, 이벤트, 상점, 점검 중 하나의 카테고리 문자열
+ */
+function normalizeNoticeCategory(noticeType = "") {
+    const normalizedType = normalizeContentText(noticeType);
+
+    if (normalizedType.includes("이벤트")) {
+        return "이벤트";
+    }
+
+    if (normalizedType.includes("상점")) {
+        return "상점";
+    }
+
+    if (normalizedType.includes("점검")) {
+        return "점검";
+    }
+
+    return "공지";
 }
 
 /**
@@ -433,6 +477,38 @@ export function mapLostArkEventToCalendarEvent(event) {
  * - content: 로스트아크 게임 콘텐츠 원본 데이터
  * 반환값 설명: FullCalendar 이벤트 배열
  */
+/**
+ * 역할: notice API 응답을 달력 이벤트 형식으로 변환한다.
+ * 파라미터 설명:
+ * - notice: 백엔드 notice API가 반환한 공지 데이터
+ * 반환값 설명: FullCalendar에서 사용할 notice 이벤트 객체
+ */
+export function mapLostArkNoticeToCalendarEvent(notice) {
+    const noticeDate = toDateOnly(notice.Date);
+    const noticeType = notice.Type?.trim() ?? "";
+    const noticeCategory = normalizeNoticeCategory(noticeType);
+    const eventColors = getCalendarEventColors("notice");
+    const displayTitle = getNoticeDisplayTitle(notice.Title);
+    const title = noticeType ? `[${noticeType}] ${displayTitle}` : displayTitle;
+
+    return {
+        id: `notice-${notice.Date}-${notice.Link}`,
+        title,
+        start: noticeDate,
+        allDay: true,
+        url: notice.Link,
+        ...eventColors,
+        extendedProps: {
+            filterTarget: "notice",
+            noticeType,
+            noticeCategory,
+            noticeDate: notice.Date,
+            link: notice.Link,
+            rawTitle: notice.Title,
+        },
+    };
+}
+
 export function mapLostArkGameContentToCalendarEvents(content) {
     const displayType = getDisplayableGameContentType(content);
 
@@ -556,6 +632,39 @@ async function fetchLostArkEvents() {
  * 파라미터 설명: 없음
  * 반환값 설명: 게임 콘텐츠 원본 배열 Promise
  */
+/**
+ * 역할: notice 목록을 백엔드 notice API에서 조회한다.
+ * 파라미터 설명: 없음
+ * 반환값 설명: notice 원본 배열 Promise
+ */
+async function fetchLostArkNotices() {
+    const response = await fetch(LOSTARK_NOTICES_ENDPOINT, {
+        headers: {
+            accept: "application/json",
+        },
+    });
+
+    if (!response.ok) {
+        throw new Error(`Failed to fetch Lost Ark notices: ${response.status}`);
+    }
+
+    return response.json();
+}
+
+/**
+ * 역할: notice API 실패가 기존 달력 데이터 로딩을 막지 않도록 빈 배열로 보정한다.
+ * 파라미터 설명: 없음
+ * 반환값 설명: notice 원본 배열 Promise
+ */
+async function fetchLostArkNoticesSafely() {
+    try {
+        return await fetchLostArkNotices();
+    } catch (error) {
+        console.error("Failed to fetch Lost Ark notices.", error);
+        return [];
+    }
+}
+
 async function fetchLostArkGameContents() {
     const response = await fetch(LOSTARK_GAME_CONTENTS_ENDPOINT, {
         headers: {
@@ -576,8 +685,9 @@ async function fetchLostArkGameContents() {
  * 반환값 설명: FullCalendar 이벤트 배열 Promise
  */
 export async function fetchLostArkCalendarEvents() {
-    const [events, gameContents] = await Promise.all([
+    const [events, notices, gameContents] = await Promise.all([
         fetchLostArkEvents(),
+        fetchLostArkNoticesSafely(),
         fetchLostArkGameContents(),
     ]);
 
@@ -588,10 +698,11 @@ export async function fetchLostArkCalendarEvents() {
     // 공지 이벤트 가공 끝
 
     // 게임 콘텐츠 일정 가공 시작
+    const noticeEvents = notices.map((notice) => mapLostArkNoticeToCalendarEvent(notice));
     const contentEvents = dedupeGameContentEvents(
         gameContents.flatMap((content) => mapLostArkGameContentToCalendarEvents(content))
     );
     // 게임 콘텐츠 일정 가공 끝
 
-    return [...newsEvents, ...contentEvents];
+    return [...newsEvents, ...noticeEvents, ...contentEvents];
 }

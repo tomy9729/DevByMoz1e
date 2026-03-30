@@ -19,8 +19,10 @@ import {
     AccordionItem,
     AccordionTrigger,
 } from "./components/ui/accordion";
+import { Button } from "./components/ui/button";
 import { ChaosGateIcon, FieldBossIcon } from "./components/LostArkContentIcons";
 import { Checkbox } from "./components/ui/checkbox";
+import { Popover, PopoverContent, PopoverTrigger } from "./components/ui/popover";
 import {
     Select,
     SelectContent,
@@ -30,6 +32,7 @@ import {
 } from "./components/ui/select";
 import { currentLanguage, getCalendarLocale, t } from "./i18n";
 import { cn } from "./lib/utils";
+import { Settings2 } from "lucide-react";
 import "./App.css";
 
 const CALENDAR_FIRST_DAY_STORAGE_KEY = "calendar-first-day";
@@ -183,6 +186,35 @@ function getAdventureIslandTitleWithoutPeriod(title = "") {
     return title.replace(/^\[(오전|오후)\]\s*/, "");
 }
 
+/**
+ * 역할: 공지류 아이템 hover 시 표시할 전체 제목 툴팁 문자열을 반환한다.
+ * 파라미터 설명:
+ * - event: FullCalendar 이벤트 객체
+ * 반환값 설명: 공지류면 전체 제목 문자열, 아니면 undefined
+ */
+function getCalendarEventTooltipTitle(event) {
+    const contentType = event.extendedProps?.contentType ?? event.extendedProps?.filterTarget;
+
+    return contentType === "notice" ? event.title : undefined;
+}
+
+/**
+ * 역할: 클릭되거나 포커스된 달력 이벤트 요소의 selected 상태가 남지 않도록 포커스를 해제한다.
+ * 파라미터 설명:
+ * - target: 클릭 이벤트에서 전달된 DOM 대상
+ * 반환값 설명: 없음
+ */
+function clearCalendarEventSelection(target) {
+    if (target instanceof HTMLElement) {
+        target.blur();
+        target.closest(".fc-daygrid-event")?.blur();
+    }
+
+    if (document.activeElement instanceof HTMLElement) {
+        document.activeElement.blur();
+    }
+}
+
 function App() {
     const language = currentLanguage;
     const calendarFirstDayOptions = [
@@ -252,6 +284,25 @@ function App() {
         window.localStorage.setItem(CALENDAR_FIRST_DAY_STORAGE_KEY, String(calendarFirstDay));
     }, [calendarFirstDay]);
 
+    useEffect(() => {
+        /**
+         * 역할: 외부 링크 이동 후 페이지로 복귀했을 때 남아 있을 수 있는 달력 이벤트 포커스를 정리한다.
+         * 파라미터 설명: 없음
+         * 반환값 설명: 없음
+         */
+        function handleWindowRestore() {
+            clearCalendarEventSelection(document.activeElement);
+        }
+
+        window.addEventListener("pageshow", handleWindowRestore);
+        window.addEventListener("focus", handleWindowRestore);
+
+        return () => {
+            window.removeEventListener("pageshow", handleWindowRestore);
+            window.removeEventListener("focus", handleWindowRestore);
+        };
+    }, []);
+
     function updateTargetFilter(targetKey, checked) {
         setCalendarFilters((previousFilters) => ({
             ...previousFilters,
@@ -273,6 +324,31 @@ function App() {
                         ...previousFilters.groups[targetKey]?.[groupKey],
                         [value]: checked,
                     },
+                },
+            },
+        }));
+    }
+
+    /**
+     * 역할: 특정 그룹의 모든 체크박스 상태를 한 번에 선택 또는 해제한다.
+     * 파라미터 설명:
+     * - targetKey: 일괄 변경할 대상 키
+     * - groupKey: 일괄 변경할 그룹 키
+     * - checked: 전체 선택 또는 전체 해제 여부
+     * 반환값 설명: 없음
+     */
+    function updateAllGroupFilters(targetKey, groupKey, checked) {
+        const groupOptions = filterOptions.groups?.[targetKey]?.[groupKey]?.options ?? [];
+
+        setCalendarFilters((previousFilters) => ({
+            ...previousFilters,
+            groups: {
+                ...previousFilters.groups,
+                [targetKey]: {
+                    ...previousFilters.groups[targetKey],
+                    [groupKey]: Object.fromEntries(
+                        groupOptions.map((option) => [option.value, checked]),
+                    ),
                 },
             },
         }));
@@ -326,6 +402,7 @@ function App() {
         const islandImageUrl = event.extendedProps?.contentIconUrl ?? "";
         const rewardName = event.extendedProps?.rewardName ?? "";
         const baseTitle = getCalendarEventBaseTitle(event.title);
+        const tooltipTitle = getCalendarEventTooltipTitle(event);
         const shouldShowPeriod =
             contentType !== "adventureIsland" || displayOption.period !== false;
         const visibleTitle =
@@ -342,7 +419,7 @@ function App() {
         return (
             <span className="calendar-event-inline">
                 {shouldShowText ? (
-                    <span className="calendar-event-title">
+                    <span className="calendar-event-title" title={tooltipTitle}>
                         {contentType === "adventureIsland" ? visibleTitle : event.title}
                     </span>
                 ) : null}
@@ -423,107 +500,138 @@ function App() {
                         const hasDisplayOptions = CALENDAR_CONTENT_DISPLAY_TARGETS.includes(
                             target.key,
                         );
+                        const hasNoticeCategorySettings =
+                            target.key === "notice" && Boolean(targetGroups.categories);
                         const orderedTargetGroups =
                             target.key === "adventureIsland"
                                 ? ["rewards", "islands"]
                                       .filter((groupKey) => targetGroups[groupKey])
                                       .map((groupKey) => [groupKey, targetGroups[groupKey]])
                                 : Object.entries(targetGroups);
-                        const displayOptionsContent = hasDisplayOptions ? (
-                            <div
-                                className={cn(
-                                    "space-y-3 pl-7",
-                                    isTargetEnabled ? "" : "opacity-55",
-                                )}
-                            >
-                                <Accordion
-                                    type="single"
-                                    collapsible
-                                    className="rounded-lg border"
-                                >
-                                    <AccordionItem value={`${target.key}-display-options`}>
-                                        <AccordionTrigger className="px-4 py-3 hover:no-underline">
-                                            <span className="text-sm font-medium">
-                                                {t("displayOptions.title", language)}
-                                            </span>
-                                        </AccordionTrigger>
-                                        <AccordionContent>
-                                            <div className="space-y-2 px-4">
+                        const settingsContent =
+                            hasDisplayOptions || hasNoticeCategorySettings ? (
+                            <Popover>
+                                <PopoverTrigger asChild>
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        disabled={!isTargetEnabled}
+                                        aria-label={`${t(target.labelPath, language)} ${t("displayOptions.title", language)}`}
+                                    >
+                                        <Settings2 className="h-4 w-4" />
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="space-y-3">
+                                    <p className="text-sm font-medium">
+                                        {target.key === "notice"
+                                            ? `${t(target.labelPath, language)} ${t("filters.notice.categories", language)}`
+                                            : `${t(target.labelPath, language)} ${t("displayOptions.title", language)}`}
+                                    </p>
+                                    {target.key === "notice" ? (
+                                        <div className="space-y-2">
+                                            {targetGroups.categories.options.map((option) => (
+                                                <label
+                                                    key={`notice-category-${option.value}`}
+                                                    className="flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-2 text-sm text-foreground"
+                                                >
+                                                    <Checkbox
+                                                        checked={
+                                                            calendarFilters.groups?.notice?.categories?.[
+                                                                option.value
+                                                            ] ?? true
+                                                        }
+                                                        disabled={!isTargetEnabled}
+                                                        onCheckedChange={(checked) => {
+                                                            updateGroupFilter(
+                                                                "notice",
+                                                                "categories",
+                                                                option.value,
+                                                                checked === true,
+                                                            );
+                                                        }}
+                                                    />
+                                                    <span>{option.label}</span>
+                                                </label>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-2">
+                                            <label className="flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-2 text-sm text-foreground">
+                                                <Checkbox
+                                                    checked={displayOption.text}
+                                                    disabled={!isTargetEnabled}
+                                                    onCheckedChange={(checked) => {
+                                                        updateContentDisplayOption(
+                                                            target.key,
+                                                            "text",
+                                                            checked === true,
+                                                        );
+                                                    }}
+                                                />
+                                                <span>
+                                                    {t("displayOptions.options.text", language)}
+                                                </span>
+                                            </label>
+                                            <label className="flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-2 text-sm text-foreground">
+                                                <Checkbox
+                                                    checked={displayOption.icon}
+                                                    disabled={!isTargetEnabled}
+                                                    onCheckedChange={(checked) => {
+                                                        updateContentDisplayOption(
+                                                            target.key,
+                                                            "icon",
+                                                            checked === true,
+                                                        );
+                                                    }}
+                                                />
+                                                <span>
+                                                    {t("displayOptions.options.icon", language)}
+                                                </span>
+                                            </label>
+                                            {target.key === "adventureIsland" ? (
                                                 <label className="flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-2 text-sm text-foreground">
                                                     <Checkbox
-                                                        checked={displayOption.text}
+                                                        checked={displayOption.image}
                                                         disabled={!isTargetEnabled}
                                                         onCheckedChange={(checked) => {
                                                             updateContentDisplayOption(
                                                                 target.key,
-                                                                "text",
+                                                                "image",
                                                                 checked === true,
                                                             );
                                                         }}
                                                     />
                                                     <span>
-                                                        {t("displayOptions.options.text", language)}
+                                                        {t("displayOptions.options.image", language)}
                                                     </span>
                                                 </label>
+                                            ) : null}
+                                            {target.key === "adventureIsland" ? (
                                                 <label className="flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-2 text-sm text-foreground">
                                                     <Checkbox
-                                                        checked={displayOption.icon}
+                                                        checked={displayOption.period}
                                                         disabled={!isTargetEnabled}
                                                         onCheckedChange={(checked) => {
                                                             updateContentDisplayOption(
                                                                 target.key,
-                                                                "icon",
+                                                                "period",
                                                                 checked === true,
                                                             );
                                                         }}
                                                     />
                                                     <span>
-                                                        {t("displayOptions.options.icon", language)}
+                                                        {t("displayOptions.options.period", language)}
                                                     </span>
                                                 </label>
-                                                {target.key === "adventureIsland" ? (
-                                                    <label className="flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-2 text-sm text-foreground">
-                                                        <Checkbox
-                                                            checked={displayOption.image}
-                                                            disabled={!isTargetEnabled}
-                                                            onCheckedChange={(checked) => {
-                                                                updateContentDisplayOption(
-                                                                    target.key,
-                                                                    "image",
-                                                                    checked === true,
-                                                                );
-                                                            }}
-                                                        />
-                                                        <span>
-                                                            {t("displayOptions.options.image", language)}
-                                                        </span>
-                                                    </label>
-                                                ) : null}
-                                                {target.key === "adventureIsland" ? (
-                                                    <label className="flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-2 text-sm text-foreground">
-                                                        <Checkbox
-                                                            checked={displayOption.period}
-                                                            disabled={!isTargetEnabled}
-                                                            onCheckedChange={(checked) => {
-                                                                updateContentDisplayOption(
-                                                                    target.key,
-                                                                    "period",
-                                                                    checked === true,
-                                                                );
-                                                            }}
-                                                        />
-                                                        <span>
-                                                            {t("displayOptions.options.period", language)}
-                                                        </span>
-                                                    </label>
-                                                ) : null}
-                                            </div>
-                                        </AccordionContent>
-                                    </AccordionItem>
-                                </Accordion>
-                            </div>
+                                            ) : null}
+                                        </div>
+                                    )}
+                                </PopoverContent>
+                            </Popover>
                         ) : null;
-                        const targetFilterGroupsContent = hasTargetGroups ? (
+                        const targetFilterGroupsContent =
+                            hasTargetGroups && target.key !== "notice" ? (
                             <div
                                 className={cn(
                                     "space-y-3 pl-7",
@@ -545,6 +653,47 @@ function App() {
                                             </AccordionTrigger>
                                             <AccordionContent>
                                                 <div className="space-y-2 px-4">
+                                                    {target.key === "adventureIsland" &&
+                                                    groupKey === "islands" ? (() => {
+                                                        const islandStates = group.options.map(
+                                                            (option) =>
+                                                                calendarFilters.groups?.[
+                                                                    target.key
+                                                                ]?.[groupKey]?.[option.value] ??
+                                                                true,
+                                                        );
+                                                        const checkedCount = islandStates.filter(Boolean).length;
+                                                        const allChecked =
+                                                            group.options.length > 0 &&
+                                                            checkedCount === group.options.length;
+                                                        const someChecked =
+                                                            checkedCount > 0 &&
+                                                            checkedCount < group.options.length;
+                                                        const selectAllState = allChecked
+                                                            ? true
+                                                            : someChecked
+                                                              ? "indeterminate"
+                                                              : false;
+
+                                                        return (
+                                                            <label className="flex w-full cursor-pointer items-center gap-2 rounded-md border-b px-2 py-2 text-sm font-medium text-foreground">
+                                                                <Checkbox
+                                                                    checked={selectAllState}
+                                                                    disabled={!isTargetEnabled}
+                                                                    onCheckedChange={(checked) => {
+                                                                        updateAllGroupFilters(
+                                                                            target.key,
+                                                                            groupKey,
+                                                                            checked === true,
+                                                                        );
+                                                                    }}
+                                                                />
+                                                                <span>
+                                                                    {t("filters.adventureIsland.selectAll", language)}
+                                                                </span>
+                                                            </label>
+                                                        );
+                                                    })() : null}
                                                     {group.options.map((option) => (
                                                         <label
                                                             key={`${target.key}-${groupKey}-${option.value}`}
@@ -577,30 +726,25 @@ function App() {
                                 ))}
                             </div>
                         ) : null;
-                        const groupsContent =
-                            displayOptionsContent || targetFilterGroupsContent ? (
-                                <div className="space-y-3">
-                                    {displayOptionsContent}
-                                    {targetFilterGroupsContent}
-                                </div>
-                            ) : null;
-
                         return (
                             <div
                                 key={target.key}
                                 className="space-y-3 border-t pt-4 first:border-t-0 first:pt-0"
                             >
-                                <label className="flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-2 text-sm text-foreground">
-                                    <Checkbox
-                                        checked={isTargetEnabled}
-                                        onCheckedChange={(checked) => {
-                                            updateTargetFilter(target.key, checked === true);
-                                        }}
-                                    />
-                                    <span>{t(target.labelPath, language)}</span>
-                                </label>
+                                <div className="flex items-center gap-2">
+                                    <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-md px-2 py-2 text-sm text-foreground">
+                                        <Checkbox
+                                            checked={isTargetEnabled}
+                                            onCheckedChange={(checked) => {
+                                                updateTargetFilter(target.key, checked === true);
+                                            }}
+                                        />
+                                        <span>{t(target.labelPath, language)}</span>
+                                    </label>
+                                    {settingsContent}
+                                </div>
 
-                                {groupsContent}
+                                {targetFilterGroupsContent}
                             </div>
                         );
                     })}
@@ -668,6 +812,7 @@ function App() {
                                 }
 
                                 info.jsEvent.preventDefault();
+                                clearCalendarEventSelection(info.jsEvent.target);
                                 window.open(info.event.url, "_blank", "noopener,noreferrer");
                             }}
                             height="auto"
