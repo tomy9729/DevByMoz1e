@@ -39,6 +39,12 @@ const CALENDAR_FIRST_DAY_STORAGE_KEY = "calendar-first-day";
 const CALENDAR_FIRST_DAY_OPTION_VALUES = [0, 1, 3];
 const CALENDAR_CONTENT_DISPLAY_TARGETS = ["chaosGate", "fieldBoss", "adventureIsland"];
 
+function getDefaultCalendarEventDisplayOptions() {
+    return {
+        boundaryOnly: false,
+    };
+}
+
 function getDefaultCalendarContentDisplayOptions() {
     return Object.fromEntries(
         CALENDAR_CONTENT_DISPLAY_TARGETS.map((targetKey) => [
@@ -73,6 +79,68 @@ function addDays(date, days) {
     return nextDate;
 }
 
+/**
+ * 역할: 이벤트 표시 옵션에 따라 장기 이벤트를 시작일과 종료일 일정으로만 다시 구성한다.
+ * 파라미터 설명:
+ * - events: 필터 적용 후 FullCalendar에 전달할 이벤트 배열
+ * - eventDisplayOptions: 이벤트 표시 옵션 상태 객체
+ * 반환값 설명: 시작일/종료일 표시 규칙이 반영된 이벤트 배열
+ */
+function getVisibleCalendarEvents(events, eventDisplayOptions) {
+    if (!eventDisplayOptions.boundaryOnly) {
+        return events;
+    }
+
+    return events.flatMap((event) => {
+        const filterTarget = event.extendedProps?.filterTarget ?? event.extendedProps?.contentType;
+
+        if (filterTarget !== "event") {
+            return [event];
+        }
+
+        if (!event.start) {
+            return [event];
+        }
+
+        const startDateText = event.start;
+        const endDateText = event.end
+            ? toDateKey(addDays(new Date(`${event.end}T00:00:00`), -1))
+            : startDateText;
+
+        if (startDateText === endDateText) {
+            return [
+                {
+                    ...event,
+                    end: undefined,
+                },
+            ];
+        }
+
+        return [
+            {
+                ...event,
+                id: `${event.id}-start`,
+                start: startDateText,
+                end: undefined,
+                extendedProps: {
+                    ...event.extendedProps,
+                    eventBoundaryType: "start",
+                },
+            },
+            {
+                ...event,
+                id: `${event.id}-end`,
+                start: endDateText,
+                end: undefined,
+                extendedProps: {
+                    ...event.extendedProps,
+                    eventBoundaryType: "end",
+                },
+            },
+        ];
+    });
+}
+
 function getEventDateKeys(events) {
     const dateKeys = new Set();
 
@@ -104,6 +172,27 @@ function getEventDateKeys(events) {
  */
 function getCalendarEventBaseTitle(title = "") {
     return title.replace(/\s+\([^)]+\)$/, "");
+}
+
+/**
+ * 역할: 이벤트 경계일 표시 여부에 따라 제목 앞에 시작/끝 접두어를 붙인다.
+ * 파라미터 설명:
+ * - event: FullCalendar 이벤트 객체
+ * - baseTitle: 접두어를 붙이기 전 기본 제목 문자열
+ * 반환값 설명: 시작/끝 표시가 반영된 이벤트 제목 문자열
+ */
+function getCalendarEventDisplayTitle(event, baseTitle) {
+    const eventBoundaryType = event.extendedProps?.eventBoundaryType;
+
+    if (eventBoundaryType === "start") {
+        return `[시작] ${baseTitle}`;
+    }
+
+    if (eventBoundaryType === "end") {
+        return `[끝] ${baseTitle}`;
+    }
+
+    return baseTitle;
 }
 
 /**
@@ -195,7 +284,15 @@ function getAdventureIslandTitleWithoutPeriod(title = "") {
 function getCalendarEventTooltipTitle(event) {
     const contentType = event.extendedProps?.contentType ?? event.extendedProps?.filterTarget;
 
-    return contentType === "notice" ? event.title : undefined;
+    if (contentType === "notice") {
+        return event.title;
+    }
+
+    if (event.extendedProps?.eventBoundaryType) {
+        return event.title;
+    }
+
+    return undefined;
 }
 
 /**
@@ -237,6 +334,9 @@ function App() {
         targets: {},
         groups: {},
     });
+    const [calendarEventDisplayOptions, setCalendarEventDisplayOptions] = useState(() =>
+        getDefaultCalendarEventDisplayOptions(),
+    );
     const [calendarContentDisplayOptions, setCalendarContentDisplayOptions] = useState(() =>
         getDefaultCalendarContentDisplayOptions(),
     );
@@ -246,7 +346,10 @@ function App() {
         filterOptions.targets,
         DEFAULT_CALENDAR_DISPLAY_ORDER,
     );
-    const visibleEvents = filterCalendarEvents(allEvents, calendarFilters);
+    const visibleEvents = getVisibleCalendarEvents(
+        filterCalendarEvents(allEvents, calendarFilters),
+        calendarEventDisplayOptions,
+    );
     const eventDateKeys = getEventDateKeys(visibleEvents);
     const calendarDisplayOrderMap = getCalendarDisplayOrderMap(
         DEFAULT_CALENDAR_DISPLAY_ORDER,
@@ -373,6 +476,20 @@ function App() {
     }
 
     /**
+     * 역할: 이벤트 기간 표시 옵션 상태를 갱신한다.
+     * 파라미터 설명:
+     * - optionKey: 변경할 이벤트 표시 옵션 키
+     * - checked: 옵션 적용 여부
+     * 반환값 설명: 없음
+     */
+    function updateEventDisplayOption(optionKey, checked) {
+        setCalendarEventDisplayOptions((previousOptions) => ({
+            ...previousOptions,
+            [optionKey]: checked,
+        }));
+    }
+
+    /**
      * 역할: 하루 일정 여부에 따라 이벤트 표시 클래스를 부여한다.
      * 파라미터 설명:
      * - eventClassInfo: FullCalendar가 전달하는 이벤트 클래스 계산 정보 객체
@@ -403,12 +520,13 @@ function App() {
         const rewardName = event.extendedProps?.rewardName ?? "";
         const baseTitle = getCalendarEventBaseTitle(event.title);
         const tooltipTitle = getCalendarEventTooltipTitle(event);
+        const eventDisplayTitle = getCalendarEventDisplayTitle(event, baseTitle);
         const shouldShowPeriod =
             contentType !== "adventureIsland" || displayOption.period !== false;
         const visibleTitle =
             contentType === "adventureIsland" && !shouldShowPeriod
-                ? getAdventureIslandTitleWithoutPeriod(baseTitle)
-                : baseTitle;
+                ? getAdventureIslandTitleWithoutPeriod(eventDisplayTitle)
+                : eventDisplayTitle;
         const shouldShowText = displayOption.text !== false;
         const shouldShowIcon = displayOption.icon !== false;
         const shouldShowImage =
@@ -497,9 +615,10 @@ function App() {
                             target.key,
                         );
                         const hasTargetGroups = Object.keys(targetGroups).length > 0;
-                        const hasDisplayOptions = CALENDAR_CONTENT_DISPLAY_TARGETS.includes(
-                            target.key,
-                        );
+                        const hasEventDisplayOptions = target.key === "event";
+                        const hasDisplayOptions =
+                            hasEventDisplayOptions ||
+                            CALENDAR_CONTENT_DISPLAY_TARGETS.includes(target.key);
                         const hasNoticeCategorySettings =
                             target.key === "notice" && Boolean(targetGroups.categories);
                         const orderedTargetGroups =
@@ -528,7 +647,7 @@ function App() {
                                             ? `${t(target.labelPath, language)} ${t("filters.notice.categories", language)}`
                                             : `${t(target.labelPath, language)} ${t("displayOptions.title", language)}`}
                                     </p>
-                                    {target.key === "notice" ? (
+                                        {target.key === "notice" ? (
                                         <div className="space-y-2">
                                             {targetGroups.categories.options.map((option) => (
                                                 <label
@@ -554,6 +673,22 @@ function App() {
                                                     <span>{option.label}</span>
                                                 </label>
                                             ))}
+                                        </div>
+                                    ) : hasEventDisplayOptions ? (
+                                        <div className="space-y-2">
+                                            <label className="flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-2 text-sm text-foreground">
+                                                <Checkbox
+                                                    checked={calendarEventDisplayOptions.boundaryOnly}
+                                                    disabled={!isTargetEnabled}
+                                                    onCheckedChange={(checked) => {
+                                                        updateEventDisplayOption(
+                                                            "boundaryOnly",
+                                                            checked === true,
+                                                        );
+                                                    }}
+                                                />
+                                                <span>시작날과 끝날만 표시</span>
+                                            </label>
                                         </div>
                                     ) : (
                                         <div className="space-y-2">
@@ -768,7 +903,7 @@ function App() {
                     </p>
                 </div>
 
-                <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
+                <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_224px]">
                     <div className="rounded-xl border bg-card p-3 text-card-foreground shadow-sm md:p-5">
                         <FullCalendar
                             plugins={[dayGridPlugin]}
