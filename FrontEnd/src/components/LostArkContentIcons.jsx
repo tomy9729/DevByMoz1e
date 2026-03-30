@@ -13,34 +13,67 @@ export function ChaosGateIcon({ className = "" }) {
             className={className}
         >
             <defs>
-                <linearGradient id="chaosGateGradient" x1="5" y1="4" x2="19" y2="20">
-                    <stop offset="0%" stopColor="#c39bff" />
-                    <stop offset="55%" stopColor="#7b3fe4" />
-                    <stop offset="100%" stopColor="#41207f" />
+                <linearGradient id="chaosGateGearGradient" x1="4" y1="4" x2="20" y2="20">
+                    <stop offset="0%" stopColor="#e2c9ff" />
+                    <stop offset="48%" stopColor="#8a43f2" />
+                    <stop offset="100%" stopColor="#31105f" />
+                </linearGradient>
+                <radialGradient id="chaosGateHoleGradient" cx="50%" cy="50%" r="60%">
+                    <stop offset="0%" stopColor="#020103" />
+                    <stop offset="22%" stopColor="#12061f" />
+                    <stop offset="48%" stopColor="#3d136f" />
+                    <stop offset="72%" stopColor="#8b47f7" />
+                    <stop offset="100%" stopColor="#eedfff" />
+                </radialGradient>
+                <linearGradient id="chaosGateHighlight" x1="7" y1="7" x2="17" y2="17">
+                    <stop offset="0%" stopColor="#f8f1ff" stopOpacity="0.9" />
+                    <stop offset="100%" stopColor="#d1aeff" stopOpacity="0.18" />
                 </linearGradient>
             </defs>
             <path
-                d="M12 2.75c4.9 0 8.75 4.04 8.75 9.25S16.9 21.25 12 21.25 3.25 17.21 3.25 12 7.1 2.75 12 2.75Z"
-                fill="url(#chaosGateGradient)"
+                d="M12 2.15 14.02 3.63 16.42 2.98 17.42 5.25 19.9 5.65 19.67 8.12 21.85 9.38 20.45 11.44 21.2 13.85 18.92 14.8 18.6 17.28 16.12 17.15 14.95 19.35 12.78 18.15 10.58 19.35 9.42 17.15 6.93 17.28 6.62 14.8 4.33 13.85 5.08 11.44 3.68 9.38 5.87 8.12 5.63 5.65 8.12 5.25 9.12 2.98 11.52 3.63 12 2.15Z"
+                fill="url(#chaosGateGearGradient)"
             />
             <path
-                d="M12 5.1c3.45 0 6.15 2.93 6.15 6.9s-2.7 6.9-6.15 6.9S5.85 15.97 5.85 12 8.55 5.1 12 5.1Z"
-                fill="#1d1038"
-                fillOpacity="0.72"
+                d="M12 5.25c3.74 0 6.75 3.01 6.75 6.75s-3.01 6.75-6.75 6.75S5.25 15.74 5.25 12 8.26 5.25 12 5.25Z"
+                fill="#140522"
+                fillOpacity="0.9"
             />
             <path
-                d="M9.25 7.8c1.3.2 2.05 1.14 2.05 2.28 0 1.06-.66 1.82-1.75 2.14-1.02.3-1.69.92-1.69 1.8 0 .72.4 1.37 1.22 1.94"
-                stroke="#f2e8ff"
-                strokeWidth="1.25"
+                d="M8.05 7.9c1.44-.82 3.1-1.1 4.63-.73 1.61.38 2.9 1.48 3.45 2.95.47 1.25.36 2.66-.3 3.86-.68 1.22-1.84 2.12-3.2 2.42-1.2.27-2.45.1-3.56-.48"
+                stroke="url(#chaosGateHighlight)"
+                strokeWidth="1.08"
                 strokeLinecap="round"
+                strokeLinejoin="round"
             />
             <path
-                d="M14.9 7.15c-1.67 1.15-2.54 2.3-2.54 3.53 0 1.1.68 1.75 1.77 2.2 1.06.43 1.77 1 1.77 1.97 0 .67-.34 1.34-1.05 2.06"
-                stroke="#f7f2ff"
-                strokeWidth="1.25"
+                d="M15.95 8.55c-.45 1.25-1.36 2.04-2.47 2.53-1.17.51-2.03 1.14-2.27 2.25-.2.97.17 1.93 1.02 2.85"
+                stroke="#f5ecff"
+                strokeWidth="1.08"
                 strokeLinecap="round"
+                strokeLinejoin="round"
             />
-            <circle cx="12.2" cy="12.3" r="1.35" fill="#ffffff" fillOpacity="0.95" />
+            <path
+                d="M12 8.15c2.4 0 4.35 1.95 4.35 4.35S14.4 16.85 12 16.85 7.65 14.9 7.65 12.5 9.6 8.15 12 8.15Z"
+                fill="url(#chaosGateHoleGradient)"
+            />
+            <ellipse
+                cx="12.15"
+                cy="12.45"
+                rx="2.5"
+                ry="1.95"
+                fill="#05020a"
+                transform="rotate(-16 12.15 12.45)"
+            />
+            <ellipse
+                cx="12.35"
+                cy="11.95"
+                rx="1.1"
+                ry="0.7"
+                fill="#f7f0ff"
+                fillOpacity="0.82"
+                transform="rotate(-16 12.35 11.95)"
+            />
         </svg>
     );
 }
