@@ -86,6 +86,16 @@
   font-weight: 700;
 }
 
+.fc .fc-day-sat .fc-daygrid-day-number,
+.fc .fc-col-header-cell.fc-day-sat .fc-col-header-cell-cushion {
+  color: #2563eb;
+}
+
+.fc .fc-day-sun .fc-daygrid-day-number,
+.fc .fc-col-header-cell.fc-day-sun .fc-col-header-cell-cushion {
+  color: #dc2626;
+}
+
 .fc .calendar-day-empty .fc-daygrid-day-frame {
   min-height: 72px;
 }
