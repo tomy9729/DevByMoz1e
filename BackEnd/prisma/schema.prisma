@@ -33,3 +33,17 @@ model AdventureIsland {
   @@unique([lostArkDate, period, contentsName])
   @@index([lostArkDate, period])
 }
+
+model LostArkNotice {
+  id          String   @id @default(cuid())
+  title       String
+  noticeDate  DateTime
+  link        String   @unique
+  type        String
+  rawData     Json
+  collectedAt DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([noticeDate, type])
+}

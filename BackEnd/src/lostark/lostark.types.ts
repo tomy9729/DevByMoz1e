@@ -5,6 +5,13 @@ export interface LostArkEvent {
     Link: string;
 }
 
+export interface LostArkNotice {
+    Title: string;
+    Date: string;
+    Link: string;
+    Type: string;
+}
+
 export interface LostArkRewardItem {
     Name?: string;
     Icon?: string;

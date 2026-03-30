@@ -77,6 +77,23 @@ async function main() {
     await client.query(
         'CREATE INDEX IF NOT EXISTS "AdventureIsland_lostArkDate_period_idx" ON "AdventureIsland"("lostArkDate", "period");',
     );
+    await client.query(`CREATE TABLE IF NOT EXISTS "LostArkNotice" (
+        "id" TEXT PRIMARY KEY,
+        "title" TEXT NOT NULL,
+        "noticeDate" TIMESTAMP(3) NOT NULL,
+        "link" TEXT NOT NULL,
+        "type" TEXT NOT NULL,
+        "rawData" JSONB NOT NULL,
+        "collectedAt" TIMESTAMP(3) NOT NULL,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );`);
+    await client.query(
+        'CREATE UNIQUE INDEX IF NOT EXISTS "LostArkNotice_link_key" ON "LostArkNotice"("link");',
+    );
+    await client.query(
+        'CREATE INDEX IF NOT EXISTS "LostArkNotice_noticeDate_type_idx" ON "LostArkNotice"("noticeDate", "type");',
+    );
     await client.end();
     console.log("Development database schema is ready.");
 }

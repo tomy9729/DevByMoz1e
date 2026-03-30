@@ -8,7 +8,7 @@ import {
     UnauthorizedException,
 } from "@nestjs/common";
 import { LOSTARK_CALENDAR_URL, LOSTARK_EVENTS_URL } from "./lostark.constants";
-import { LostArkEvent, LostArkGameContent } from "./lostark.types";
+import { LostArkEvent, LostArkGameContent, LostArkNotice } from "./lostark.types";
 
 @Injectable()
 export class LostArkClient {
@@ -90,6 +90,20 @@ export class LostArkClient {
             StartDate,
             EndDate,
             Link,
+        }));
+    }
+
+    async fetchNotices(): Promise<LostArkNotice[]> {
+        const notices = await this.fetchJson<LostArkNotice[]>(
+            "https://developer-lostark.game.onstove.com/news/notices",
+            "Lost Ark notices",
+        );
+
+        return notices.map(({ Title, Date, Link, Type }) => ({
+            Title,
+            Date,
+            Link,
+            Type,
         }));
     }
 
