@@ -3,7 +3,22 @@ import { getCalendarEventColors } from "../calendarEventColors.js";
 
 const LOSTARK_EVENTS_ENDPOINT = "/api/lostark/news/events";
 const LOSTARK_NOTICES_ENDPOINT = "/api/lostark/news/notices";
-const LOSTARK_GAME_CONTENTS_ENDPOINT = "/api/lostark/gamecontents/calendar";
+const LOSTARK_ADVENTURE_ISLANDS_ENDPOINT = "/api/lostark/adventure-islands";
+const LOSTARK_SHARED_REQUEST_CACHE = {
+    events: {
+        data: null,
+    promise: null,
+    },
+    notices: {
+        data: null,
+        promise: null,
+    },
+};
+const LOSTARK_ADVENTURE_ISLAND_REQUEST_CACHE = new Map();
+const FIXED_GAME_CONTENT_SCHEDULES = {
+    chaosGate: [1, 4, 6, 0],
+    fieldBoss: [2, 5, 0],
+};
 const DISPLAYABLE_GAME_CONTENT_TYPES = [
     {
         key: "adventureIsland",
@@ -164,6 +179,16 @@ function getAdventureIslandPeriodLabel(period) {
 }
 
 /**
+ * 역할: 백엔드가 반환한 모험섬 period 값을 사용자 표시용 오전/오후 문자열로 변환한다.
+ * 파라미터 설명:
+ * - period: 백엔드 AdventureIslandPeriod 문자열
+ * 반환값 설명: 주말 구간이면 `오전` 또는 `오후`, 평일이면 빈 문자열
+ */
+function getAdventureIslandPeriodLabelFromRecord(period) {
+    return getAdventureIslandPeriodLabel(period);
+}
+
+/**
  * 역할: 전달된 날짜 다음 날의 날짜 문자열을 계산한다.
  * 파라미터 설명:
  * - dateText: 기준 날짜 문자열
@@ -177,6 +202,59 @@ function addOneDay(dateText) {
     const nextDay = String(nextDate.getDate()).padStart(2, "0");
 
     return `${nextYear}-${nextMonth}-${nextDay}`;
+}
+
+function createDateRange(fromDate, toDate) {
+    const dates = [];
+    const currentDate = new Date(`${fromDate}T00:00:00`);
+    const lastDate = new Date(`${toDate}T00:00:00`);
+
+    while (currentDate <= lastDate) {
+        dates.push(toLocalDateOnly(currentDate));
+        currentDate.setDate(currentDate.getDate() + 1);
+    }
+
+    return dates;
+}
+
+function createFixedGameContentEvents(calendarMonthQuery = {}) {
+    const fromDate = calendarMonthQuery.fromDate;
+    const toDate = calendarMonthQuery.toDate;
+
+    if (!fromDate || !toDate) {
+        return [];
+    }
+
+    return createDateRange(fromDate, toDate).flatMap((dateText) => {
+        const dayOfWeek = new Date(`${dateText}T00:00:00`).getDay();
+
+        return Object.entries(FIXED_GAME_CONTENT_SCHEDULES)
+            .filter(([, days]) => days.includes(dayOfWeek))
+            .map(([contentType]) => {
+                const displayType = getGameContentTypeByKey(contentType);
+                const eventColors = getCalendarEventColors(contentType);
+
+                return {
+                    id: `${contentType}-${dateText}`,
+                    title: displayType?.label ?? "",
+                    start: dateText,
+                    allDay: true,
+                    ...eventColors,
+                    extendedProps: {
+                        contentType,
+                        filterTarget: contentType,
+                        categoryName: displayType?.label ?? "",
+                        contentsName: displayType?.label ?? "",
+                        period: null,
+                        sourceStartTime: "",
+                        rewardTypeKey: "",
+                        rewardName: "",
+                        rewardIconUrl: "",
+                        contentIconUrl: "",
+                    },
+                };
+            });
+    });
 }
 
 /**
@@ -246,6 +324,63 @@ function normalizeNoticeCategory(noticeType = "") {
     }
 
     return "공지";
+}
+
+/**
+ * 역할: 같은 종류의 API 요청이 이미 진행 중이거나 완료된 경우 기존 결과를 재사용한다.
+ * 파라미터 설명:
+ * - cacheKey: 요청 종류를 구분하는 캐시 키
+ * - request: 실제 네트워크 요청을 수행하는 함수
+ * 반환값 설명: 중복 호출이 제거된 요청 결과 Promise
+ */
+async function fetchWithSharedCache(cacheKey, request) {
+    const cacheEntry = LOSTARK_SHARED_REQUEST_CACHE[cacheKey];
+
+    if (cacheEntry.data) {
+        return cacheEntry.data;
+    }
+
+    if (cacheEntry.promise) {
+        return cacheEntry.promise;
+    }
+
+    cacheEntry.promise = request()
+        .then((data) => {
+            cacheEntry.data = data;
+            return data;
+        })
+        .finally(() => {
+            cacheEntry.promise = null;
+        });
+
+    return cacheEntry.promise;
+}
+
+/**
+ * 역할: 같은 월 범위의 모험섬 API 요청이 이미 진행 중이거나 완료된 경우 기존 결과를 재사용한다.
+ * 파라미터 설명:
+ * - query: `fromDate`, `toDate`를 포함한 모험섬 조회 범위 객체
+ * - request: 실제 모험섬 네트워크 요청을 수행하는 함수
+ * 반환값 설명: 월 범위 기준 중복 호출이 제거된 모험섬 요청 결과 Promise
+ */
+async function fetchAdventureIslandsWithMonthCache(query, request) {
+    const cacheKey = `${query.fromDate ?? ""}|${query.toDate ?? ""}`;
+    const cacheEntry = LOSTARK_ADVENTURE_ISLAND_REQUEST_CACHE.get(cacheKey);
+
+    if (cacheEntry?.promise) {
+        return cacheEntry.promise;
+    }
+
+    const requestPromise = request()
+        .finally(() => {
+            LOSTARK_ADVENTURE_ISLAND_REQUEST_CACHE.delete(cacheKey);
+        });
+
+    LOSTARK_ADVENTURE_ISLAND_REQUEST_CACHE.set(cacheKey, {
+        promise: requestPromise,
+    });
+
+    return requestPromise;
 }
 
 /**
@@ -509,6 +644,42 @@ export function mapLostArkNoticeToCalendarEvent(notice) {
     };
 }
 
+/**
+ * 역할: 백엔드 DB 기준 모험섬 응답을 FullCalendar 이벤트 형식으로 변환한다.
+ * 파라미터 설명:
+ * - adventureIsland: 백엔드 모험섬 조회 API가 반환한 단일 모험섬 데이터
+ * 반환값 설명: FullCalendar에서 사용할 모험섬 이벤트 객체
+ */
+export function mapAdventureIslandRecordToCalendarEvent(adventureIsland) {
+    const periodLabel = getAdventureIslandPeriodLabelFromRecord(adventureIsland.period);
+    const periodText = periodLabel ? `[${periodLabel}] ` : "";
+    const rewardType = getAdventureIslandMajorRewardType(adventureIsland.rewardName ?? "");
+    const rewardName = adventureIsland.rewardShortName ?? adventureIsland.rewardName ?? "";
+    const eventColors = getCalendarEventColors("adventureIsland", rewardType?.key ?? "");
+
+    return {
+        id: `adventure-island-${adventureIsland.lostArkDate}-${adventureIsland.period}-${adventureIsland.contentsName}`,
+        title: `${periodText}${adventureIsland.shortName ?? adventureIsland.contentsName}`,
+        start: adventureIsland.lostArkDate,
+        allDay: true,
+        ...eventColors,
+        extendedProps: {
+            categoryName: adventureIsland.categoryName,
+            contentsName: adventureIsland.contentsName,
+            contentType: "adventureIsland",
+            period: adventureIsland.period,
+            sourceStartTime: adventureIsland.startTime,
+            filterTarget: "adventureIsland",
+            islandName: adventureIsland.contentsName,
+            rewardTypeKey: rewardType?.key ?? "",
+            rewardName,
+            rewardIconUrl: adventureIsland.rewardIconUrl ?? "",
+            contentIconUrl:
+                adventureIsland.contentImageUrl ?? adventureIsland.contentIconUrl ?? "",
+        },
+    };
+}
+
 export function mapLostArkGameContentToCalendarEvents(content) {
     const displayType = getDisplayableGameContentType(content);
 
@@ -562,7 +733,7 @@ export function mapLostArkGameContentToCalendarEvents(content) {
  * - events: 가공 전 게임 콘텐츠 이벤트 배열
  * 반환값 설명: 표시 규칙이 반영된 이벤트 배열
  */
-function dedupeGameContentEvents(events) {
+function _dedupeGameContentEvents(events) {
     const uniqueEvents = new Map();
     const adventureIslandGroups = new Map();
 
@@ -628,6 +799,20 @@ async function fetchLostArkEvents() {
 }
 
 /**
+ * 역할: 이벤트 API 실패가 전체 달력 로딩을 막지 않도록 빈 배열로 보정한다.
+ * 파라미터 설명: 없음
+ * 반환값 설명: 이벤트 원본 배열 Promise
+ */
+async function fetchLostArkEventsSafely() {
+    try {
+        return await fetchWithSharedCache("events", fetchLostArkEvents);
+    } catch (error) {
+        console.error("Failed to fetch Lost Ark events.", error);
+        return [];
+    }
+}
+
+/**
  * 역할: 게임 콘텐츠 일정 목록을 서버 엔드포인트에서 조회한다.
  * 파라미터 설명: 없음
  * 반환값 설명: 게임 콘텐츠 원본 배열 Promise
@@ -658,37 +843,64 @@ async function fetchLostArkNotices() {
  */
 async function fetchLostArkNoticesSafely() {
     try {
-        return await fetchLostArkNotices();
+        return await fetchWithSharedCache("notices", fetchLostArkNotices);
     } catch (error) {
         console.error("Failed to fetch Lost Ark notices.", error);
         return [];
     }
 }
 
-async function fetchLostArkGameContents() {
-    const response = await fetch(LOSTARK_GAME_CONTENTS_ENDPOINT, {
-        headers: {
-            accept: "application/json",
-        },
+/**
+ * 역할: 모험섬 정보를 백엔드 DB 우선 API에서 조회한다.
+ * 파라미터 설명: 없음
+ * 반환값 설명: 모험섬 원본 배열 Promise
+ */
+async function fetchAdventureIslands(query = {}) {
+    return fetchAdventureIslandsWithMonthCache(query, async () => {
+        const searchParams = new URLSearchParams();
+
+        if (query.fromDate) {
+            searchParams.set("fromDate", query.fromDate);
+        }
+
+        if (query.toDate) {
+            searchParams.set("toDate", query.toDate);
+        }
+
+        const requestUrl = searchParams.size
+            ? `${LOSTARK_ADVENTURE_ISLANDS_ENDPOINT}?${searchParams.toString()}`
+            : LOSTARK_ADVENTURE_ISLANDS_ENDPOINT;
+        const response = await fetch(requestUrl, {
+            headers: {
+                accept: "application/json",
+            },
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to fetch adventure islands: ${response.status}`);
+        }
+
+        return response.json();
     });
-
-    if (!response.ok) {
-        throw new Error(`Failed to fetch Lost Ark game contents: ${response.status}`);
-    }
-
-    return response.json();
 }
+
+
+/**
+ * 역할: 게임 콘텐츠 API 실패가 전체 달력 로딩을 막지 않도록 빈 배열로 보정한다.
+ * 파라미터 설명: 없음
+ * 반환값 설명: 게임 콘텐츠 원본 배열 Promise
+ */
 
 /**
  * 역할: 뉴스 이벤트와 게임 콘텐츠 일정을 모두 조회해 달력 표시용 배열로 합친다.
  * 파라미터 설명: 없음
  * 반환값 설명: FullCalendar 이벤트 배열 Promise
  */
-export async function fetchLostArkCalendarEvents() {
-    const [events, notices, gameContents] = await Promise.all([
-        fetchLostArkEvents(),
+export async function fetchLostArkCalendarEvents(options = {}) {
+    const [events, notices, adventureIslands] = await Promise.all([
+        fetchLostArkEventsSafely(),
         fetchLostArkNoticesSafely(),
-        fetchLostArkGameContents(),
+        fetchAdventureIslands(options.adventureIslandQuery),
     ]);
 
     // 공지 이벤트 가공 시작
@@ -699,10 +911,11 @@ export async function fetchLostArkCalendarEvents() {
 
     // 게임 콘텐츠 일정 가공 시작
     const noticeEvents = notices.map((notice) => mapLostArkNoticeToCalendarEvent(notice));
-    const contentEvents = dedupeGameContentEvents(
-        gameContents.flatMap((content) => mapLostArkGameContentToCalendarEvents(content))
+    const adventureIslandEvents = adventureIslands.map((adventureIsland) =>
+        mapAdventureIslandRecordToCalendarEvent(adventureIsland)
     );
+    const contentEvents = createFixedGameContentEvents(options.calendarMonthQuery);
     // 게임 콘텐츠 일정 가공 끝
 
-    return [...newsEvents, ...noticeEvents, ...contentEvents];
+    return [...newsEvents, ...noticeEvents, ...adventureIslandEvents, ...contentEvents];
 }

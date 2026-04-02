@@ -49,11 +49,34 @@ const CALENDAR_FILTER_TARGET_DEFINITIONS = [
     },
 ];
 
+const ADVENTURE_ISLAND_REWARD_FILTER_ORDER = ["골드", "카드", "실링", "해주"];
+
 function getTargetDefinition(targetKey) {
     return (
         CALENDAR_FILTER_TARGET_DEFINITIONS.find((definition) => definition.key === targetKey) ??
         null
     );
+}
+
+/**
+ * 역할: 모험섬 보상 필터 표시 순서를 우선순위 기준으로 정렬한다.
+ * 파라미터 설명:
+ * - options: 보상 필터 옵션 배열
+ * 반환값 설명: 골드, 카드, 실링, 해주 우선순위가 반영된 옵션 배열
+ */
+function sortAdventureIslandRewardOptions(options) {
+    return [...options].sort((left, right) => {
+        const leftIndex = ADVENTURE_ISLAND_REWARD_FILTER_ORDER.indexOf(left.label);
+        const rightIndex = ADVENTURE_ISLAND_REWARD_FILTER_ORDER.indexOf(right.label);
+        const normalizedLeftIndex = leftIndex < 0 ? Number.MAX_SAFE_INTEGER : leftIndex;
+        const normalizedRightIndex = rightIndex < 0 ? Number.MAX_SAFE_INTEGER : rightIndex;
+
+        if (normalizedLeftIndex !== normalizedRightIndex) {
+            return normalizedLeftIndex - normalizedRightIndex;
+        }
+
+        return left.label.localeCompare(right.label, "ko");
+    });
 }
 
 function sortFilterOptions(options) {
@@ -135,10 +158,14 @@ export function buildCalendarFilterOptions(events) {
             accumulator[definition.key] = definition.groups.reduce((groupAccumulator, group) => {
                 const optionsForGroup =
                     groupOptions.get(`${definition.key}:${group.key}`) ?? new Map();
+                const sortedOptions =
+                    definition.key === "adventureIsland" && group.key === "rewards"
+                        ? sortAdventureIslandRewardOptions([...optionsForGroup.values()])
+                        : sortFilterOptions([...optionsForGroup.values()]);
 
                 groupAccumulator[group.key] = {
                     labelPath: group.labelPath,
-                    options: sortFilterOptions([...optionsForGroup.values()]),
+                    options: sortedOptions,
                 };
 
                 return groupAccumulator;

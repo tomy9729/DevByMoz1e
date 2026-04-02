@@ -79,6 +79,49 @@ function addDays(date, days) {
     return nextDate;
 }
 
+function getCalendarMonthRange(baseDate = new Date()) {
+    const year = baseDate.getFullYear();
+    const month = baseDate.getMonth();
+    const startDate = new Date(year, month, 1);
+    const endDate = new Date(year, month + 1, 0);
+
+    return {
+        fromDate: toDateKey(startDate),
+        toDate: toDateKey(endDate),
+    };
+}
+
+/**
+ * 역할: 현재 보고 있는 월의 시작일과 종료일을 API 조회용 문자열로 계산한다.
+ * 파라미터 설명:
+ * - baseDate: 현재 달력을 대표하는 기준 날짜 객체
+ * 반환값 설명: `fromDate`, `toDate`를 포함한 월 범위 객체
+ */
+function getMonthRange(baseDate = new Date()) {
+    const currentMonthRange = getCalendarMonthRange(baseDate);
+    const startDate = addDays(new Date(`${currentMonthRange.fromDate}T00:00:00`), -7);
+    const endDate = addDays(new Date(`${currentMonthRange.toDate}T00:00:00`), 7);
+
+    return {
+        fromDate: toDateKey(startDate),
+        toDate: toDateKey(endDate),
+    };
+}
+
+/**
+ * 역할: 월 범위 상태가 실제로 바뀌는 경우에만 갱신되도록 두 범위를 비교한다.
+ * 파라미터 설명:
+ * - previousRange: 현재 저장된 월 범위 객체
+ * - nextRange: 새로 계산한 월 범위 객체
+ * 반환값 설명: 시작일과 종료일이 모두 같으면 true, 다르면 false
+ */
+function isSameMonthRange(previousRange, nextRange) {
+    return (
+        previousRange?.fromDate === nextRange?.fromDate &&
+        previousRange?.toDate === nextRange?.toDate
+    );
+}
+
 /**
  * 역할: 이벤트 표시 옵션에 따라 장기 이벤트를 시작일과 종료일 일정으로만 다시 구성한다.
  * 파라미터 설명:
@@ -334,6 +377,10 @@ function App() {
         targets: {},
         groups: {},
     });
+    const [visibleMonthRange, setVisibleMonthRange] = useState(() => getMonthRange());
+    const [calendarMonthRange, setCalendarMonthRange] = useState(() =>
+        getCalendarMonthRange(),
+    );
     const [calendarEventDisplayOptions, setCalendarEventDisplayOptions] = useState(() =>
         getDefaultCalendarEventDisplayOptions(),
     );
@@ -360,7 +407,10 @@ function App() {
 
         async function loadEvents() {
             try {
-                const calendarEvents = await fetchLostArkCalendarEvents();
+                const calendarEvents = await fetchLostArkCalendarEvents({
+                    adventureIslandQuery: visibleMonthRange,
+                    calendarMonthQuery: calendarMonthRange,
+                });
 
                 if (isMounted) {
                     setAllEvents(calendarEvents);
@@ -381,7 +431,7 @@ function App() {
         return () => {
             isMounted = false;
         };
-    }, []);
+    }, [visibleMonthRange, calendarMonthRange]);
 
     useEffect(() => {
         window.localStorage.setItem(CALENDAR_FIRST_DAY_STORAGE_KEY, String(calendarFirstDay));
@@ -949,6 +999,23 @@ function App() {
                                 info.jsEvent.preventDefault();
                                 clearCalendarEventSelection(info.jsEvent.target);
                                 window.open(info.event.url, "_blank", "noopener,noreferrer");
+                            }}
+                            datesSet={(dateInfo) => {
+                                const currentStart = dateInfo.view.currentStart ?? dateInfo.start;
+                                const nextMonthRange = getMonthRange(currentStart);
+                                const nextCalendarMonthRange =
+                                    getCalendarMonthRange(currentStart);
+
+                                setVisibleMonthRange((previousRange) =>
+                                    isSameMonthRange(previousRange, nextMonthRange)
+                                        ? previousRange
+                                        : nextMonthRange,
+                                );
+                                setCalendarMonthRange((previousRange) =>
+                                    isSameMonthRange(previousRange, nextCalendarMonthRange)
+                                        ? previousRange
+                                        : nextCalendarMonthRange,
+                                );
                             }}
                             height="auto"
                             events={visibleEvents}
