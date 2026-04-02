@@ -57,6 +57,8 @@ async function main() {
         "categoryName" TEXT NOT NULL,
         "contentsName" TEXT NOT NULL,
         "shortName" TEXT NOT NULL,
+        "sourceType" TEXT NOT NULL DEFAULT 'api',
+        "sourceKey" TEXT,
         "rewardName" TEXT,
         "rewardShortName" TEXT,
         "rewardIconUrl" TEXT,
@@ -68,6 +70,8 @@ async function main() {
         "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
         "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
     );`);
+    await client.query('ALTER TABLE "AdventureIsland" ADD COLUMN IF NOT EXISTS "sourceType" TEXT NOT NULL DEFAULT \'api\';');
+    await client.query('ALTER TABLE "AdventureIsland" ADD COLUMN IF NOT EXISTS "sourceKey" TEXT;');
     await client.query('ALTER TABLE "AdventureIsland" ADD COLUMN IF NOT EXISTS "rewardIconUrl" TEXT;');
     await client.query('ALTER TABLE "AdventureIsland" ADD COLUMN IF NOT EXISTS "contentIconUrl" TEXT;');
     await client.query('ALTER TABLE "AdventureIsland" ADD COLUMN IF NOT EXISTS "contentImageUrl" TEXT;');
@@ -76,6 +80,34 @@ async function main() {
     );
     await client.query(
         'CREATE INDEX IF NOT EXISTS "AdventureIsland_lostArkDate_period_idx" ON "AdventureIsland"("lostArkDate", "period");',
+    );
+    await client.query(
+        'CREATE INDEX IF NOT EXISTS "AdventureIsland_sourceType_sourceKey_lostArkDate_period_idx" ON "AdventureIsland"("sourceType", "sourceKey", "lostArkDate", "period");',
+    );
+    await client.query(`CREATE TABLE IF NOT EXISTS "AdventureIslandTest" (
+        "id" TEXT PRIMARY KEY,
+        "sourceKey" TEXT NOT NULL,
+        "lostArkDate" TEXT NOT NULL,
+        "period" "AdventureIslandPeriod" NOT NULL,
+        "categoryName" TEXT NOT NULL,
+        "contentsName" TEXT NOT NULL,
+        "shortName" TEXT NOT NULL,
+        "rewardName" TEXT,
+        "rewardShortName" TEXT,
+        "rewardIconUrl" TEXT,
+        "contentIconUrl" TEXT,
+        "contentImageUrl" TEXT,
+        "startTime" TEXT NOT NULL,
+        "rawData" JSONB NOT NULL,
+        "collectedAt" TIMESTAMP(3) NOT NULL,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );`);
+    await client.query(
+        'CREATE UNIQUE INDEX IF NOT EXISTS "AdventureIslandTest_sourceKey_lostArkDate_period_contentsName_key" ON "AdventureIslandTest"("sourceKey", "lostArkDate", "period", "contentsName");',
+    );
+    await client.query(
+        'CREATE INDEX IF NOT EXISTS "AdventureIslandTest_sourceKey_lostArkDate_period_idx" ON "AdventureIslandTest"("sourceKey", "lostArkDate", "period");',
     );
     await client.query(`CREATE TABLE IF NOT EXISTS "LostArkNotice" (
         "id" TEXT PRIMARY KEY,

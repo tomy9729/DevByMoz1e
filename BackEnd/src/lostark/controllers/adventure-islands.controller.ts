@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Query } from "@nestjs/common";
+import { Controller, Delete, Get, Post, Query } from "@nestjs/common";
 import { QueryAdventureIslandsDto } from "../dto/query-adventure-islands.dto";
 import { AdventureIslandsService } from "../services/adventure-islands.service";
 
@@ -11,8 +11,28 @@ export class AdventureIslandsController {
         return this.adventureIslandsService.collectAdventureIslands();
     }
 
+    @Post("test-note/import")
+    async importAdventureIslandTestNoteData() {
+        return this.adventureIslandsService.importAdventureIslandTestNoteData();
+    }
+
+    @Get("test-note")
+    async getAdventureIslandTestNoteData(@Query() query: QueryAdventureIslandsDto) {
+        return this.adventureIslandsService.getAdventureIslandTestNoteData(query);
+    }
+
+    @Delete("test-note")
+    async deleteAdventureIslandTestNoteData() {
+        return this.adventureIslandsService.deleteAdventureIslandTestNoteData();
+    }
+
+    @Get("resolved")
+    async getAdventureIslandsFromDatabaseFirst(@Query() query: QueryAdventureIslandsDto) {
+        return this.adventureIslandsService.getAdventureIslandsFromDatabaseFirst(query);
+    }
+
     @Get()
     async getAdventureIslands(@Query() query: QueryAdventureIslandsDto) {
-        return this.adventureIslandsService.getAdventureIslands(query);
+        return this.adventureIslandsService.getAdventureIslandsFromDatabaseFirst(query);
     }
 }

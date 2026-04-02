@@ -19,6 +19,8 @@ model AdventureIsland {
   categoryName    String
   contentsName    String
   shortName       String
+  sourceType      String
+  sourceKey       String?
   rewardName      String?
   rewardShortName String?
   rewardIconUrl   String?
@@ -32,6 +34,30 @@ model AdventureIsland {
 
   @@unique([lostArkDate, period, contentsName])
   @@index([lostArkDate, period])
+  @@index([sourceType, sourceKey, lostArkDate, period])
+}
+
+model AdventureIslandTest {
+  id              String                @id @default(cuid())
+  sourceKey       String
+  lostArkDate     String
+  period          AdventureIslandPeriod
+  categoryName    String
+  contentsName    String
+  shortName       String
+  rewardName      String?
+  rewardShortName String?
+  rewardIconUrl   String?
+  contentIconUrl  String?
+  contentImageUrl String?
+  startTime       String
+  rawData         Json
+  collectedAt     DateTime
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+
+  @@unique([sourceKey, lostArkDate, period, contentsName])
+  @@index([sourceKey, lostArkDate, period])
 }
 
 model LostArkNotice {
