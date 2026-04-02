@@ -53,6 +53,12 @@ export class LostArkClient {
                     );
                 }
 
+                if (response.status === 429) {
+                    throw new ServiceUnavailableException(
+                        `${targetName} request failed: Lost Ark API rate limit was exceeded.`,
+                    );
+                }
+
                 if (response.status >= 500) {
                     throw new BadGatewayException(
                         `${targetName} request failed: Lost Ark API returned ${response.status}.`,
