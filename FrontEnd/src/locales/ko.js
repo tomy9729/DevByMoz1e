@@ -7,6 +7,7 @@ const ko = {
     },
     calendar: {
         firstDayLabel: "시작 요일",
+        todayFocusLabel: "오늘 날짜 강조 표시",
         firstDayOptions: {
             sunday: "일요일",
             monday: "월요일",

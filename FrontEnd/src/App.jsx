@@ -36,6 +36,7 @@ import { Settings2 } from "lucide-react";
 import "./App.css";
 
 const CALENDAR_FIRST_DAY_STORAGE_KEY = "calendar-first-day";
+const CALENDAR_TODAY_FOCUS_STORAGE_KEY = "calendar-today-focus-enabled";
 const CALENDAR_FIRST_DAY_OPTION_VALUES = [0, 1, 3];
 const CALENDAR_CONTENT_DISPLAY_TARGETS = ["chaosGate", "fieldBoss", "adventureIsland"];
 
@@ -65,6 +66,22 @@ function getStoredCalendarFirstDay() {
     const isValidOption = CALENDAR_FIRST_DAY_OPTION_VALUES.includes(parsedValue);
 
     return isValidOption ? parsedValue : 0;
+}
+
+/**
+ * 20260414 khs
+ * 역할: 오늘 날짜 focus 강조 표시 설정값을 localStorage에서 읽어 boolean으로 정규화한다.
+ * 파라미터 설명: 없음
+ * 반환값 설명: 저장값이 없거나 "true"이면 true, "false"이면 false
+ */
+function getStoredCalendarTodayFocusEnabled() {
+    const storedValue = window.localStorage.getItem(CALENDAR_TODAY_FOCUS_STORAGE_KEY);
+
+    if (storedValue === null) {
+        return true;
+    }
+
+    return storedValue === "true";
 }
 
 function toDateKey(date) {
@@ -355,6 +372,25 @@ function clearCalendarEventSelection(target) {
     }
 }
 
+/**
+ * 20260414 khs
+ * 역할: 달력 셀의 데이터 유무와 오늘 날짜 focus 설정에 따라 추가 클래스명을 계산한다.
+ * 파라미터 설명:
+ * - dayCellInfo: FullCalendar가 전달하는 day cell 정보 객체
+ * - hasEvents: 현재 날짜에 표시할 이벤트 존재 여부
+ * - isTodayFocusEnabled: 오늘 날짜 focus 강조 표시 on/off 상태
+ * 반환값 설명: FullCalendar day cell에 적용할 클래스명 배열
+ */
+function getCalendarDayCellClassNames(dayCellInfo, hasEvents, isTodayFocusEnabled) {
+    const classNames = hasEvents ? [] : ["calendar-day-empty"];
+
+    if (dayCellInfo.isToday && isTodayFocusEnabled) {
+        classNames.push("calendar-day-today-focus");
+    }
+
+    return classNames;
+}
+
 function App() {
     const language = currentLanguage;
     const calendarFirstDayOptions = [
@@ -373,6 +409,9 @@ function App() {
     ];
     const [allEvents, setAllEvents] = useState([]);
     const [calendarFirstDay, setCalendarFirstDay] = useState(() => getStoredCalendarFirstDay());
+    const [isCalendarTodayFocusEnabled, setIsCalendarTodayFocusEnabled] = useState(() =>
+        getStoredCalendarTodayFocusEnabled(),
+    );
     const [calendarFilters, setCalendarFilters] = useState({
         targets: {},
         groups: {},
@@ -436,6 +475,13 @@ function App() {
     useEffect(() => {
         window.localStorage.setItem(CALENDAR_FIRST_DAY_STORAGE_KEY, String(calendarFirstDay));
     }, [calendarFirstDay]);
+
+    useEffect(() => {
+        window.localStorage.setItem(
+            CALENDAR_TODAY_FOCUS_STORAGE_KEY,
+            String(isCalendarTodayFocusEnabled),
+        );
+    }, [isCalendarTodayFocusEnabled]);
 
     useEffect(() => {
         /**
@@ -625,7 +671,7 @@ function App() {
             key: "firstDay",
             title: t("remote.sections.firstDay.title", language),
             content: (
-                <div className="space-y-3">
+                <div className="space-y-4">
                     <label
                         className="text-sm font-medium leading-none"
                         htmlFor="calendar-first-day"
@@ -649,6 +695,15 @@ function App() {
                             ))}
                         </SelectContent>
                     </Select>
+                    <label className="flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-2 text-sm text-foreground">
+                        <Checkbox
+                            checked={isCalendarTodayFocusEnabled}
+                            onCheckedChange={(checked) => {
+                                setIsCalendarTodayFocusEnabled(checked === true);
+                            }}
+                        />
+                        <span>{t("calendar.todayFocusLabel", language)}</span>
+                    </label>
                 </div>
             ),
         },
@@ -954,7 +1009,12 @@ function App() {
                 </div>
 
                 <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_224px]">
-                    <div className="rounded-xl border bg-card p-3 text-card-foreground shadow-sm md:p-5">
+                    <div
+                        className={cn(
+                            "rounded-xl border bg-card p-3 text-card-foreground shadow-sm md:p-5",
+                            !isCalendarTodayFocusEnabled && "calendar-today-focus-disabled",
+                        )}
+                    >
                         <FullCalendar
                             plugins={[dayGridPlugin]}
                             initialView="dayGridMonth"
@@ -987,7 +1047,11 @@ function App() {
                                 today: t("calendar.buttons.today", language),
                             }}
                             dayCellClassNames={(arg) =>
-                                eventDateKeys.has(toDateKey(arg.date)) ? [] : ["calendar-day-empty"]
+                                getCalendarDayCellClassNames(
+                                    arg,
+                                    eventDateKeys.has(toDateKey(arg.date)),
+                                    isCalendarTodayFocusEnabled,
+                                )
                             }
                             eventClassNames={getCalendarEventClassNames}
                             eventContent={renderCalendarEventContent}
