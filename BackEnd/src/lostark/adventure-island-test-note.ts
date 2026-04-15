@@ -1,64 +1,431 @@
 import { AdventureIslandPeriod } from "@prisma/client";
 
-export const ADVENTURE_ISLAND_TEST_NOTE_SOURCE_KEY = "memo-note-20260402";
+export const ADVENTURE_ISLAND_TEST_NOTE_SOURCE_KEY = "memo-note-202605";
 
+const TEST_NOTE_CATEGORY_NAME = "\uBAA8\uD5D8 \uC12C";
 const TEST_NOTE_YEAR = 2026;
-const TEST_NOTE_CATEGORY_NAME = "모험 섬";
-const WEEKDAY_START_TIME = "11:00:00";
-const WEEKEND_MORNING_START_TIME = "09:00:00";
-const WEEKEND_AFTERNOON_START_TIME = "19:00:00";
 
-const SHORT_NAME_TO_CONTENTS_NAME: Record<string, string> = {
-    고안: "고요한 안식의 섬",
-    기회: "기회의 섬",
-    메데: "메데이아",
-    메데이아: "메데이아",
-    몬테: "몬테섬",
-    볼라르: "볼라르 섬",
-    블루홀: "블루홀 섬",
-    수라: "수라도",
-    수라도: "수라도",
-    스노우: "스노우팡 아일랜드",
-    우갈: "우거진 갈대의 섬",
-    우갈섬: "우거진 갈대의 섬",
-    잔장섬: "잔혹한 장난감 성",
-    장난감: "잔혹한 장난감 성",
-    죽협: "죽음의 협곡",
-    쿵덕쿵: "쿵덕쿵 아일랜드",
-    포르페: "포르페",
-    하모니: "하모니 섬",
-    환나: "환영 나비 섬",
-    라일: "라일라이 아일랜드",
-    라일라이: "라일라이 아일랜드",
+const START_TIME_BY_PERIOD: Record<AdventureIslandPeriod, string> = {
+    [AdventureIslandPeriod.weekday]: "11:00:00",
+    [AdventureIslandPeriod.weekendMorning]: "09:00:00",
+    [AdventureIslandPeriod.weekendAfternoon]: "19:00:00",
 };
 
-const REWARD_BY_TYPE = {
-    gold: {
-        rewardName: "골드",
-        rewardShortName: "골드",
+const CONTENTS_NAME_BY_ALIAS: Record<
+    string,
+    {
+        contentsName: string;
+        shortName: string;
+    }
+> = {
+    "\uACE0\uC548": {
+        contentsName: "\uACE0\uC694\uD55C \uC548\uC2DD\uC758 \uC12C",
+        shortName: "\uACE0\uC548\uC12C",
+    },
+    "\uACE0\uC548\uC12C": {
+        contentsName: "\uACE0\uC694\uD55C \uC548\uC2DD\uC758 \uC12C",
+        shortName: "\uACE0\uC548\uC12C",
+    },
+    "\uAE30\uD68C": {
+        contentsName: "\uAE30\uD68C\uC758 \uC12C",
+        shortName: "\uAE30\uD68C",
+    },
+    "\uBA54\uB370": {
+        contentsName: "\uBA54\uB370\uC774\uC544",
+        shortName: "\uBA54\uB370",
+    },
+    "\uBA54\uB370\uC774\uC544": {
+        contentsName: "\uBA54\uB370\uC774\uC544",
+        shortName: "\uBA54\uB370",
+    },
+    "\uBAAC\uD14C": {
+        contentsName: "\uBAAC\uD14C\uC12C",
+        shortName: "\uBAAC\uD14C\uC12C",
+    },
+    "\uBCFC\uB77C\uB974": {
+        contentsName: "\uBCFC\uB77C\uB974 \uC12C",
+        shortName: "\uBCFC\uB77C\uB974",
+    },
+    "\uBE14\uB8E8\uD640": {
+        contentsName: "\uBE14\uB8E8\uD640 \uC12C",
+        shortName: "\uBE14\uB8E8\uD640",
+    },
+    "\uD558\uBAA8\uB2C8": {
+        contentsName: "\uD558\uBAA8\uB2C8 \uC12C",
+        shortName: "\uD558\uBAA8\uB2C8",
+    },
+    "\uD558\uBAA8\uB2C8\uC12C": {
+        contentsName: "\uD558\uBAA8\uB2C8 \uC12C",
+        shortName: "\uD558\uBAA8\uB2C8",
+    },
+    "\uC2A4\uB178\uC6B0\uD321": {
+        contentsName: "\uC2A4\uB178\uC6B0\uD321 \uC544\uC77C\uB79C\uB4DC",
+        shortName: "\uC2A4\uB178\uC6B0\uD321",
+    },
+    "\uC6B0\uAC08": {
+        contentsName: "\uC6B0\uAC70\uC9C4 \uAC08\uB300\uC758 \uC12C",
+        shortName: "\uC6B0\uAC08\uC12C",
+    },
+    "\uC6B0\uAC08\uC12C": {
+        contentsName: "\uC6B0\uAC70\uC9C4 \uAC08\uB300\uC758 \uC12C",
+        shortName: "\uC6B0\uAC08\uC12C",
+    },
+    "\uC794\uC7A5\uC12C": {
+        contentsName: "\uC794\uD639\uD55C \uC7A5\uB09C\uAC10 \uC131",
+        shortName: "\uC794\uC7A5\uC12C",
+    },
+    "\uC8FD\uD611": {
+        contentsName: "\uC8FD\uC74C\uC758 \uD611\uACE1",
+        shortName: "\uC8FD\uD611",
+    },
+    "\uCFF5\uB355\uCFF5": {
+        contentsName: "\uCFF5\uB355\uCFF5 \uC544\uC77C\uB79C\uB4DC",
+        shortName: "\uCFF5\uB355\uCFF5",
+    },
+    "\uD3EC\uB974\uD398": {
+        contentsName: "\uD3EC\uB974\uD398",
+        shortName: "\uD3EC\uB974\uD398",
+    },
+    "\uC218\uB77C\uB3C4": {
+        contentsName: "\uC218\uB77C\uB3C4",
+        shortName: "\uC218\uB77C\uB3C4",
+    },
+    "\uD658\uB098": {
+        contentsName: "\uD658\uC601 \uB098\uBE44 \uC12C",
+        shortName: "\uD658\uB098\uC12C",
+    },
+    "\uD658\uB098\uC12C": {
+        contentsName: "\uD658\uC601 \uB098\uBE44 \uC12C",
+        shortName: "\uD658\uB098\uC12C",
+    },
+    "\uB77C\uC77C\uB77C\uC774": {
+        contentsName: "\uB77C\uC77C\uB77C\uC774 \uC544\uC77C\uB79C\uB4DC",
+        shortName: "\uB77C\uC77C\uB77C\uC774",
+    },
+};
+
+const REWARD_INFO_BY_LABEL = {
+    "\uACE8\uB4DC": {
+        rewardName: "\uACE8\uB4DC",
+        rewardShortName: "\uACE8\uB4DC",
         rewardIconUrl: "https://cdn-lostark.game.onstove.com/efui_iconatlas/money/money_4.png",
     },
-    card: {
-        rewardName: "전설 ~ 고급 카드 팩 IV",
-        rewardShortName: "카드",
+    "\uCE74\uB4DC": {
+        rewardName: "\uC804\uC124 ~ \uACE0\uAE09 \uCE74\uB4DC \uD329 IV",
+        rewardShortName: "\uCE74\uB4DC",
         rewardIconUrl: "https://cdn-lostark.game.onstove.com/efui_iconatlas/use/use_10_236.png",
+    },
+    "\uC2E4\uB9C1": {
+        rewardName: "\uC2E4\uB9C1",
+        rewardShortName: "\uC2E4\uB9C1",
+        rewardIconUrl: "https://cdn-lostark.game.onstove.com/efui_iconatlas/etc/etc_14.png",
+    },
+    "\uD574\uC8FC": {
+        rewardName: "\uB300\uC591\uC758 \uC8FC\uD654 \uC0C1\uC790",
+        rewardShortName: "\uD574\uC8FC",
+        rewardIconUrl: "https://cdn-lostark.game.onstove.com/efui_iconatlas/use/use_2_8.png",
     },
 } as const;
 
-const TEST_NOTE_LINES = [
-    "4/1~5 수 라일 / 하모니G / 스노우 / 토 죽협 포르페 / 블루홀 장난감G",
-    "4/6~12 월 하모니 / 기회 / 수 볼라르g-수라도c / 환나 / 블루홀 / 토 죽협 스노우g-우갈c / 몬테 기회",
-    "4/13~19 월 쿵덕쿵G / 장난감 / 수 블루홀 / 볼라르 / 고안G / 토 메데 하모니 / 일 쿵덕쿵 포르페g-환나c",
-    "4/20~26 월 몬테 / 기회 / 수 수라g-포르페c / 하모니 / 쿵덕쿵 / 토 볼라르 메데g-라일c / 쿵덕쿵 장난감",
-    "4/27~30 월 수라 / 화 라일g-장난감c / 수 환나 / 우갈",
-] as const;
+type RewardLabel = keyof typeof REWARD_INFO_BY_LABEL;
 
-interface ParsedRewardToken {
-    contentsName: string;
-    shortName: string;
-    rewardType: keyof typeof REWARD_BY_TYPE;
-    sourceToken: string;
+interface ManualScheduleItem {
+    date: string;
+    weekday?: string[];
+    weekendMorning?: string[];
+    weekendAfternoon?: string[];
 }
+
+const TEST_NOTE_SCHEDULE: ManualScheduleItem[] = [
+    {
+        date: `${TEST_NOTE_YEAR}-05-01`,
+        weekday: [
+            "\uC794\uC7A5\uC12C:\uC2E4\uB9C1",
+            "\uD3EC\uB974\uD398:\uD574\uC8FC",
+            "\uBE14\uB8E8\uD640:\uACE8\uB4DC",
+        ],
+    },
+    {
+        date: `${TEST_NOTE_YEAR}-05-02`,
+        weekendMorning: [
+            "\uBAAC\uD14C:\uD574\uC8FC",
+            "\uC2A4\uB178\uC6B0\uD321:\uCE74\uB4DC",
+            "\uD658\uB098\uC12C:\uC2E4\uB9C1",
+        ],
+        weekendAfternoon: [
+            "\uD558\uBAA8\uB2C8:\uCE74\uB4DC",
+            "\uBCFC\uB77C\uB974:\uC2E4\uB9C1",
+            "\uACE0\uC548\uC12C:\uD574\uC8FC",
+        ],
+    },
+    {
+        date: `${TEST_NOTE_YEAR}-05-03`,
+        weekendMorning: [
+            "\uB77C\uC77C\uB77C\uC774:\uCE74\uB4DC",
+            "\uBA54\uB370\uC774\uC544:\uD574\uC8FC",
+            "\uC218\uB77C\uB3C4:\uC2E4\uB9C1",
+        ],
+        weekendAfternoon: [
+            "\uCFF5\uB355\uCFF5:\uCE74\uB4DC",
+            "\uC8FD\uD611:\uC2E4\uB9C1",
+            "\uD3EC\uB974\uD398:\uD574\uC8FC",
+        ],
+    },
+    {
+        date: `${TEST_NOTE_YEAR}-05-04`,
+        weekday: [
+            "\uBE14\uB8E8\uD640:\uCE74\uB4DC",
+            "\uAE30\uD68C:\uACE8\uB4DC",
+            "\uD658\uB098:\uD574\uC8FC",
+        ],
+    },
+    {
+        date: `${TEST_NOTE_YEAR}-05-05`,
+        weekday: [
+            "\uACE0\uC548\uC12C:\uC2E4\uB9C1",
+            "\uC794\uC7A5\uC12C:\uD574\uC8FC",
+            "\uCFF5\uB355\uCFF5:\uCE74\uB4DC",
+        ],
+    },
+    {
+        date: `${TEST_NOTE_YEAR}-05-06`,
+        weekday: [
+            "\uBAAC\uD14C:\uD574\uC8FC",
+            "\uBA54\uB370:\uC2E4\uB9C1",
+            "\uC8FD\uD611:\uCE74\uB4DC",
+        ],
+    },
+    {
+        date: `${TEST_NOTE_YEAR}-05-07`,
+        weekday: [
+            "\uC218\uB77C\uB3C4:\uCE74\uB4DC",
+            "\uD558\uBAA8\uB2C8:\uACE8\uB4DC",
+            "\uBCFC\uB77C\uB974:\uD574\uC8FC",
+        ],
+    },
+    {
+        date: `${TEST_NOTE_YEAR}-05-08`,
+        weekday: [
+            "\uC6B0\uAC08\uC12C:\uC2E4\uB9C1",
+            "\uC2A4\uB178\uC6B0\uD321:\uD574\uC8FC",
+            "\uB77C\uC77C\uB77C\uC774:\uCE74\uB4DC",
+        ],
+    },
+    {
+        date: `${TEST_NOTE_YEAR}-05-09`,
+        weekendMorning: [
+            "\uBE14\uB8E8\uD640:\uCE74\uB4DC",
+            "\uC218\uB77C\uB3C4:\uC2E4\uB9C1",
+            "\uBA54\uB370\uC774\uC544:\uD574\uC8FC",
+        ],
+        weekendAfternoon: [
+            "\uBE14\uB8E8\uD640:\uCE74\uB4DC",
+            "\uC218\uB77C\uB3C4:\uC2E4\uB9C1",
+            "\uBA54\uB370\uC774\uC544:\uD574\uC8FC",
+        ],
+    },
+    {
+        date: `${TEST_NOTE_YEAR}-05-10`,
+        weekendMorning: [
+            "\uC8FD\uD611:\uC2E4\uB9C1",
+            "\uCFF5\uB355\uCFF5:\uCE74\uB4DC",
+            "\uBAAC\uD14C:\uD574\uC8FC",
+        ],
+        weekendAfternoon: [
+            "\uC6B0\uAC08\uC12C:\uACE8\uB4DC",
+            "\uACE0\uC548\uC12C:\uCE74\uB4DC",
+            "\uD658\uB098\uC12C:\uD574\uC8FC",
+        ],
+    },
+    {
+        date: `${TEST_NOTE_YEAR}-05-11`,
+        weekday: [
+            "\uD558\uBAA8\uB2C8:\uC2E4\uB9C1",
+            "\uB77C\uC77C\uB77C\uC774:\uD574\uC8FC",
+            "\uD3EC\uB974\uD398:\uCE74\uB4DC",
+        ],
+    },
+    {
+        date: `${TEST_NOTE_YEAR}-05-12`,
+        weekday: [
+            "\uBA54\uB370\uC774\uC544:\uACE8\uB4DC",
+            "\uC218\uB77C\uB3C4:\uCE74\uB4DC",
+            "\uC6B0\uAC08\uC12C:\uD574\uC8FC",
+        ],
+    },
+    {
+        date: `${TEST_NOTE_YEAR}-05-13`,
+        weekday: [
+            "\uC2A4\uB178\uC6B0\uD321:\uC2E4\uB9C1",
+            "\uB77C\uC77C\uB77C\uC774:\uCE74\uB4DC",
+            "\uD558\uBAA8\uB2C8:\uD574\uC8FC",
+        ],
+    },
+    {
+        date: `${TEST_NOTE_YEAR}-05-14`,
+        weekday: [
+            "\uC8FD\uD611:\uC2E4\uB9C1",
+            "\uBAAC\uD14C:\uCE74\uB4DC",
+            "\uBA54\uB370:\uD574\uC8FC",
+        ],
+    },
+    {
+        date: `${TEST_NOTE_YEAR}-05-15`,
+        weekday: [
+            "\uBE14\uB8E8\uD640:\uD574\uC8FC",
+            "\uAE30\uD68C:\uC2E4\uB9C1",
+            "\uC794\uC7A5\uC12C:\uCE74\uB4DC",
+        ],
+    },
+    {
+        date: `${TEST_NOTE_YEAR}-05-16`,
+        weekendMorning: [
+            "\uBCFC\uB77C\uB974:\uCE74\uB4DC",
+            "\uD658\uB098:\uC2E4\uB9C1",
+            "\uACE0\uC548:\uD574\uC8FC",
+        ],
+        weekendAfternoon: [
+            "\uCFF5\uB355\uCFF5:\uD574\uC8FC",
+            "\uD558\uBAA8\uB2C8:\uC2E4\uB9C1",
+            "\uD3EC\uB974\uD398:\uACE8\uB4DC",
+        ],
+    },
+    {
+        date: `${TEST_NOTE_YEAR}-05-17`,
+        weekendMorning: [
+            "\uC218\uB77C\uB3C4:\uD574\uC8FC",
+            "\uBAAC\uD14C:\uCE74\uB4DC",
+            "\uC6B0\uAC08\uC12C:\uC2E4\uB9C1",
+        ],
+        weekendAfternoon: [
+            "\uC2A4\uB178\uC6B0\uD321:\uCE74\uB4DC",
+            "\uC794\uC7A5\uC12C:\uD574\uC8FC",
+            "\uAE30\uD68C:\uC2E4\uB9C1",
+        ],
+    },
+    {
+        date: `${TEST_NOTE_YEAR}-05-18`,
+        weekday: [
+            "\uBA54\uB370:\uC2E4\uB9C1",
+            "\uB77C\uC77C\uB77C\uC774:\uCE74\uB4DC",
+            "\uC8FD\uD611:\uACE8\uB4DC",
+        ],
+    },
+    {
+        date: `${TEST_NOTE_YEAR}-05-19`,
+        weekday: [
+            "\uD658\uB098:\uD574\uC8FC",
+            "\uBE14\uB8E8\uD640:\uC2E4\uB9C1",
+            "\uC2A4\uB178\uC6B0\uD321:\uCE74\uB4DC",
+        ],
+    },
+    {
+        date: `${TEST_NOTE_YEAR}-05-20`,
+        weekday: [
+            "\uC6B0\uAC08:\uCE74\uB4DC",
+            "\uD558\uBAA8\uB2C8:\uD574\uC8FC",
+            "\uAE30\uD68C:\uACE8\uB4DC",
+        ],
+    },
+    {
+        date: `${TEST_NOTE_YEAR}-05-21`,
+        weekday: [
+            "\uB77C\uC77C\uB77C\uC774:\uC2E4\uB9C1",
+            "\uD658\uB098\uC12C:\uD574\uC8FC",
+            "\uBAAC\uD14C:\uCE74\uB4DC",
+        ],
+    },
+    {
+        date: `${TEST_NOTE_YEAR}-05-22`,
+        weekday: [
+            "\uC794\uC7A5\uC12C:\uD574\uC8FC",
+            "\uC8FD\uD611:\uCE74\uB4DC",
+            "\uAE30\uD68C:\uC2E4\uB9C1",
+        ],
+    },
+    {
+        date: `${TEST_NOTE_YEAR}-05-23`,
+        weekendMorning: [
+            "\uACE0\uC548:\uC2E4\uB9C1",
+            "\uBE14\uB8E8\uD640:\uD574\uC8FC",
+            "\uD558\uBAA8\uB2C8:\uCE74\uB4DC",
+        ],
+        weekendAfternoon: [
+            "\uC2A4\uB178\uC6B0\uD321:\uD574\uC8FC",
+            "\uCFF5\uB355\uCFF5:\uCE74\uB4DC",
+            "\uC218\uB77C\uB3C4:\uC2E4\uB9C1",
+        ],
+    },
+    {
+        date: `${TEST_NOTE_YEAR}-05-24`,
+        weekendMorning: [
+            "\uD658\uB098\uC12C:\uCE74\uB4DC",
+            "\uBCFC\uB77C\uB974:\uD574\uC8FC",
+            "\uD3EC\uB974\uD398:\uC2E4\uB9C1",
+        ],
+        weekendAfternoon: [
+            "\uC6B0\uAC08\uC12C:\uD574\uC8FC",
+            "\uAE30\uD68C:\uCE74\uB4DC",
+            "\uBAAC\uD14C:\uACE8\uB4DC",
+        ],
+    },
+    {
+        date: `${TEST_NOTE_YEAR}-05-25`,
+        weekday: [
+            "\uC218\uB77C\uB3C4:\uCE74\uB4DC",
+            "\uCFF5\uB355\uCFF5:\uC2E4\uB9C1",
+            "\uBA54\uB370:\uD574\uC8FC",
+        ],
+    },
+    {
+        date: `${TEST_NOTE_YEAR}-05-26`,
+        weekday: [
+            "\uAE30\uD68C:\uD574\uC8FC",
+            "\uD3EC\uB974\uD398:\uCE74\uB4DC",
+            "\uACE0\uC548\uC12C:\uACE8\uB4DC",
+        ],
+    },
+    {
+        date: `${TEST_NOTE_YEAR}-05-27`,
+        weekday: [
+            "\uBE14\uB8E8\uD640:\uD574\uC8FC",
+            "\uC8FD\uD611:\uCE74\uB4DC",
+            "\uC794\uC7A5\uC12C:\uC2E4\uB9C1",
+        ],
+    },
+    {
+        date: `${TEST_NOTE_YEAR}-05-28`,
+        weekday: [
+            "\uB77C\uC77C\uB77C\uC774:\uACE8\uB4DC",
+            "\uBCFC\uB77C\uB974:\uCE74\uB4DC",
+            "\uC6B0\uAC08\uC12C:\uD574\uC8FC",
+        ],
+    },
+    {
+        date: `${TEST_NOTE_YEAR}-05-29`,
+        weekday: [
+            "\uBAAC\uD14C:\uD574\uC8FC",
+            "\uC2A4\uB178\uC6B0\uD321:\uCE74\uB4DC",
+            "\uD3EC\uB974\uD398:\uC2E4\uB9C1",
+        ],
+    },
+    {
+        date: `${TEST_NOTE_YEAR}-05-30`,
+        weekendMorning: [
+            "\uD558\uBAA8\uB2C8:\uCE74\uB4DC",
+            "\uC218\uB77C\uB3C4:\uD574\uC8FC",
+            "\uB77C\uC77C\uB77C\uC774:\uC2E4\uB9C1",
+        ],
+    },
+    {
+        date: `${TEST_NOTE_YEAR}-05-31`,
+        weekendMorning: [
+            "\uC8FD\uD611:\uC2E4\uB9C1",
+            "\uD658\uB098\uC12C:\uCE74\uB4DC",
+            "\uCFF5\uB355\uCFF5:\uD574\uC8FC",
+        ],
+    },
+];
 
 export interface AdventureIslandTestSeedRecord {
     sourceKey: string;
@@ -73,145 +440,88 @@ export interface AdventureIslandTestSeedRecord {
     startTime: string;
     rawData: {
         source: string;
-        memoLine: string;
-        memoDayToken: string;
-        memoPeriodToken: string;
+        date: string;
+        period: AdventureIslandPeriod;
         sourceToken: string;
-        rewardType: keyof typeof REWARD_BY_TYPE;
+        islandAlias: string;
+        rewardLabel: RewardLabel;
     };
 }
 
-function formatDate(month: number, day: number) {
-    return `${TEST_NOTE_YEAR}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+function buildStartTime(date: string, period: AdventureIslandPeriod) {
+    return `${date}T${START_TIME_BY_PERIOD[period]}`;
 }
 
-function parseDateRange(rangeText: string) {
-    const [startText, endDayText] = rangeText.split("~");
-    const [monthText, startDayText] = startText.split("/");
+function parseScheduleToken(token: string) {
+    const [islandAliasText = "", rewardLabelText = ""] = token.split(":");
+    const islandAlias = islandAliasText.trim();
+    const rewardLabel = rewardLabelText.trim() as RewardLabel;
+    const contentInfo = CONTENTS_NAME_BY_ALIAS[islandAlias];
+    const rewardInfo = REWARD_INFO_BY_LABEL[rewardLabel];
 
-    return {
-        month: Number(monthText),
-        startDay: Number(startDayText),
-        endDay: Number(endDayText),
-    };
-}
-
-function buildDateRange(rangeText: string) {
-    const { month, startDay, endDay } = parseDateRange(rangeText);
-    const dates: string[] = [];
-
-    for (let day = startDay; day <= endDay; day += 1) {
-        dates.push(formatDate(month, day));
+    if (!contentInfo) {
+        throw new Error(`Unknown adventure island alias: ${islandAlias}`);
     }
 
-    return dates;
-}
-
-function parseRewardToken(token: string): ParsedRewardToken {
-    const normalizedToken = token.trim();
-    const match = normalizedToken.match(/^(.*?)([gGcC])?$/u);
-    const islandToken = match?.[1]?.trim() ?? normalizedToken;
-    const rewardMarker = match?.[2]?.toLowerCase();
-    const contentsName = SHORT_NAME_TO_CONTENTS_NAME[islandToken];
-
-    if (!contentsName) {
-        throw new Error(`Unknown adventure island short name: ${islandToken}`);
+    if (!rewardInfo) {
+        throw new Error(`Unknown adventure island reward label: ${rewardLabel}`);
     }
 
     return {
-        contentsName,
-        shortName: islandToken,
-        rewardType: rewardMarker === "g" ? "gold" : "card",
-        sourceToken: normalizedToken,
+        islandAlias,
+        rewardLabel,
+        contentInfo,
+        rewardInfo,
     };
 }
 
-function parsePeriodToken(token: string) {
-    return token
-        .split("-")
-        .map((item) => item.trim())
-        .filter(Boolean)
-        .map((item) => parseRewardToken(item));
-}
-
-function getPeriodInfo(dateText: string, periodIndex: number) {
-    const dayOfWeek = new Date(`${dateText}T00:00:00`).getDay();
-
-    if (dayOfWeek === 0 || dayOfWeek === 6) {
-        return periodIndex === 0
-            ? {
-                  period: AdventureIslandPeriod.weekendMorning,
-                  startTime: `${dateText}T${WEEKEND_MORNING_START_TIME}`,
-              }
-            : {
-                  period: AdventureIslandPeriod.weekendAfternoon,
-                  startTime: `${dateText}T${WEEKEND_AFTERNOON_START_TIME}`,
-              };
+function buildPeriodRecords(
+    date: string,
+    period: AdventureIslandPeriod,
+    tokens: string[] | undefined,
+) {
+    if (!tokens?.length) {
+        return [];
     }
 
-    return {
-        period: AdventureIslandPeriod.weekday,
-        startTime: `${dateText}T${WEEKDAY_START_TIME}`,
-    };
-}
+    return tokens.map((token) => {
+        const parsedToken = parseScheduleToken(token);
 
-function stripDayLabel(dayToken: string) {
-    return dayToken.replace(/^(월|화|수|목|금|토|일)\s+/u, "").trim();
+        return {
+            sourceKey: ADVENTURE_ISLAND_TEST_NOTE_SOURCE_KEY,
+            lostArkDate: date,
+            period,
+            categoryName: TEST_NOTE_CATEGORY_NAME,
+            contentsName: parsedToken.contentInfo.contentsName,
+            shortName: parsedToken.contentInfo.shortName,
+            rewardName: parsedToken.rewardInfo.rewardName,
+            rewardShortName: parsedToken.rewardInfo.rewardShortName,
+            rewardIconUrl: parsedToken.rewardInfo.rewardIconUrl,
+            startTime: buildStartTime(date, period),
+            rawData: {
+                source: ADVENTURE_ISLAND_TEST_NOTE_SOURCE_KEY,
+                date,
+                period,
+                sourceToken: token,
+                islandAlias: parsedToken.islandAlias,
+                rewardLabel: parsedToken.rewardLabel,
+            },
+        } satisfies AdventureIslandTestSeedRecord;
+    });
 }
 
 export function buildAdventureIslandTestSeedRecords(): AdventureIslandTestSeedRecord[] {
-    const records: AdventureIslandTestSeedRecord[] = [];
-
-    for (const memoLine of TEST_NOTE_LINES) {
-        const [rangeText, ...restTokens] = memoLine.split(" ");
-        const dayTokens = restTokens.join(" ").split("/").map((item) => item.trim());
-        const dateRange = buildDateRange(rangeText);
-
-        if (dateRange.length !== dayTokens.length) {
-            throw new Error(`Memo day count does not match date range: ${memoLine}`);
-        }
-
-        for (let dateIndex = 0; dateIndex < dateRange.length; dateIndex += 1) {
-            const lostArkDate = dateRange[dateIndex];
-            const dayToken = stripDayLabel(dayTokens[dateIndex]);
-            const periodTokens = dayToken.split(/\s+/).filter(Boolean);
-
-            for (let periodIndex = 0; periodIndex < periodTokens.length; periodIndex += 1) {
-                const periodToken = periodTokens[periodIndex];
-                const periodInfo = getPeriodInfo(lostArkDate, periodIndex);
-
-                for (const parsedToken of parsePeriodToken(periodToken)) {
-                    const rewardInfo = REWARD_BY_TYPE[parsedToken.rewardType];
-
-                    /*
-                     * 20260402 khs
-                     * 메모장 표기 규칙상 접미사 없는 단일 표기는 카드섬으로 보고, G/g만 골드섬으로 해석한다.
-                     * 사용자가 제공한 원문 규칙의 "골드섬 단일은 G 표시" 문장을 근거로 테스트 데이터 변환 기준을 고정한다.
-                     */
-                    records.push({
-                        sourceKey: ADVENTURE_ISLAND_TEST_NOTE_SOURCE_KEY,
-                        lostArkDate,
-                        period: periodInfo.period,
-                        categoryName: TEST_NOTE_CATEGORY_NAME,
-                        contentsName: parsedToken.contentsName,
-                        shortName: parsedToken.shortName,
-                        rewardName: rewardInfo.rewardName,
-                        rewardShortName: rewardInfo.rewardShortName,
-                        rewardIconUrl: rewardInfo.rewardIconUrl,
-                        startTime: periodInfo.startTime,
-                        rawData: {
-                            source: ADVENTURE_ISLAND_TEST_NOTE_SOURCE_KEY,
-                            memoLine,
-                            memoDayToken: dayTokens[dateIndex],
-                            memoPeriodToken: periodToken,
-                            sourceToken: parsedToken.sourceToken,
-                            rewardType: parsedToken.rewardType,
-                        },
-                    });
-                }
-            }
-        }
-    }
-
-    return records;
+    return TEST_NOTE_SCHEDULE.flatMap((item) => [
+        ...buildPeriodRecords(item.date, AdventureIslandPeriod.weekday, item.weekday),
+        ...buildPeriodRecords(
+            item.date,
+            AdventureIslandPeriod.weekendMorning,
+            item.weekendMorning,
+        ),
+        ...buildPeriodRecords(
+            item.date,
+            AdventureIslandPeriod.weekendAfternoon,
+            item.weekendAfternoon,
+        ),
+    ]);
 }
