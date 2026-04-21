@@ -19,8 +19,8 @@ export class BotCommandController {
 
     @Get("characters")
     @Header("Content-Type", "text/plain; charset=utf-8")
-    async getCharacterMessage(@Query("name") name?: string) {
-        return this.botCommandService.getCharacterMessage(name);
+    async getCharacterMessage(@Query("name") name?: string, @Query("section") section?: string) {
+        return this.botCommandService.getCharacterMessage(name, section);
     }
 
     @Get("characters/refresh")

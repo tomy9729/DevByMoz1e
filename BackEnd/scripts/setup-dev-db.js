@@ -136,19 +136,29 @@ async function main() {
         "pvpInfo" JSONB NOT NULL,
         "combatInfo" JSONB NOT NULL,
         "equipment" JSONB NOT NULL,
+        "accessories" JSONB NOT NULL,
+        "abilityStone" JSONB NOT NULL,
         "gems" JSONB NOT NULL,
         "cards" JSONB NOT NULL,
         "engravings" JSONB NOT NULL,
         "bracelet" JSONB NOT NULL,
+        "skills" JSONB NOT NULL,
+        "arkPassive" JSONB NOT NULL,
         "avatars" JSONB NOT NULL,
         "profile" JSONB NOT NULL,
         "collectibles" JSONB NOT NULL,
+        "arkGrid" JSONB NOT NULL,
         "other" JSONB NOT NULL,
         "rawData" JSONB NOT NULL,
         "refreshedAt" TIMESTAMP(3) NOT NULL,
         "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
         "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
     );`);
+    await client.query('ALTER TABLE "CharacterInfo" ADD COLUMN IF NOT EXISTS "accessories" JSONB NOT NULL DEFAULT \'[]\';');
+    await client.query('ALTER TABLE "CharacterInfo" ADD COLUMN IF NOT EXISTS "abilityStone" JSONB NOT NULL DEFAULT \'null\';');
+    await client.query('ALTER TABLE "CharacterInfo" ADD COLUMN IF NOT EXISTS "skills" JSONB NOT NULL DEFAULT \'[]\';');
+    await client.query('ALTER TABLE "CharacterInfo" ADD COLUMN IF NOT EXISTS "arkPassive" JSONB NOT NULL DEFAULT \'{}\';');
+    await client.query('ALTER TABLE "CharacterInfo" ADD COLUMN IF NOT EXISTS "arkGrid" JSONB NOT NULL DEFAULT \'{}\';');
     await client.query(
         'CREATE INDEX IF NOT EXISTS "CharacterInfo_serverName_characterName_idx" ON "CharacterInfo"("serverName", "characterName");',
     );

@@ -377,17 +377,20 @@ export class BotCommandService {
     }
 
     private formatInvalidCharacterNameMessage() {
-        return ["[캐릭터 정보]", "캐릭터명을 입력해 주세요.", "", "예시:", "!캐릭명", "!캐릭명 새로고침"].join("\n");
+        return ["[캐릭터 정보]", "캐릭터명을 입력해 주세요.", "", "예시:", "!캐릭명", "!캐릭명 새로고침", "!캐릭명 장비", "!캐릭명 보석"].join("\n");
     }
 
-    async getCharacterMessage(name?: string) {
+    async getCharacterMessage(name?: string, section?: string) {
         const characterName = String(name ?? "").trim();
+        const sectionName = String(section ?? "").trim();
 
         if (!characterName) {
             return this.formatInvalidCharacterNameMessage();
         }
 
-        const result = await this.charactersService.getCharacterMessage(characterName);
+        const result = await this.charactersService.getCharacterMessage(characterName, {
+            section: sectionName || undefined,
+        });
 
         return result.message;
     }

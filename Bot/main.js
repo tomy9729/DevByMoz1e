@@ -16,6 +16,26 @@ var BOT_COMMANDS = [
         path: "/api/bot/commands"
     }
 ];
+var CHARACTER_SECTIONS = [
+    "장비",
+    "악세",
+    "악세사리",
+    "어빌리티스톤",
+    "어빌돌",
+    "돌",
+    "팔찌",
+    "스킬",
+    "아크패시브",
+    "보석",
+    "아바타",
+    "내실",
+    "수집",
+    "수집형",
+    "전투력",
+    "전투",
+    "아크그리드"
+];
+var UNSUPPORTED_CHARACTER_SECTIONS = ["낙원력"];
 
 bot.setCommandPrefix(BOT_CONFIG.commandPrefix);
 
@@ -119,6 +139,9 @@ function parseCharacterCommand(msg) {
     var prefix = BOT_CONFIG.commandPrefix;
     var commandText;
     var refreshSuffix = " 새로고침";
+    var lastSpaceIndex;
+    var lastToken;
+    var nameText;
 
     if (content.indexOf(prefix) !== 0) {
         return null;
@@ -137,20 +160,42 @@ function parseCharacterCommand(msg) {
     if (commandText.length > refreshSuffix.length && commandText.substring(commandText.length - refreshSuffix.length) === refreshSuffix) {
         return {
             name: commandText.substring(0, commandText.length - refreshSuffix.length).trim(),
-            refresh: true
+            refresh: true,
+            section: ""
         };
+    }
+
+    lastSpaceIndex = commandText.lastIndexOf(" ");
+
+    if (lastSpaceIndex > 0) {
+        lastToken = commandText.substring(lastSpaceIndex + 1).trim();
+        nameText = commandText.substring(0, lastSpaceIndex).trim();
+
+        if (CHARACTER_SECTIONS.indexOf(lastToken) >= 0 || UNSUPPORTED_CHARACTER_SECTIONS.indexOf(lastToken) >= 0) {
+            return {
+                name: nameText,
+                refresh: false,
+                section: lastToken
+            };
+        }
     }
 
     return {
         name: commandText,
-        refresh: false
+        refresh: false,
+        section: ""
     };
 }
 
 function createCharacterPath(characterCommand) {
     var path = characterCommand.refresh ? "/api/bot/characters/refresh" : "/api/bot/characters";
+    var query = "?name=" + encodeURIComponent(characterCommand.name);
 
-    return path + "?name=" + encodeURIComponent(characterCommand.name);
+    if (characterCommand.section) {
+        query += "&section=" + encodeURIComponent(characterCommand.section);
+    }
+
+    return path + query;
 }
 
 /**

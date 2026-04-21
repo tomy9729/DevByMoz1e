@@ -53,11 +53,27 @@ export const BOT_COMMANDS = [
         usages: [
             {
                 names: ["캐릭명"],
-                description: "캐릭터 정보 조회",
+                description: "캐릭터 전체 정보 조회",
             },
             {
                 names: ["캐릭명 새로고침"],
-                description: "로아 API로 정보 갱신 후 조회",
+                description: "캐릭터 전체 정보 새로고침 후 조회",
+            },
+            {
+                names: ["캐릭명 장비"],
+                description: "장비 정보만 조회",
+            },
+            {
+                names: ["캐릭명 악세"],
+                description: "악세 정보만 조회",
+            },
+            {
+                names: ["캐릭명 보석"],
+                description: "보석 정보만 조회",
+            },
+            {
+                names: ["캐릭명 스킬"],
+                description: "스킬/팔찌/내실/아바타 등 세부 항목 조회 가능",
             },
         ],
     },

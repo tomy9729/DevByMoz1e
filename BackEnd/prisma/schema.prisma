@@ -84,13 +84,18 @@ model CharacterInfo {
   pvpInfo       Json
   combatInfo    Json
   equipment     Json
+  accessories   Json     @default("[]")
+  abilityStone  Json     @default("null")
   gems          Json
   cards         Json
   engravings    Json
   bracelet      Json
+  skills        Json     @default("[]")
+  arkPassive    Json     @default("{}")
   avatars       Json
   profile       Json
   collectibles  Json
+  arkGrid       Json     @default("{}")
   other         Json
   rawData       Json
   refreshedAt   DateTime
