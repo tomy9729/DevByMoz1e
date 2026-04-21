@@ -35,7 +35,10 @@ function loadLocalEnv() {
         }
 
         const key = line.slice(0, separatorIndex).trim();
-        const value = line.slice(separatorIndex + 1).trim();
+        const value = line
+            .slice(separatorIndex + 1)
+            .trim()
+            .replace(/^["']|["']$/g, "");
 
         if (key && !process.env[key]) {
             process.env[key] = value;
@@ -47,7 +50,8 @@ loadLocalEnv();
 
 const app = express();
 const port = Number(process.env.PORT) || 4173;
-const backendBaseUrl = process.env.BACKEND_BASE_URL ?? "http://localhost:3000";
+const backendBaseUrl =
+    process.env.VITE_API_BASE_URL ?? process.env.BACKEND_BASE_URL ?? "http://localhost:3000";
 
 app.use(express.json());
 
