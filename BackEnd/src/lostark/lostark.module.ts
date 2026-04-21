@@ -25,6 +25,6 @@ import { LostArkNoticesService } from "./services/lostark-notices.service";
         AdventureIslandsService,
         CharactersService,
     ],
-    exports: [AdventureIslandsService, CharactersService],
+    exports: [AdventureIslandsService, CharactersService, LostArkGameContentsService, LostArkNoticesService],
 })
 export class LostArkModule {}

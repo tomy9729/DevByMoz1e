@@ -126,6 +126,42 @@ async function main() {
     await client.query(
         'CREATE INDEX IF NOT EXISTS "LostArkNotice_noticeDate_type_idx" ON "LostArkNotice"("noticeDate", "type");',
     );
+    await client.query(`CREATE TABLE IF NOT EXISTS "BotAlarmSetting" (
+        "key" TEXT PRIMARY KEY,
+        "enabled" BOOLEAN NOT NULL DEFAULT true,
+        "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );`);
+    await client.query(`CREATE TABLE IF NOT EXISTS "BotAlarmTarget" (
+        "id" TEXT PRIMARY KEY,
+        "room" TEXT NOT NULL,
+        "packageName" TEXT,
+        "enabled" BOOLEAN NOT NULL DEFAULT true,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );`);
+    await client.query(
+        'CREATE UNIQUE INDEX IF NOT EXISTS "BotAlarmTarget_room_key" ON "BotAlarmTarget"("room");',
+    );
+    await client.query(
+        'CREATE INDEX IF NOT EXISTS "BotAlarmTarget_enabled_idx" ON "BotAlarmTarget"("enabled");',
+    );
+    await client.query(`CREATE TABLE IF NOT EXISTS "BotAlarmDelivery" (
+        "id" TEXT PRIMARY KEY,
+        "alarmType" TEXT NOT NULL,
+        "scheduleKey" TEXT NOT NULL,
+        "status" TEXT NOT NULL,
+        "message" TEXT,
+        "errorReason" TEXT,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );`);
+    await client.query(
+        'CREATE UNIQUE INDEX IF NOT EXISTS "BotAlarmDelivery_alarmType_scheduleKey_key" ON "BotAlarmDelivery"("alarmType", "scheduleKey");',
+    );
+    await client.query(
+        'CREATE INDEX IF NOT EXISTS "BotAlarmDelivery_status_createdAt_idx" ON "BotAlarmDelivery"("status", "createdAt");',
+    );
     await client.query(`CREATE TABLE IF NOT EXISTS "CharacterInfo" (
         "characterName" TEXT PRIMARY KEY,
         "serverName" TEXT,

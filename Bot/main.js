@@ -2,7 +2,8 @@ var bot = BotManager.getCurrentBot();
 var BOT_CONFIG = {
     apiBaseUrl: "http://192.168.0.5:3000",
     commandPrefix: "!",
-    requestTimeout: 5000
+    requestTimeout: 5000,
+    alarmIntervalMs: 30000
 };
 var BOT_COMMANDS = [
     {
@@ -14,6 +15,38 @@ var BOT_COMMANDS = [
         key: "commands",
         aliases: ["명령어", "ㅁㄹㅇ"],
         path: "/api/bot/commands"
+    },
+    {
+        key: "alarmStatus",
+        aliases: ["알람상태"],
+        path: "/api/bot/alarms/status"
+    },
+    {
+        key: "alarmOn",
+        aliases: ["알람켜기"],
+        path: "/api/bot/alarms/on"
+    },
+    {
+        key: "alarmOff",
+        aliases: ["알람끄기"],
+        path: "/api/bot/alarms/off"
+    },
+    {
+        key: "alarmRegister",
+        aliases: ["알람등록"],
+        path: "/api/bot/alarms/targets/register",
+        includeRoom: true
+    },
+    {
+        key: "alarmUnregister",
+        aliases: ["알람해제"],
+        path: "/api/bot/alarms/targets/unregister",
+        includeRoom: true
+    },
+    {
+        key: "alarmTest",
+        aliases: ["알람테스트"],
+        path: "/api/bot/alarms/test"
     }
 ];
 var CHARACTER_SECTIONS = [
@@ -123,17 +156,39 @@ function requestBotApiText(path) {
     return getResponseBodyText(document);
 }
 
-function createCommandPath(command, args) {
+function requestBotApiJson(path) {
+    return JSON.parse(requestBotApiText(path));
+}
+
+function appendQueryParam(path, name, value) {
+    var separator = path.indexOf("?") >= 0 ? "&" : "?";
+
+    return path + separator + encodeURIComponent(name) + "=" + encodeURIComponent(value);
+}
+
+function createCommandPath(command, args, msg) {
     var normalizedArgs = args || [];
+    var path = command.path;
     var queryText;
 
-    if (!normalizedArgs.length) {
-        return command.path;
+    if (command.key === "alarmTest") {
+        path = appendQueryParam(path, "type", normalizedArgs[0] === "공지" ? "weeklyNotice" : "dailyContents");
     }
 
-    queryText = normalizedArgs.join(" ");
+    if (command.includeRoom) {
+        path = appendQueryParam(path, "room", msg.room || "");
 
-    return command.path + "?query=" + encodeURIComponent(queryText);
+        if (msg.packageName) {
+            path = appendQueryParam(path, "packageName", msg.packageName);
+        }
+    }
+
+    if (normalizedArgs.length && command.key !== "alarmTest") {
+        queryText = normalizedArgs.join(" ");
+        path = appendQueryParam(path, "query", queryText);
+    }
+
+    return path;
 }
 
 function parseCharacterCommand(msg) {
@@ -221,7 +276,7 @@ function onCommand(msg) {
 
     try {
         if (command) {
-            msg.reply(requestBotApiText(createCommandPath(command, msg.args)));
+            msg.reply(requestBotApiText(createCommandPath(command, msg.args, msg)));
         } else {
             msg.reply(requestBotApiText(createCharacterPath(characterCommand)));
         }
@@ -232,3 +287,79 @@ function onCommand(msg) {
 }
 
 bot.addListener(Event.COMMAND, onCommand);
+
+function ackAlarmDelivery(deliveryId, status, errorReason) {
+    var path = "/api/bot/alarms/deliveries/ack";
+
+    path = appendQueryParam(path, "deliveryId", deliveryId);
+    path = appendQueryParam(path, "status", status);
+
+    if (errorReason) {
+        path = appendQueryParam(path, "errorReason", errorReason);
+    }
+
+    requestBotApiText(path);
+}
+
+function sendAlarmToTarget(target, message) {
+    if (target.packageName) {
+        return bot.send(target.room, message, target.packageName);
+    }
+
+    return bot.send(target.room, message);
+}
+
+function sendDueAlarms() {
+    var alarms;
+    var alarm;
+    var target;
+    var i;
+    var j;
+    var sentCount;
+    var failedCount;
+
+    try {
+        alarms = requestBotApiJson("/api/bot/alarms/due");
+    } catch (error) {
+        Log.e(error);
+        return;
+    }
+
+    if (!alarms || !alarms.length) {
+        return;
+    }
+
+    for (i = 0; i < alarms.length; i += 1) {
+        alarm = alarms[i];
+        sentCount = 0;
+        failedCount = 0;
+
+        for (j = 0; j < alarm.targets.length; j += 1) {
+            target = alarm.targets[j];
+
+            try {
+                if (sendAlarmToTarget(target, alarm.message)) {
+                    sentCount += 1;
+                } else {
+                    failedCount += 1;
+                }
+            } catch (error) {
+                failedCount += 1;
+                Log.e(error);
+            }
+        }
+
+        try {
+            if (failedCount > 0 || sentCount === 0) {
+                ackAlarmDelivery(alarm.deliveryId, "failed", "sent=" + sentCount + ", failed=" + failedCount);
+            } else {
+                ackAlarmDelivery(alarm.deliveryId, "sent", "");
+            }
+        } catch (error) {
+            Log.e(error);
+        }
+    }
+}
+
+sendDueAlarms();
+setInterval(sendDueAlarms, BOT_CONFIG.alarmIntervalMs);
