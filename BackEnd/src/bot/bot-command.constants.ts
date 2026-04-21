@@ -106,31 +106,31 @@ export const BOT_COMMANDS = [
         description: "알람 관리",
         usages: [
             {
-                names: ["알람상태"],
+                names: ["알람상태", "알람 상태"],
                 description: "알람 전체 on/off와 대상 채팅방 확인",
             },
             {
-                names: ["알람켜기"],
+                names: ["알람켜기", "알람 켜기"],
                 description: "전체 알람 켜기",
             },
             {
-                names: ["알람끄기"],
+                names: ["알람끄기", "알람 끄기"],
                 description: "전체 알람 끄기",
             },
             {
-                names: ["알람등록"],
+                names: ["알람등록", "알람 등록", "이 방 알람 등록"],
                 description: "현재 채팅방을 알람 대상 채팅방으로 등록",
             },
             {
-                names: ["알람해제"],
+                names: ["알람해제", "알람 해제", "이 방 알람 해제"],
                 description: "현재 채팅방을 알람 대상 채팅방에서 해제",
             },
             {
-                names: ["알람테스트"],
+                names: ["알람테스트", "알람 테스트"],
                 description: "오늘 기준 콘텐츠 알람 테스트 발송",
             },
             {
-                names: ["알람테스트 공지"],
+                names: ["알람테스트 공지", "알람 테스트 공지"],
                 description: "오늘 기준 공지 알람 테스트 발송",
             },
         ],

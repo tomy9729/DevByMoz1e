@@ -18,34 +18,34 @@ var BOT_COMMANDS = [
     },
     {
         key: "alarmStatus",
-        aliases: ["알람상태"],
+        aliases: ["알람상태", "알람 상태"],
         path: "/api/bot/alarms/status"
     },
     {
         key: "alarmOn",
-        aliases: ["알람켜기"],
+        aliases: ["알람켜기", "알람 켜기"],
         path: "/api/bot/alarms/on"
     },
     {
         key: "alarmOff",
-        aliases: ["알람끄기"],
+        aliases: ["알람끄기", "알람 끄기"],
         path: "/api/bot/alarms/off"
     },
     {
         key: "alarmRegister",
-        aliases: ["알람등록"],
+        aliases: ["알람등록", "알람 등록", "이 방 알람 등록"],
         path: "/api/bot/alarms/targets/register",
         includeRoom: true
     },
     {
         key: "alarmUnregister",
-        aliases: ["알람해제"],
+        aliases: ["알람해제", "알람 해제", "이 방 알람 해제"],
         path: "/api/bot/alarms/targets/unregister",
         includeRoom: true
     },
     {
         key: "alarmTest",
-        aliases: ["알람테스트"],
+        aliases: ["알람테스트", "알람 테스트"],
         path: "/api/bot/alarms/test"
     }
 ];
@@ -89,20 +89,45 @@ function toFlatString(value) {
 
 /**
  * 20260421 khs
- * 역할: API2 command 이벤트의 command 값을 서버 봇 API 경로로 매핑한다.
+ * 역할: API2 command 이벤트의 전체 입력 값을 서버 봇 API 경로와 인자로 매핑한다.
  * 파라미터 설명:
- * - commandName: 접두어를 제외한 사용자의 명령어 이름
- * 반환값 설명: 매핑된 명령 설정 객체 또는 null
+ * - msg: API2 Command 객체
+ * 반환값 설명: 매핑된 명령 설정 객체와 인자 배열 또는 null
  */
-function findBotCommand(commandName) {
-    var normalizedCommandName = String(commandName || "").trim();
+function parseBotCommand(msg) {
+    var content = String(msg.content || "").trim();
+    var prefix = BOT_CONFIG.commandPrefix;
+    var commandText;
     var i;
+    var j;
     var command;
+    var alias;
+    var argsText;
+
+    if (content.indexOf(prefix) !== 0) {
+        return null;
+    }
+
+    commandText = content.substring(prefix.length).trim();
+
+    if (!commandText) {
+        return null;
+    }
 
     for (i = 0; i < BOT_COMMANDS.length; i += 1) {
         command = BOT_COMMANDS[i];
-        if (command.aliases.indexOf(normalizedCommandName) >= 0) {
-            return command;
+
+        for (j = 0; j < command.aliases.length; j += 1) {
+            alias = command.aliases[j];
+
+            if (commandText === alias || commandText.indexOf(alias + " ") === 0) {
+                argsText = commandText.substring(alias.length).trim();
+
+                return {
+                    command: command,
+                    args: argsText ? argsText.split(/\s+/) : []
+                };
+            }
         }
     }
 
@@ -263,10 +288,10 @@ function createCharacterPath(characterCommand) {
  * 반환값 설명: 없음
  */
 function onCommand(msg) {
-    var command = findBotCommand(msg.command);
+    var parsedCommand = parseBotCommand(msg);
     var characterCommand;
 
-    if (!command) {
+    if (!parsedCommand) {
         characterCommand = parseCharacterCommand(msg);
 
         if (!characterCommand || !characterCommand.name) {
@@ -275,8 +300,8 @@ function onCommand(msg) {
     }
 
     try {
-        if (command) {
-            msg.reply(requestBotApiText(createCommandPath(command, msg.args, msg)));
+        if (parsedCommand) {
+            msg.reply(requestBotApiText(createCommandPath(parsedCommand.command, parsedCommand.args, msg)));
         } else {
             msg.reply(requestBotApiText(createCharacterPath(characterCommand)));
         }

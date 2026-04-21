@@ -101,6 +101,21 @@ export class BotAlarmService {
         return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
     }
 
+    private getLatestKoreaWednesdayDateText(date = new Date()) {
+        const { dateText } = this.getKoreaDateParts(date);
+        const { year, month, day } = this.parseDateTime(dateText);
+        const targetDate = new Date(Date.UTC(year, month - 1, day));
+        const wednesdayOffset = (targetDate.getUTCDay() + 7 - 3) % 7;
+
+        targetDate.setUTCDate(targetDate.getUTCDate() - wednesdayOffset);
+
+        return this.formatDateParts(
+            targetDate.getUTCFullYear(),
+            targetDate.getUTCMonth() + 1,
+            targetDate.getUTCDate(),
+        );
+    }
+
     private toLostArkDateOnly(dateTime: string) {
         const { year, month, day, hour } = this.parseDateTime(dateTime);
         const targetDate = new Date(year, month - 1, day);
@@ -502,7 +517,8 @@ export class BotAlarmService {
     }
 
     async getTestAlarmMessage(type: BotAlarmType) {
-        const dateText = this.getKoreaDateParts().dateText;
+        const dateText =
+            type === "weeklyNotice" ? this.getLatestKoreaWednesdayDateText() : this.getKoreaDateParts().dateText;
         const candidate: BotAlarmCandidate = {
             type,
             scheduleKey: dateText,
@@ -510,10 +526,16 @@ export class BotAlarmService {
         const message = await this.buildAlarmMessage(candidate);
 
         if (!message) {
-            return "테스트 알람 메시지를 생성하지 못했습니다. 서버 로그를 확인해 주세요.";
+            this.logger.warn(`Failed to create test bot alarm. type=${type}, scheduleKey=${dateText}`);
+            return [
+                "[알람 테스트 실패]",
+                `type: ${type}`,
+                `조회 기준일: ${dateText} (${this.getKoreaWeekdayShortText(dateText)})`,
+                "테스트 메시지를 생성하지 못했습니다. 서버 로그를 확인해 주세요.",
+            ].join("\n");
         }
 
-        this.logger.log(`Created test bot alarm. type=${type}`);
+        this.logger.log(`Created test bot alarm. type=${type}, scheduleKey=${dateText}`);
 
         return message;
     }
