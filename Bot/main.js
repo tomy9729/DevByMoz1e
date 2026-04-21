@@ -114,6 +114,45 @@ function createCommandPath(command, args) {
     return command.path + "?query=" + encodeURIComponent(queryText);
 }
 
+function parseCharacterCommand(msg) {
+    var content = String(msg.content || "").trim();
+    var prefix = BOT_CONFIG.commandPrefix;
+    var commandText;
+    var refreshSuffix = " 새로고침";
+
+    if (content.indexOf(prefix) !== 0) {
+        return null;
+    }
+
+    commandText = content.substring(prefix.length).trim();
+
+    if (!commandText) {
+        return null;
+    }
+
+    if (commandText === "새로고침") {
+        return null;
+    }
+
+    if (commandText.length > refreshSuffix.length && commandText.substring(commandText.length - refreshSuffix.length) === refreshSuffix) {
+        return {
+            name: commandText.substring(0, commandText.length - refreshSuffix.length).trim(),
+            refresh: true
+        };
+    }
+
+    return {
+        name: commandText,
+        refresh: false
+    };
+}
+
+function createCharacterPath(characterCommand) {
+    var path = characterCommand.refresh ? "/api/bot/characters/refresh" : "/api/bot/characters";
+
+    return path + "?name=" + encodeURIComponent(characterCommand.name);
+}
+
 /**
  * 20260421 khs
  * 역할: API2 command 이벤트에서 명령어 alias를 확인하고 서버 응답 문자열을 그대로 답장한다.
@@ -123,13 +162,22 @@ function createCommandPath(command, args) {
  */
 function onCommand(msg) {
     var command = findBotCommand(msg.command);
+    var characterCommand;
 
     if (!command) {
-        return;
+        characterCommand = parseCharacterCommand(msg);
+
+        if (!characterCommand || !characterCommand.name) {
+            return;
+        }
     }
 
     try {
-        msg.reply(requestBotApiText(createCommandPath(command, msg.args)));
+        if (command) {
+            msg.reply(requestBotApiText(createCommandPath(command, msg.args)));
+        } else {
+            msg.reply(requestBotApiText(createCharacterPath(characterCommand)));
+        }
     } catch (error) {
         Log.e(error);
         msg.reply("서버 응답을 받을 수 없습니다.");

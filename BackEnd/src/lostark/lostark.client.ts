@@ -4,6 +4,7 @@ import {
     Injectable,
     InternalServerErrorException,
     Logger,
+    NotFoundException,
     ServiceUnavailableException,
     UnauthorizedException,
 } from "@nestjs/common";
@@ -65,6 +66,10 @@ export class LostArkClient {
                     );
                 }
 
+                if (response.status === 404) {
+                    throw new NotFoundException(`${targetName} was not found.`);
+                }
+
                 throw new BadGatewayException(
                     `${targetName} request failed: Lost Ark API returned ${response.status}.`,
                 );
@@ -75,6 +80,7 @@ export class LostArkClient {
             if (
                 error instanceof UnauthorizedException ||
                 error instanceof ForbiddenException ||
+                error instanceof NotFoundException ||
                 error instanceof BadGatewayException ||
                 error instanceof InternalServerErrorException
             ) {
@@ -129,6 +135,15 @@ export class LostArkClient {
             StartTimes,
             RewardItems,
         }),
+        );
+    }
+
+    async fetchCharacterArmory(characterName: string): Promise<Record<string, unknown>> {
+        const encodedCharacterName = encodeURIComponent(characterName);
+
+        return this.fetchJson<Record<string, unknown>>(
+            `https://developer-lostark.game.onstove.com/armories/characters/${encodedCharacterName}`,
+            `Lost Ark character ${characterName}`,
         );
     }
 }

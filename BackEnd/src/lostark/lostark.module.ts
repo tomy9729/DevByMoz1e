@@ -5,6 +5,7 @@ import { LostArkGameContentsController } from "./controllers/lostark-game-conten
 import { LostArkNoticesController } from "./controllers/lostark-notices.controller";
 import { LostArkClient } from "./lostark.client";
 import { AdventureIslandsService } from "./services/adventure-islands.service";
+import { CharactersService } from "./services/characters.service";
 import { LostArkEventsService } from "./services/lostark-events.service";
 import { LostArkGameContentsService } from "./services/lostark-game-contents.service";
 import { LostArkNoticesService } from "./services/lostark-notices.service";
@@ -22,7 +23,8 @@ import { LostArkNoticesService } from "./services/lostark-notices.service";
         LostArkNoticesService,
         LostArkGameContentsService,
         AdventureIslandsService,
+        CharactersService,
     ],
-    exports: [AdventureIslandsService],
+    exports: [AdventureIslandsService, CharactersService],
 })
 export class LostArkModule {}

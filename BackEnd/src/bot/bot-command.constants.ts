@@ -43,4 +43,22 @@ export const BOT_COMMANDS = [
             },
         ],
     },
+    {
+        key: "characters",
+        category: "캐릭터",
+        displayName: "캐릭터",
+        aliases: [],
+        endpoint: "/api/bot/characters",
+        description: "캐릭터 정보 조회",
+        usages: [
+            {
+                names: ["캐릭명"],
+                description: "캐릭터 정보 조회",
+            },
+            {
+                names: ["캐릭명 새로고침"],
+                description: "로아 API로 정보 갱신 후 조회",
+            },
+        ],
+    },
 ] as const;

@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { AdventureIslandPeriod } from "@prisma/client";
 import { AdventureIslandsService } from "../lostark/services/adventure-islands.service";
+import { CharactersService } from "../lostark/services/characters.service";
 import { BOT_COMMANDS } from "./bot-command.constants";
 
 type AdventureIslandQueryType = "today" | "tomorrow" | "date" | "week" | "month" | "weekday";
@@ -27,7 +28,10 @@ interface ParsedAdventureIslandQuery {
 
 @Injectable()
 export class BotCommandService {
-    constructor(private readonly adventureIslandsService: AdventureIslandsService) {}
+    constructor(
+        private readonly adventureIslandsService: AdventureIslandsService,
+        private readonly charactersService: CharactersService,
+    ) {}
 
     private readonly weekdayShortTexts = ["일", "월", "화", "수", "목", "금", "토"];
 
@@ -370,5 +374,35 @@ export class BotCommandService {
             parsedQuery,
             this.filterAdventureIslandsByWeekday(adventureIslands, parsedQuery.weekdayIndex),
         );
+    }
+
+    private formatInvalidCharacterNameMessage() {
+        return ["[캐릭터 정보]", "캐릭터명을 입력해 주세요.", "", "예시:", "!캐릭명", "!캐릭명 새로고침"].join("\n");
+    }
+
+    async getCharacterMessage(name?: string) {
+        const characterName = String(name ?? "").trim();
+
+        if (!characterName) {
+            return this.formatInvalidCharacterNameMessage();
+        }
+
+        const result = await this.charactersService.getCharacterMessage(characterName);
+
+        return result.message;
+    }
+
+    async refreshCharacterMessage(name?: string) {
+        const characterName = String(name ?? "").trim();
+
+        if (!characterName) {
+            return this.formatInvalidCharacterNameMessage();
+        }
+
+        const result = await this.charactersService.getCharacterMessage(characterName, {
+            forceRefresh: true,
+        });
+
+        return result.message;
     }
 }

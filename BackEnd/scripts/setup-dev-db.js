@@ -126,6 +126,35 @@ async function main() {
     await client.query(
         'CREATE INDEX IF NOT EXISTS "LostArkNotice_noticeDate_type_idx" ON "LostArkNotice"("noticeDate", "type");',
     );
+    await client.query(`CREATE TABLE IF NOT EXISTS "CharacterInfo" (
+        "characterName" TEXT PRIMARY KEY,
+        "serverName" TEXT,
+        "className" TEXT,
+        "itemLevel" TEXT,
+        "rosterLevel" INTEGER,
+        "guildName" TEXT,
+        "pvpInfo" JSONB NOT NULL,
+        "combatInfo" JSONB NOT NULL,
+        "equipment" JSONB NOT NULL,
+        "gems" JSONB NOT NULL,
+        "cards" JSONB NOT NULL,
+        "engravings" JSONB NOT NULL,
+        "bracelet" JSONB NOT NULL,
+        "avatars" JSONB NOT NULL,
+        "profile" JSONB NOT NULL,
+        "collectibles" JSONB NOT NULL,
+        "other" JSONB NOT NULL,
+        "rawData" JSONB NOT NULL,
+        "refreshedAt" TIMESTAMP(3) NOT NULL,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );`);
+    await client.query(
+        'CREATE INDEX IF NOT EXISTS "CharacterInfo_serverName_characterName_idx" ON "CharacterInfo"("serverName", "characterName");',
+    );
+    await client.query(
+        'CREATE INDEX IF NOT EXISTS "CharacterInfo_refreshedAt_idx" ON "CharacterInfo"("refreshedAt");',
+    );
     await client.end();
     console.log("Development database schema is ready.");
 }

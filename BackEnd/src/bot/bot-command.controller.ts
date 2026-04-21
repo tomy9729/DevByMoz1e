@@ -16,4 +16,16 @@ export class BotCommandController {
     async getAdventureIslandsMessage(@Query("query") query?: string) {
         return this.botCommandService.getAdventureIslandsMessage(query);
     }
+
+    @Get("characters")
+    @Header("Content-Type", "text/plain; charset=utf-8")
+    async getCharacterMessage(@Query("name") name?: string) {
+        return this.botCommandService.getCharacterMessage(name);
+    }
+
+    @Get("characters/refresh")
+    @Header("Content-Type", "text/plain; charset=utf-8")
+    async refreshCharacterMessage(@Query("name") name?: string) {
+        return this.botCommandService.refreshCharacterMessage(name);
+    }
 }
