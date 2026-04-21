@@ -1,20 +1,20 @@
-const bot = BotManager.getCurrentBot();
-const BOT_CONFIG = {
+var bot = BotManager.getCurrentBot();
+var BOT_CONFIG = {
     apiBaseUrl: "http://192.168.0.5:3000",
     commandPrefix: "!",
-    requestTimeout: 5000,
+    requestTimeout: 5000
 };
-const BOT_COMMANDS = [
+var BOT_COMMANDS = [
     {
         key: "adventureIslands",
         aliases: ["모험섬", "ㅁㅎㅅ"],
-        path: "/api/bot/adventure-islands",
+        path: "/api/bot/adventure-islands"
     },
     {
         key: "commands",
         aliases: ["명령어"],
-        path: "/api/bot/commands",
-    },
+        path: "/api/bot/commands"
+    }
 ];
 
 bot.setCommandPrefix(BOT_CONFIG.commandPrefix);
@@ -27,9 +27,12 @@ bot.setCommandPrefix(BOT_CONFIG.commandPrefix);
  * 반환값 설명: 매핑된 명령 설정 객체 또는 null
  */
 function findBotCommand(commandName) {
-    const normalizedCommandName = String(commandName || "").trim();
+    var normalizedCommandName = String(commandName || "").trim();
+    var i;
+    var command;
 
-    for (const command of BOT_COMMANDS) {
+    for (i = 0; i < BOT_COMMANDS.length; i += 1) {
+        command = BOT_COMMANDS[i];
         if (command.aliases.indexOf(normalizedCommandName) >= 0) {
             return command;
         }
@@ -57,13 +60,13 @@ function createBotApiUrl(path) {
  * 반환값 설명: 서버가 반환한 답장 문자열
  */
 function requestBotApiText(path) {
-    const document = Http.requestSync({
+    var document = Http.requestSync({
         url: createBotApiUrl(path),
         method: "GET",
         timeout: BOT_CONFIG.requestTimeout,
         headers: {
-            Accept: "text/plain",
-        },
+            Accept: "text/plain"
+        }
     });
 
     return document.text();
@@ -77,7 +80,7 @@ function requestBotApiText(path) {
  * 반환값 설명: 없음
  */
 function onCommand(msg) {
-    const command = findBotCommand(msg.command);
+    var command = findBotCommand(msg.command);
 
     if (!command) {
         return;
