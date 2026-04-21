@@ -1,9 +1,10 @@
 import { getShortIslandName, getShortRewardName } from "../mappings/lostark.js";
 import { getCalendarEventColors } from "../calendarEventColors.js";
 
-const LOSTARK_EVENTS_ENDPOINT = "/api/lostark/news/events";
-const LOSTARK_NOTICES_ENDPOINT = "/api/lostark/news/notices";
-const LOSTARK_ADVENTURE_ISLANDS_ENDPOINT = "/api/lostark/adventure-islands";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "";
+const LOSTARK_EVENTS_ENDPOINT = createApiUrl("/api/lostark/news/events");
+const LOSTARK_NOTICES_ENDPOINT = createApiUrl("/api/lostark/news/notices");
+const LOSTARK_ADVENTURE_ISLANDS_ENDPOINT = createApiUrl("/api/lostark/adventure-islands");
 const LOSTARK_SHARED_REQUEST_CACHE = {
     events: {
         data: null,
@@ -42,6 +43,23 @@ const ADVENTURE_ISLAND_MAJOR_REWARDS = [
     { key: "oceanCoinChest", sourceNames: ["대양의 주화 상자", "대륙의 주화 상자"] },
     { key: "legendCardPackIv", sourceNames: ["전설 ~ 고급 카드 팩 IV"] },
 ];
+
+/**
+ * 20260421 khs
+ * 역할: 환경변수의 API base URL과 API path를 하나의 요청 URL로 조합한다.
+ * 파라미터 설명:
+ * - path: `/api`로 시작하는 서버 API 경로 문자열
+ * 반환값 설명: base URL이 있으면 절대 URL, 없으면 기존 프록시용 상대 URL 문자열
+ */
+function createApiUrl(path) {
+    const normalizedBaseUrl = API_BASE_URL.trim().replace(/\/+$/, "");
+
+    if (!normalizedBaseUrl) {
+        return path;
+    }
+
+    return `${normalizedBaseUrl}${path}`;
+}
 
 /**
  * 역할: ISO 날짜시간 문자열에서 날짜 부분만 추출한다.
