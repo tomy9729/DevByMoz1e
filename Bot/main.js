@@ -21,6 +21,19 @@ bot.setCommandPrefix(BOT_CONFIG.commandPrefix);
 
 /**
  * 20260421 khs
+ * 역할: Rhino 문자열 결합 결과를 API2 Java 내부 캐스팅에 맞는 JS 문자열로 평탄화한다.
+ * 파라미터 설명:
+ * - value: Java API로 전달할 문자열 값
+ * 반환값 설명: ConsString 또는 NativeJavaObject가 아닌 JS 문자열 값
+ */
+function toFlatString(value) {
+    var text = String(value);
+
+    return text.substring(0, text.length);
+}
+
+/**
+ * 20260421 khs
  * 역할: API2 command 이벤트의 command 값을 서버 봇 API 경로로 매핑한다.
  * 파라미터 설명:
  * - commandName: 접두어를 제외한 사용자의 명령어 이름
@@ -49,7 +62,7 @@ function findBotCommand(commandName) {
  * 반환값 설명: 봇이 호출할 서버 API 전체 URL 문자열
  */
 function createBotApiUrl(path) {
-    return BOT_CONFIG.apiBaseUrl.replace(/\/+$/, "") + path;
+    return toFlatString([BOT_CONFIG.apiBaseUrl.replace(/\/+$/, ""), path].join(""));
 }
 
 /**
@@ -60,8 +73,9 @@ function createBotApiUrl(path) {
  * 반환값 설명: 서버가 반환한 답장 문자열
  */
 function requestBotApiText(path) {
+    var requestUrl = createBotApiUrl(path);
     var document = Http.requestSync({
-        url: createBotApiUrl(path),
+        url: requestUrl,
         method: "GET",
         timeout: BOT_CONFIG.requestTimeout,
         headers: {
@@ -69,7 +83,7 @@ function requestBotApiText(path) {
         }
     });
 
-    return document.text();
+    return toFlatString(document.text());
 }
 
 /**
