@@ -133,6 +133,13 @@ export class BotCommandService {
         };
     }
 
+    private getNearestFutureWeekdayDate(today: string, targetWeekdayIndex: number) {
+        const todayWeekdayIndex = this.weekdayIndexes[this.getKoreaWeekdayShortText(today)];
+        const dayOffset = (targetWeekdayIndex - todayWeekdayIndex + 7) % 7 || 7;
+
+        return this.addKoreaDays(today, dayOffset);
+    }
+
     private parseAdventureIslandQuery(query?: string): ParsedAdventureIslandQuery {
         const today = this.getKoreaDateText();
         const normalizedQuery = String(query ?? "").trim();
@@ -170,12 +177,12 @@ export class BotCommandService {
         }
 
         if (Object.prototype.hasOwnProperty.call(this.weekdayIndexes, normalizedQuery)) {
+            const weekdayIndex = this.weekdayIndexes[normalizedQuery];
+
             return {
                 type: "weekday",
-                title: `모험섬 - ${this.weekdayShortTexts[this.weekdayIndexes[normalizedQuery]]}요일`,
-                fromDate: today,
-                toDate: this.addKoreaDays(today, 27),
-                weekdayIndex: this.weekdayIndexes[normalizedQuery],
+                title: `모험섬 - ${this.weekdayShortTexts[weekdayIndex]}요일`,
+                date: this.getNearestFutureWeekdayDate(today, weekdayIndex),
             };
         }
 
