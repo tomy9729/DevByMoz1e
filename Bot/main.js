@@ -67,6 +67,21 @@ function createBotApiUrl(path) {
 
 /**
  * 20260421 khs
+ * 역할: Http.requestSync 응답 본문에서 서버가 내려준 줄바꿈을 보존한 답장 문자열을 추출한다.
+ * 파라미터 설명:
+ * - document: Http.requestSync가 반환한 응답 Document 객체
+ * 반환값 설명: 서버 응답 본문 기준의 답장 문자열
+ */
+function getResponseBodyText(document) {
+    if (document.body && document.body()) {
+        return toFlatString(document.body().wholeText());
+    }
+
+    return toFlatString(document.text());
+}
+
+/**
+ * 20260421 khs
  * 역할: 서버의 봇전용 API를 호출하고 사용자에게 그대로 노출할 문자열을 받는다.
  * 파라미터 설명:
  * - path: 호출할 봇전용 API 경로 문자열
@@ -83,7 +98,7 @@ function requestBotApiText(path) {
         }
     });
 
-    return toFlatString(document.text());
+    return getResponseBodyText(document);
 }
 
 /**
