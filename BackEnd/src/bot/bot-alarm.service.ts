@@ -101,11 +101,15 @@ export class BotAlarmService {
         return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
     }
 
-    private getLatestKoreaWednesdayDateText(date = new Date()) {
-        const { dateText } = this.getKoreaDateParts(date);
+    private getWeeklyNoticeTestDateText(date = new Date()) {
+        const { dateText, hour, weekday } = this.getKoreaDateParts(date);
         const { year, month, day } = this.parseDateTime(dateText);
         const targetDate = new Date(Date.UTC(year, month - 1, day));
-        const wednesdayOffset = (targetDate.getUTCDay() + 7 - 3) % 7;
+        let wednesdayOffset = (targetDate.getUTCDay() + 7 - 3) % 7;
+
+        if (weekday === "Wed" && Number(hour) < 10) {
+            wednesdayOffset = 7;
+        }
 
         targetDate.setUTCDate(targetDate.getUTCDate() - wednesdayOffset);
 
@@ -518,7 +522,7 @@ export class BotAlarmService {
 
     async getTestAlarmMessage(type: BotAlarmType) {
         const dateText =
-            type === "weeklyNotice" ? this.getLatestKoreaWednesdayDateText() : this.getKoreaDateParts().dateText;
+            type === "weeklyNotice" ? this.getWeeklyNoticeTestDateText() : this.getKoreaDateParts().dateText;
         const candidate: BotAlarmCandidate = {
             type,
             scheduleKey: dateText,
