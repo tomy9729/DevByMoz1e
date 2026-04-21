@@ -12,9 +12,12 @@ type CharacterSection =
     | "skills"
     | "arkPassive"
     | "gems"
+    | "cards"
     | "avatars"
     | "collectibles"
     | "combatPower"
+    | "paradisePower"
+    | "orb"
     | "arkGrid";
 
 interface NormalizedCharacterInfo {
@@ -68,12 +71,15 @@ export class CharactersService {
         스킬: "skills",
         아크패시브: "arkPassive",
         보석: "gems",
+        카드: "cards",
         아바타: "avatars",
         내실: "collectibles",
         수집: "collectibles",
         수집형: "collectibles",
         전투력: "combatPower",
         전투: "combatPower",
+        낙원력: "paradisePower",
+        보주: "orb",
         아크그리드: "arkGrid",
     };
 
@@ -85,9 +91,12 @@ export class CharactersService {
         skills: "스킬",
         arkPassive: "아크패시브",
         gems: "보석",
+        cards: "카드",
         avatars: "아바타",
         collectibles: "내실",
         combatPower: "전투력",
+        paradisePower: "낙원력",
+        orb: "보주",
         arkGrid: "아크그리드",
     };
 
@@ -152,7 +161,7 @@ export class CharactersService {
         }
 
         if (typeof value === "string") {
-            return [value.replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim()].filter(Boolean);
+            return [this.sanitizeOutputText(value.replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim())].filter(Boolean);
         }
 
         if (Array.isArray(value)) {
@@ -170,6 +179,41 @@ export class CharactersService {
         return texts.find((text) => keywords.some((keyword) => text.indexOf(keyword) >= 0)) ?? null;
     }
 
+    private sanitizeOutputText(value: string) {
+        return value.replace(/~불가/g, "").replace(/[ \t]{2,}/g, " ").trim();
+    }
+
+    private extractQualityText(texts: string[]) {
+        const qualityText = this.findFirstTooltipText(texts, ["품질"]);
+        const qualityMatch = qualityText?.match(/품질\s*(?:[:：]|\s)?\s*(\d+)/);
+
+        return qualityMatch ? `품질 ${qualityMatch[1]}` : qualityText;
+    }
+
+    private extractOptionTexts(texts: string[]) {
+        return texts
+            .map((text) => this.sanitizeOutputText(text))
+            .filter((text) => {
+                if (!text || text.indexOf("품질") >= 0 || text.indexOf("아이템 티어") >= 0) {
+                    return false;
+                }
+
+                return (
+                    text.indexOf("+") >= 0 ||
+                    text.indexOf("%") >= 0 ||
+                    text.indexOf("Lv.") >= 0 ||
+                    text.indexOf("세트") >= 0
+                );
+            })
+            .filter((text, index, array) => array.indexOf(text) === index);
+    }
+
+    private extractAbilityTexts(texts: string[]) {
+        return this.extractOptionTexts(texts)
+            .filter((text) => /\+\s*\d+/.test(text))
+            .slice(0, 2);
+    }
+
     private normalizeEquipmentItem(item: any) {
         const tooltip = this.parseTooltip(item?.Tooltip);
         const tooltipTexts = this.collectTooltipTexts(tooltip);
@@ -181,12 +225,14 @@ export class CharactersService {
             name,
             grade: this.toNullableString(item?.Grade),
             icon: this.toNullableString(item?.Icon),
-            quality: this.findFirstTooltipText(tooltipTexts, ["품질"]),
+            quality: this.extractQualityText(tooltipTexts),
             honingLevel: honingMatch ? Number(honingMatch[1]) : null,
             advancedHoning: this.findFirstTooltipText(tooltipTexts, ["상급 재련"]),
             elixir: this.findFirstTooltipText(tooltipTexts, ["엘릭서"]),
             transcendence: this.findFirstTooltipText(tooltipTexts, ["초월"]),
             evolution: this.findFirstTooltipText(tooltipTexts, ["진화"]),
+            effects: this.extractOptionTexts(tooltipTexts),
+            abilityEffects: this.extractAbilityTexts(tooltipTexts),
             tooltipSummary: tooltipTexts.slice(0, 20),
         };
     }
@@ -407,7 +453,7 @@ export class CharactersService {
             return fallback;
         }
 
-        return String(value);
+        return this.sanitizeOutputText(String(value));
     }
 
     private formatNamedList(items: any[], nameKey: string, limit: number) {
@@ -439,7 +485,19 @@ export class CharactersService {
 
     private formatEngravings(engravings: any) {
         const arkPassiveEffects = this.toArray(engravings?.arkPassiveEffects)
-            .map((item) => this.toNullableString(item?.Name) ?? this.toNullableString(item?.Description))
+            .map((item) => {
+                const name = this.toNullableString(item?.Name) ?? this.toNullableString(item?.Description);
+                const grade = this.toNullableString(item?.Grade);
+                const level = this.parseNumber(item?.Level);
+
+                if (!name) {
+                    return null;
+                }
+
+                return [name, grade ? `${grade}각인서` : "유물각인서", level ? `+${level}` : null]
+                    .filter(Boolean)
+                    .join(" ");
+            })
             .filter((value): value is string => Boolean(value));
         const legacyEffects = this.toArray(engravings?.effects)
             .map((item) => this.toNullableString(item?.Name))
@@ -473,11 +531,36 @@ export class CharactersService {
             item.advancedHoning,
             item.elixir,
             item.transcendence,
-            item.evolution,
         ].filter(Boolean);
 
         return `- ${this.getDisplayValue(item.type)} : ${this.getDisplayValue(item.name)}${
             detailParts.length > 0 ? ` (${detailParts.join(" / ")})` : ""
+        }`;
+    }
+
+    private formatAccessoryLine(item: any) {
+        const effects = this.toArray(item?.effects).slice(0, 6);
+        const detailParts = effects.length > 0 ? effects : [item.quality].filter(Boolean);
+
+        return `- ${this.getDisplayValue(item.type)} : ${this.getDisplayValue(item.name)}${
+            detailParts.length > 0 ? ` (${detailParts.join(" / ")})` : ""
+        }`;
+    }
+
+    private formatAbilityStoneLine(item: any) {
+        const effects = this.toArray(item?.abilityEffects).slice(0, 2);
+        const detailParts = effects.length > 0 ? effects : this.toArray(item?.effects).slice(0, 2);
+
+        return `- ${this.getDisplayValue(item.type)} : ${this.getDisplayValue(item.name)}${
+            detailParts.length > 0 ? ` (${detailParts.join(" / ")})` : ""
+        }`;
+    }
+
+    private formatBraceletLine(item: any) {
+        const effects = this.toArray(item?.effects);
+
+        return `- ${this.getDisplayValue(item.type)} : ${this.getDisplayValue(item.name)}${
+            effects.length > 0 ? ` (${effects.join(" / ")})` : ""
         }`;
     }
 
@@ -506,12 +589,20 @@ export class CharactersService {
     }
 
     private formatCollectibleLine(collectible: any) {
+        const percent =
+            collectible.point !== null &&
+            collectible.point !== undefined &&
+            collectible.maxPoint !== null &&
+            collectible.maxPoint !== undefined &&
+            collectible.maxPoint > 0
+                ? ` (${Math.floor((collectible.point / collectible.maxPoint) * 1000) / 10}%)`
+                : "";
         const pointText =
             collectible.maxPoint === null || collectible.maxPoint === undefined
                 ? this.getDisplayValue(collectible.point)
                 : `${this.getDisplayValue(collectible.point)}/${this.getDisplayValue(collectible.maxPoint)}`;
 
-        return `- ${this.getDisplayValue(collectible.type)} : ${pointText}`;
+        return `- ${this.getDisplayValue(collectible.type)} : ${pointText}${percent}`;
     }
 
     private formatArkPassiveLines(arkPassive: any) {
@@ -553,19 +644,34 @@ export class CharactersService {
             return ["보석 정보가 없습니다."];
         }
 
-        if (effectItems.length > 0) {
+        if (gemItems.length === 0) {
             return effectItems
                 .map((effect) => {
                     const gemName = this.toNullableString(effect?.GemName) ?? this.toNullableString(effect?.Name);
                     const skillName = this.toNullableString(effect?.SkillName) ?? this.toNullableString(effect?.Description);
 
-                    return `- ${this.getDisplayValue(gemName)} : ${this.getDisplayValue(skillName)}`;
+                    return `- ${this.getDisplayValue(skillName)} : ${this.getDisplayValue(gemName)}`;
                 })
                 .slice(0, 12);
         }
 
         return gemItems
-            .map((gem) => `- ${this.getDisplayValue(gem?.Name)} : ${this.getDisplayValue(gem?.Grade)}`)
+            .map((gem) => {
+                const slot = this.parseNumber(gem?.Slot);
+                const matchedEffect = effectItems.find((effect) => this.parseNumber(effect?.GemSlot) === slot);
+                const gemName = this.toNullableString(gem?.Name) ?? "";
+                const level = this.parseNumber(gem?.Level) ?? this.parseNumber(gemName.match(/(\d+)레벨/)?.[1]);
+                const gemType =
+                    ["겁화", "작열", "멸화", "홍염"].find((type) => gemName.indexOf(type) >= 0) ??
+                    this.toNullableString(gem?.Type) ??
+                    "-";
+                const skillName =
+                    this.toNullableString(matchedEffect?.SkillName) ??
+                    this.toNullableString(matchedEffect?.Name) ??
+                    this.toNullableString(matchedEffect?.Description);
+
+                return `- ${this.getDisplayValue(skillName)} : Lv.${this.getDisplayValue(level)} ${this.getDisplayValue(gemType)}`;
+            })
             .slice(0, 12);
     }
 
@@ -577,6 +683,59 @@ export class CharactersService {
         return [this.formatEquipmentLine(item)];
     }
 
+    private formatAbilityStoneOrEmpty(item: any) {
+        if (!item || item === Prisma.JsonNull) {
+            return ["어빌리티스톤 정보가 없습니다."];
+        }
+
+        return [this.formatAbilityStoneLine(item)];
+    }
+
+    private formatBraceletOrEmpty(item: any) {
+        if (!item || item === Prisma.JsonNull) {
+            return ["팔찌 정보가 없습니다."];
+        }
+
+        return [this.formatBraceletLine(item)];
+    }
+
+    private formatCardLines(cards: any) {
+        const effects = this.toArray(cards?.effects);
+
+        if (effects.length === 0) {
+            return ["카드 정보가 없습니다."];
+        }
+
+        return effects.map((effect) => {
+            const setName = this.toNullableString(effect?.Name) ?? "카드 세트";
+            const description = this.toNullableString(effect?.Description);
+
+            return `- ${this.getDisplayValue(setName)}${description ? ` : ${this.getDisplayValue(description)}` : ""}`;
+        });
+    }
+
+    private formatParadisePowerLines(characterInfo: any) {
+        const arkGrid = this.toObject(characterInfo.arkGrid);
+        const points = this.toArray(arkGrid?.Points).filter((point) =>
+            String(point?.Name ?? "").indexOf("낙원") >= 0,
+        );
+
+        return points.length > 0
+            ? points.map((point) => `- ${this.getDisplayValue(point?.Name)} : ${this.getDisplayValue(point?.Value)}`)
+            : ["낙원력 정보가 없습니다."];
+    }
+
+    private formatOrbLines(characterInfo: any) {
+        const arkGrid = this.toObject(characterInfo.arkGrid);
+        const effects = this.toArray(arkGrid?.Effects).filter(
+            (effect) => String(effect?.Name ?? "").indexOf("보주") >= 0 || String(effect?.Description ?? "").indexOf("보주") >= 0,
+        );
+
+        return effects.length > 0
+            ? effects.map((effect) => `- ${this.getDisplayValue(effect?.Name)} : ${this.getDisplayValue(effect?.Description)}`)
+            : ["보주 정보가 없습니다."];
+    }
+
     private formatCharacterMessage(characterInfo: any, refreshFailed: boolean) {
         const combatInfo = this.toObject(characterInfo.combatInfo);
         const gems = this.toObject(characterInfo.gems);
@@ -585,8 +744,8 @@ export class CharactersService {
         const equipment = this.toArray(characterInfo.equipment);
         const accessories = this.toArray(characterInfo.accessories);
         const skills = this.toArray(characterInfo.skills);
-        const avatars = this.toArray(characterInfo.avatars);
         const collectibles = this.toArray(characterInfo.collectibles);
+        const visibleSkills = skills.filter((skill) => skill?.level !== 1);
         const lines = [
             ...this.formatCommonHeader(characterInfo, "", refreshFailed),
             `원정대 레벨 : ${this.getDisplayValue(characterInfo.rosterLevel)}`,
@@ -604,23 +763,29 @@ export class CharactersService {
             ...equipment.slice(0, 7).map((item) => this.formatEquipmentLine(item)),
             "",
             "[악세/특수장비]",
-            ...(accessories.length > 0 ? accessories.map((item) => this.formatEquipmentLine(item)) : ["악세 정보가 없습니다."]),
-            ...this.formatItemOrEmpty(characterInfo.abilityStone, "어빌리티스톤 정보가 없습니다."),
-            ...this.formatItemOrEmpty(characterInfo.bracelet, "팔찌 정보가 없습니다."),
+            ...(accessories.length > 0 ? accessories.map((item) => this.formatAccessoryLine(item)) : ["악세 정보가 없습니다."]),
+            ...this.formatAbilityStoneOrEmpty(characterInfo.abilityStone),
+            ...this.formatBraceletOrEmpty(characterInfo.bracelet),
             "",
             "[스킬]",
-            ...(skills.length > 0 ? skills.slice(0, 8).map((skill) => this.formatSkillLine(skill)) : ["스킬 정보가 없습니다."]),
+            ...(visibleSkills.length > 0
+                ? visibleSkills
+                      .slice(0, 8)
+                      .map((skill) => this.formatSkillLine(skill))
+                : ["스킬 정보가 없습니다."]),
             "",
-            "[기타]",
-            `- 보석 : ${this.toArray(gems.gems).length}개${
-                this.toArray(gems.effects).length > 0
-                    ? ` (${this.formatNamedList(this.toArray(gems.effects), "Name", 3)})`
-                    : ""
-            }`,
-            `- 아바타 : ${avatars.length}개`,
-            `- 내실 : ${collectibles.length}종`,
-            `- 카드 : ${this.formatNamedList(this.toArray(cards.cards), "Name", 6) || "-"}`,
-            `- 카드 효과 : ${this.formatNamedList(this.toArray(cards.effects), "Name", 4) || "-"}`,
+            "[보석]",
+            ...this.formatGemLines(gems),
+            "",
+            "[내실]",
+            ...(collectibles.length > 0 ? collectibles.map((collectible) => this.formatCollectibleLine(collectible)) : ["내실 정보가 없습니다."]),
+            "",
+            "[카드]",
+            ...this.formatCardLines(cards),
+            "",
+            "[낙원력/보주]",
+            ...this.formatParadisePowerLines(characterInfo),
+            ...this.formatOrbLines(characterInfo),
         );
 
         return lines.join("\n");
@@ -638,18 +803,22 @@ export class CharactersService {
             lines.push(...(equipment.length > 0 ? equipment.map((item) => this.formatEquipmentLine(item)) : ["장비 정보가 없습니다."]));
         } else if (section === "accessories") {
             const accessories = this.toArray(characterInfo.accessories);
-            lines.push(...(accessories.length > 0 ? accessories.map((item) => this.formatEquipmentLine(item)) : ["악세 정보가 없습니다."]));
+            lines.push(...(accessories.length > 0 ? accessories.map((item) => this.formatAccessoryLine(item)) : ["악세 정보가 없습니다."]));
         } else if (section === "abilityStone") {
-            lines.push(...this.formatItemOrEmpty(characterInfo.abilityStone, "어빌리티스톤 정보가 없습니다."));
+            lines.push(...this.formatAbilityStoneOrEmpty(characterInfo.abilityStone));
         } else if (section === "bracelet") {
-            lines.push(...this.formatItemOrEmpty(characterInfo.bracelet, "팔찌 정보가 없습니다."));
+            lines.push(...this.formatBraceletOrEmpty(characterInfo.bracelet));
         } else if (section === "skills") {
             const skills = this.toArray(characterInfo.skills);
-            lines.push(...(skills.length > 0 ? skills.map((skill) => this.formatSkillLine(skill)).slice(0, 16) : ["스킬 정보가 없습니다."]));
+            const visibleSkills = skills.filter((skill) => skill?.level !== 1);
+
+            lines.push(...(visibleSkills.length > 0 ? visibleSkills.map((skill) => this.formatSkillLine(skill)).slice(0, 16) : ["스킬 정보가 없습니다."]));
         } else if (section === "arkPassive") {
             lines.push(...this.formatArkPassiveLines(this.toObject(characterInfo.arkPassive)));
         } else if (section === "gems") {
             lines.push(...this.formatGemLines(this.toObject(characterInfo.gems)));
+        } else if (section === "cards") {
+            lines.push(...this.formatCardLines(this.toObject(characterInfo.cards)));
         } else if (section === "avatars") {
             const avatars = this.toArray(characterInfo.avatars);
             lines.push(...(avatars.length > 0 ? avatars.map((avatar) => this.formatAvatarLine(avatar)).slice(0, 16) : ["아바타 정보가 없습니다."]));
@@ -661,6 +830,10 @@ export class CharactersService {
                 `- 전투력 : ${this.getDisplayValue(combatInfo.combatPower)}`,
                 `- 특성 : ${this.formatCombatStats(combatInfo)}`,
             );
+        } else if (section === "paradisePower") {
+            lines.push(...this.formatParadisePowerLines(characterInfo));
+        } else if (section === "orb") {
+            lines.push(...this.formatOrbLines(characterInfo));
         } else if (section === "arkGrid") {
             lines.push(...this.formatArkGridLines(this.toObject(characterInfo.arkGrid)));
         }
@@ -678,6 +851,8 @@ export class CharactersService {
             "!캐릭명 새로고침",
             "!캐릭명 장비",
             "!캐릭명 보석",
+            "!캐릭명 카드",
+            "!캐릭명 낙원력",
         ].join("\n");
     }
 

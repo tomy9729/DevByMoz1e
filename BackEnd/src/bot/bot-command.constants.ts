@@ -53,7 +53,7 @@ export const BOT_COMMANDS = [
         usages: [
             {
                 names: ["캐릭명"],
-                description: "캐릭터 전체 정보 조회",
+                description: "기본 전투 정보, 장비 품질, 악세 효과, 각인서 수치, 돌/팔찌 효과, 스킬, 보석, 내실, 카드 세트, 낙원력/보주 조회",
             },
             {
                 names: ["캐릭명 새로고침"],
@@ -61,19 +61,39 @@ export const BOT_COMMANDS = [
             },
             {
                 names: ["캐릭명 장비"],
-                description: "장비 정보만 조회",
+                description: "장비별 강화 수치와 품질 조회",
             },
             {
                 names: ["캐릭명 악세"],
-                description: "악세 정보만 조회",
+                description: "악세서리별 보유 효과 조회",
+            },
+            {
+                names: ["캐릭명 어빌리티스톤", "캐릭명 돌"],
+                description: "어빌리티 스톤 각인 수치 조회",
+            },
+            {
+                names: ["캐릭명 팔찌"],
+                description: "팔찌 보유 효과 전체 조회",
             },
             {
                 names: ["캐릭명 보석"],
-                description: "보석 정보만 조회",
+                description: "보석별 적용 스킬, 레벨, 종류 조회",
             },
             {
                 names: ["캐릭명 스킬"],
-                description: "스킬/팔찌/내실/아바타 등 세부 항목 조회 가능",
+                description: "1레벨을 제외한 스킬 조회",
+            },
+            {
+                names: ["캐릭명 내실"],
+                description: "내실별 달성 수량과 퍼센트 조회",
+            },
+            {
+                names: ["캐릭명 카드"],
+                description: "카드 세트명과 적용 중인 카드 효과 조회",
+            },
+            {
+                names: ["캐릭명 낙원력", "캐릭명 보주"],
+                description: "낙원력 또는 보주 정보 조회",
             },
         ],
     },

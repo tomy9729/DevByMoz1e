@@ -27,15 +27,17 @@ var CHARACTER_SECTIONS = [
     "스킬",
     "아크패시브",
     "보석",
+    "카드",
     "아바타",
     "내실",
     "수집",
     "수집형",
     "전투력",
     "전투",
+    "낙원력",
+    "보주",
     "아크그리드"
 ];
-var UNSUPPORTED_CHARACTER_SECTIONS = ["낙원력"];
 
 bot.setCommandPrefix(BOT_CONFIG.commandPrefix);
 
@@ -171,7 +173,7 @@ function parseCharacterCommand(msg) {
         lastToken = commandText.substring(lastSpaceIndex + 1).trim();
         nameText = commandText.substring(0, lastSpaceIndex).trim();
 
-        if (CHARACTER_SECTIONS.indexOf(lastToken) >= 0 || UNSUPPORTED_CHARACTER_SECTIONS.indexOf(lastToken) >= 0) {
+        if (CHARACTER_SECTIONS.indexOf(lastToken) >= 0) {
             return {
                 name: nameText,
                 refresh: false,

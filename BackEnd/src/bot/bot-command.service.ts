@@ -377,7 +377,17 @@ export class BotCommandService {
     }
 
     private formatInvalidCharacterNameMessage() {
-        return ["[캐릭터 정보]", "캐릭터명을 입력해 주세요.", "", "예시:", "!캐릭명", "!캐릭명 새로고침", "!캐릭명 장비", "!캐릭명 보석"].join("\n");
+        return [
+            "[캐릭터 정보]",
+            "캐릭터명을 입력해 주세요.",
+            "",
+            "예시:",
+            "!캐릭명",
+            "!캐릭명 새로고침",
+            "!캐릭명 장비",
+            "!캐릭명 보석",
+            "!캐릭명 카드",
+        ].join("\n");
     }
 
     async getCharacterMessage(name?: string, section?: string) {
