@@ -1,3 +1,8 @@
+.calendar-download-target {
+  background: hsl(var(--card));
+  color: hsl(var(--card-foreground));
+}
+
 .fc .calendar-event-single-day .calendar-event-inline {
   display: flex;
   align-items: center;

@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
+import { toPng } from "html-to-image";
 import { fetchLostArkCalendarEvents } from "./api/lostark";
 import {
     buildCalendarFilterOptions,
@@ -32,7 +33,7 @@ import {
 } from "./components/ui/select";
 import { currentLanguage, getCalendarLocale, t } from "./i18n";
 import { cn } from "./lib/utils";
-import { Settings2 } from "lucide-react";
+import { Download, Settings2 } from "lucide-react";
 import "./App.css";
 
 const CALENDAR_FIRST_DAY_STORAGE_KEY = "calendar-first-day";
@@ -391,8 +392,31 @@ function getCalendarDayCellClassNames(dayCellInfo, hasEvents, isTodayFocusEnable
     return classNames;
 }
 
+function formatCalendarDownloadDatePart(value) {
+    return String(value).padStart(2, "0");
+}
+
+function getCalendarDownloadFileName(date = new Date()) {
+    const year = date.getFullYear();
+    const month = formatCalendarDownloadDatePart(date.getMonth() + 1);
+    const day = formatCalendarDownloadDatePart(date.getDate());
+    const hours = formatCalendarDownloadDatePart(date.getHours());
+    const minutes = formatCalendarDownloadDatePart(date.getMinutes());
+
+    return `lostark-calendar-${year}${month}${day}-${hours}${minutes}.png`;
+}
+
+function downloadDataUrl(dataUrl, fileName) {
+    const link = document.createElement("a");
+
+    link.href = dataUrl;
+    link.download = fileName;
+    link.click();
+}
+
 function App() {
     const language = currentLanguage;
+    const calendarDownloadTargetRef = useRef(null);
     const calendarFirstDayOptions = [
         {
             value: 0,
@@ -426,6 +450,7 @@ function App() {
     const [calendarContentDisplayOptions, setCalendarContentDisplayOptions] = useState(() =>
         getDefaultCalendarContentDisplayOptions(),
     );
+    const [isCalendarDownloading, setIsCalendarDownloading] = useState(false);
 
     const filterOptions = buildCalendarFilterOptions(allEvents);
     const orderedFilterTargets = sortCalendarTargets(
@@ -583,6 +608,40 @@ function App() {
             ...previousOptions,
             [optionKey]: checked,
         }));
+    }
+
+    async function handleCalendarPngDownload() {
+        const calendarElement = calendarDownloadTargetRef.current;
+
+        if (!calendarElement || calendarElement.offsetWidth === 0 || calendarElement.offsetHeight === 0) {
+            window.alert("Calendar is not ready to download.");
+            return;
+        }
+
+        setIsCalendarDownloading(true);
+
+        try {
+            await document.fonts?.ready;
+
+            const dataUrl = await toPng(calendarElement, {
+                backgroundColor: "hsl(0 0% 100%)",
+                cacheBust: true,
+                pixelRatio: Math.min(window.devicePixelRatio || 1, 2),
+                width: calendarElement.scrollWidth,
+                height: calendarElement.scrollHeight,
+                style: {
+                    width: `${calendarElement.scrollWidth}px`,
+                    height: `${calendarElement.scrollHeight}px`,
+                },
+            });
+
+            downloadDataUrl(dataUrl, getCalendarDownloadFileName());
+        } catch (error) {
+            console.error("Failed to download calendar PNG.", error);
+            window.alert("Failed to download calendar PNG.");
+        } finally {
+            setIsCalendarDownloading(false);
+        }
     }
 
     /**
@@ -1015,75 +1074,91 @@ function App() {
                             !isCalendarTodayFocusEnabled && "calendar-today-focus-disabled",
                         )}
                     >
-                        <FullCalendar
-                            plugins={[dayGridPlugin]}
-                            initialView="dayGridMonth"
-                            firstDay={calendarFirstDay}
-                            locale={language}
-                            locales={[getCalendarLocale(language)]}
-                            headerToolbar={{
-                                left: "prev,next today",
-                                center: "title",
-                                right: "",
-                            }}
-                            eventOrder={(left, right) => {
-                                const leftTargetKey =
-                                    left.extendedProps?.filterTarget ??
-                                    left.extendedProps?.contentType;
-                                const rightTargetKey =
-                                    right.extendedProps?.filterTarget ??
-                                    right.extendedProps?.contentType;
-                                const displayOrderDifference =
-                                    (calendarDisplayOrderMap[leftTargetKey] ?? 99) -
-                                    (calendarDisplayOrderMap[rightTargetKey] ?? 99);
+                        <div className="mb-3 flex justify-end">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={handleCalendarPngDownload}
+                                disabled={isCalendarDownloading}
+                                aria-label="Download calendar as PNG"
+                                title="Download calendar as PNG"
+                            >
+                                <Download className="h-4 w-4" />
+                                PNG
+                            </Button>
+                        </div>
+                        <div ref={calendarDownloadTargetRef} className="calendar-download-target">
+                            <FullCalendar
+                                plugins={[dayGridPlugin]}
+                                initialView="dayGridMonth"
+                                firstDay={calendarFirstDay}
+                                locale={language}
+                                locales={[getCalendarLocale(language)]}
+                                headerToolbar={{
+                                    left: "prev,next today",
+                                    center: "title",
+                                    right: "",
+                                }}
+                                eventOrder={(left, right) => {
+                                    const leftTargetKey =
+                                        left.extendedProps?.filterTarget ??
+                                        left.extendedProps?.contentType;
+                                    const rightTargetKey =
+                                        right.extendedProps?.filterTarget ??
+                                        right.extendedProps?.contentType;
+                                    const displayOrderDifference =
+                                        (calendarDisplayOrderMap[leftTargetKey] ?? 99) -
+                                        (calendarDisplayOrderMap[rightTargetKey] ?? 99);
 
-                                if (displayOrderDifference !== 0) {
-                                    return displayOrderDifference;
+                                    if (displayOrderDifference !== 0) {
+                                        return displayOrderDifference;
+                                    }
+
+                                    return left.title.localeCompare(right.title, "ko");
+                                }}
+                                buttonText={{
+                                    today: t("calendar.buttons.today", language),
+                                }}
+                                dayCellClassNames={(arg) =>
+                                    getCalendarDayCellClassNames(
+                                        arg,
+                                        eventDateKeys.has(toDateKey(arg.date)),
+                                        isCalendarTodayFocusEnabled,
+                                    )
                                 }
+                                eventClassNames={getCalendarEventClassNames}
+                                eventContent={renderCalendarEventContent}
+                                eventClick={(info) => {
+                                    if (!info.event.url) {
+                                        return;
+                                    }
 
-                                return left.title.localeCompare(right.title, "ko");
-                            }}
-                            buttonText={{
-                                today: t("calendar.buttons.today", language),
-                            }}
-                            dayCellClassNames={(arg) =>
-                                getCalendarDayCellClassNames(
-                                    arg,
-                                    eventDateKeys.has(toDateKey(arg.date)),
-                                    isCalendarTodayFocusEnabled,
-                                )
-                            }
-                            eventClassNames={getCalendarEventClassNames}
-                            eventContent={renderCalendarEventContent}
-                            eventClick={(info) => {
-                                if (!info.event.url) {
-                                    return;
-                                }
+                                    info.jsEvent.preventDefault();
+                                    clearCalendarEventSelection(info.jsEvent.target);
+                                    window.open(info.event.url, "_blank", "noopener,noreferrer");
+                                }}
+                                datesSet={(dateInfo) => {
+                                    const currentStart = dateInfo.view.currentStart ?? dateInfo.start;
+                                    const nextMonthRange = getMonthRange(currentStart);
+                                    const nextCalendarMonthRange =
+                                        getCalendarMonthRange(currentStart);
 
-                                info.jsEvent.preventDefault();
-                                clearCalendarEventSelection(info.jsEvent.target);
-                                window.open(info.event.url, "_blank", "noopener,noreferrer");
-                            }}
-                            datesSet={(dateInfo) => {
-                                const currentStart = dateInfo.view.currentStart ?? dateInfo.start;
-                                const nextMonthRange = getMonthRange(currentStart);
-                                const nextCalendarMonthRange =
-                                    getCalendarMonthRange(currentStart);
-
-                                setVisibleMonthRange((previousRange) =>
-                                    isSameMonthRange(previousRange, nextMonthRange)
-                                        ? previousRange
-                                        : nextMonthRange,
-                                );
-                                setCalendarMonthRange((previousRange) =>
-                                    isSameMonthRange(previousRange, nextCalendarMonthRange)
-                                        ? previousRange
-                                        : nextCalendarMonthRange,
-                                );
-                            }}
-                            height="auto"
-                            events={visibleEvents}
-                        />
+                                    setVisibleMonthRange((previousRange) =>
+                                        isSameMonthRange(previousRange, nextMonthRange)
+                                            ? previousRange
+                                            : nextMonthRange,
+                                    );
+                                    setCalendarMonthRange((previousRange) =>
+                                        isSameMonthRange(previousRange, nextCalendarMonthRange)
+                                            ? previousRange
+                                            : nextCalendarMonthRange,
+                                    );
+                                }}
+                                height="auto"
+                                events={visibleEvents}
+                            />
+                        </div>
                     </div>
 
                     <CalendarRemote title={t("remote.title", language)} sections={remoteSections} />
