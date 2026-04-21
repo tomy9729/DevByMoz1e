@@ -12,7 +12,7 @@ var BOT_COMMANDS = [
     },
     {
         key: "commands",
-        aliases: ["명령어"],
+        aliases: ["명령어", "ㅁㄹㅇ"],
         path: "/api/bot/commands"
     }
 ];
@@ -101,6 +101,19 @@ function requestBotApiText(path) {
     return getResponseBodyText(document);
 }
 
+function createCommandPath(command, args) {
+    var normalizedArgs = args || [];
+    var queryText;
+
+    if (!normalizedArgs.length) {
+        return command.path;
+    }
+
+    queryText = normalizedArgs.join(" ");
+
+    return command.path + "?query=" + encodeURIComponent(queryText);
+}
+
 /**
  * 20260421 khs
  * 역할: API2 command 이벤트에서 명령어 alias를 확인하고 서버 응답 문자열을 그대로 답장한다.
@@ -116,7 +129,7 @@ function onCommand(msg) {
     }
 
     try {
-        msg.reply(requestBotApiText(command.path));
+        msg.reply(requestBotApiText(createCommandPath(command, msg.args)));
     } catch (error) {
         Log.e(error);
         msg.reply("서버 응답을 받을 수 없습니다.");
