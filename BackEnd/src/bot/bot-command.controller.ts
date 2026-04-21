@@ -1,4 +1,4 @@
-import { Controller, Get, Header } from "@nestjs/common";
+import { Controller, Get, Header, Query } from "@nestjs/common";
 import { BotCommandService } from "./bot-command.service";
 
 @Controller("api/bot")
@@ -13,7 +13,7 @@ export class BotCommandController {
 
     @Get("adventure-islands")
     @Header("Content-Type", "text/plain; charset=utf-8")
-    async getAdventureIslandsMessage() {
-        return this.botCommandService.getAdventureIslandsMessage();
+    async getAdventureIslandsMessage(@Query("query") query?: string) {
+        return this.botCommandService.getAdventureIslandsMessage(query);
     }
 }
