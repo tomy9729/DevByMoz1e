@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
+import { BotModule } from "./bot/bot.module";
 import { LostArkModule } from "./lostark/lostark.module";
 import { PrismaModule } from "./prisma/prisma.module";
 
@@ -9,6 +10,7 @@ import { PrismaModule } from "./prisma/prisma.module";
             isGlobal: true,
             envFilePath: [".env.local", ".env"],
         }),
+        BotModule,
         PrismaModule,
         LostArkModule,
     ],
