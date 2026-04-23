@@ -2,7 +2,6 @@ var bot = BotManager.getCurrentBot();
 var BOT_CONFIG = {
     apiBaseUrl: "http://192.168.0.5:3000",
     commandPrefix: "!",
-    requestTimeout: 5000,
     alarmIntervalMs: 30000
 };
 var BOT_COMMANDS = [
@@ -75,16 +74,14 @@ var CHARACTER_SECTIONS = [
 bot.setCommandPrefix(BOT_CONFIG.commandPrefix);
 
 /**
- * 20260421 khs
- * 역할: Rhino 문자열 결합 결과를 API2 Java 내부 캐스팅에 맞는 JS 문자열로 평탄화한다.
+ * 20260423 khs
+ * 역할: GraalJS 환경에서 API2 Java 메소드에 전달할 값을 문자열로 정규화한다.
  * 파라미터 설명:
  * - value: Java API로 전달할 문자열 값
- * 반환값 설명: ConsString 또는 NativeJavaObject가 아닌 JS 문자열 값
+ * 반환값 설명: GraalJS/Java interop에 전달할 문자열 값
  */
-function toFlatString(value) {
-    var text = String(value);
-
-    return text.substring(0, text.length);
+function toBotString(value) {
+    return String(value);
 }
 
 /**
@@ -142,7 +139,7 @@ function parseBotCommand(msg) {
  * 반환값 설명: 봇이 호출할 서버 API 전체 URL 문자열
  */
 function createBotApiUrl(path) {
-    return toFlatString([BOT_CONFIG.apiBaseUrl.replace(/\/+$/, ""), path].join(""));
+    return toBotString([BOT_CONFIG.apiBaseUrl.replace(/\/+$/, ""), path].join(""));
 }
 
 /**
@@ -154,10 +151,10 @@ function createBotApiUrl(path) {
  */
 function getResponseBodyText(document) {
     if (document.body && document.body()) {
-        return toFlatString(document.body().wholeText());
+        return toBotString(document.body().wholeText());
     }
 
-    return toFlatString(document.text());
+    return toBotString(document.text());
 }
 
 /**
@@ -169,14 +166,7 @@ function getResponseBodyText(document) {
  */
 function requestBotApiText(path) {
     var requestUrl = createBotApiUrl(path);
-    var document = Http.requestSync({
-        url: requestUrl,
-        method: "GET",
-        timeout: BOT_CONFIG.requestTimeout,
-        headers: {
-            Accept: "text/plain"
-        }
-    });
+    var document = Http.requestSync(requestUrl);
 
     return getResponseBodyText(document);
 }
