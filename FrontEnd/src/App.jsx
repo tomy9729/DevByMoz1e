@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import FullCalendar from "@fullcalendar/react";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import { toPng } from "html-to-image";
@@ -13,6 +13,10 @@ import {
     getCalendarDisplayOrderMap,
     sortCalendarTargets,
 } from "./calendarDisplayOrder";
+import {
+    getCalendarEventColors,
+    getDefaultCalendarEventBackgroundColor,
+} from "./calendarEventColors";
 import CalendarRemote from "./components/CalendarRemote";
 import {
     Accordion,
@@ -23,6 +27,14 @@ import {
 import { Button } from "./components/ui/button";
 import { ChaosGateIcon, FieldBossIcon } from "./components/LostArkContentIcons";
 import { Checkbox } from "./components/ui/checkbox";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from "./components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "./components/ui/popover";
 import {
     Select,
@@ -33,13 +45,571 @@ import {
 } from "./components/ui/select";
 import { currentLanguage, getCalendarLocale, t } from "./i18n";
 import { cn } from "./lib/utils";
-import { Download, Settings2 } from "lucide-react";
+import { ChevronDown, Download, ExternalLink, Settings2 } from "lucide-react";
 import "./App.css";
 
 const CALENDAR_FIRST_DAY_STORAGE_KEY = "calendar-first-day";
 const CALENDAR_TODAY_FOCUS_STORAGE_KEY = "calendar-today-focus-enabled";
+const CALENDAR_FILTERS_STORAGE_KEY = "calendar-filters";
+const CALENDAR_TYPE_COLORS_STORAGE_KEY = "calendar-type-colors";
+const CALENDAR_ADVENTURE_ISLAND_REWARD_COLORS_STORAGE_KEY =
+    "calendar-adventure-island-reward-colors";
+const CALENDAR_LOCAL_SCHEDULES_STORAGE_KEY = "calendar-local-schedules";
 const CALENDAR_FIRST_DAY_OPTION_VALUES = [0, 1, 3];
 const CALENDAR_CONTENT_DISPLAY_TARGETS = ["chaosGate", "fieldBoss", "adventureIsland"];
+const CALENDAR_CUSTOMIZABLE_COLOR_TARGETS = DEFAULT_CALENDAR_DISPLAY_ORDER.filter(
+    (targetKey) => targetKey !== "adventureIsland",
+);
+const CALENDAR_SCHEDULE_TYPE_OPTIONS = [
+    { value: "notice", label: "공지" },
+    { value: "adventureIsland", label: "모험섬" },
+    { value: "fieldBoss", label: "필드보스" },
+    { value: "chaosGate", label: "카오스게이트" },
+    { value: "event", label: "이벤트" },
+    { value: "package", label: "패키지" },
+    { value: "custom", label: "커스텀 일정" },
+];
+const TIME_REQUIRED_SCHEDULE_TYPES = new Set(["adventureIsland", "fieldBoss", "chaosGate"]);
+const DEFAULT_TYPE_SETTINGS = {
+    notice: {
+        link: "",
+        important: false,
+    },
+    adventureIsland: {
+        islandName: "",
+        reward: "",
+        period: "",
+    },
+    fieldBoss: {
+        bossName: "",
+    },
+    chaosGate: {
+        region: "",
+    },
+    event: {
+        link: "",
+        startDate: "",
+        endDate: "",
+    },
+    package: {
+        link: "",
+        saleStartDate: "",
+        saleEndDate: "",
+    },
+    custom: {},
+};
+const CALENDAR_COLOR_PRESETS = [
+    { name: "빨강", value: "#c23b55" },
+    { name: "주황", value: "#d66a2d" },
+    { name: "노랑", value: "#d4a017" },
+    { name: "초록", value: "#2f8f83" },
+    { name: "파랑", value: "#3f65d9" },
+    { name: "보라", value: "#7b3fe4" },
+    { name: "검정", value: "#565b66" },
+];
+const ADVENTURE_ISLAND_REWARD_COLOR_OPTIONS = [
+    {
+        key: "gold",
+        label: "골드",
+        defaultRewardTypeKey: "gold",
+    },
+    {
+        key: "shilling",
+        label: "실링",
+        defaultRewardTypeKey: "shilling",
+    },
+    {
+        key: "oceanCoin",
+        label: "대양의 주화",
+        defaultRewardTypeKey: "oceanCoinChest",
+    },
+    {
+        key: "card",
+        label: "카드",
+        defaultRewardTypeKey: "legendCardPackIv",
+    },
+];
+
+function isValidHexColor(value) {
+    return /^#[0-9a-f]{6}$/i.test(value);
+}
+
+function getReadableTextColor(backgroundColor) {
+    if (!isValidHexColor(backgroundColor)) {
+        return "#ffffff";
+    }
+
+    const red = Number.parseInt(backgroundColor.slice(1, 3), 16);
+    const green = Number.parseInt(backgroundColor.slice(3, 5), 16);
+    const blue = Number.parseInt(backgroundColor.slice(5, 7), 16);
+    const brightness = (red * 299 + green * 587 + blue * 114) / 1000;
+
+    return brightness >= 150 ? "#111827" : "#ffffff";
+}
+
+function getCalendarEventBorderColor(backgroundColor) {
+    return isValidHexColor(backgroundColor) ? backgroundColor : "#5b7c99";
+}
+
+/**
+ * 20260428 khs
+ * 역할: 비연동 사용자의 타입별 일정 색상 설정을 localStorage에서 읽는다.
+ * 파라미터 설명: 없음
+ * 반환값 설명: 일정 타입 키와 색상값을 매핑한 객체
+ */
+function getStoredCalendarTypeColors() {
+    const storedValue = window.localStorage.getItem(CALENDAR_TYPE_COLORS_STORAGE_KEY);
+
+    if (!storedValue) {
+        return {};
+    }
+
+    try {
+        const parsedValue = JSON.parse(storedValue);
+
+        return Object.fromEntries(
+            CALENDAR_CUSTOMIZABLE_COLOR_TARGETS.map((targetKey) => [
+                targetKey,
+                parsedValue[targetKey],
+            ]).filter(([, color]) => isValidHexColor(color)),
+        );
+    } catch {
+        return {};
+    }
+}
+
+/**
+ * 20260428 khs
+ * 역할: 비연동 사용자의 모험섬 보상별 색상 설정을 localStorage에서 읽는다.
+ * 파라미터 설명: 없음
+ * 반환값 설명: 모험섬 보상 키와 색상값을 매핑한 객체
+ */
+function getStoredAdventureIslandRewardColors() {
+    const storedValue = window.localStorage.getItem(
+        CALENDAR_ADVENTURE_ISLAND_REWARD_COLORS_STORAGE_KEY,
+    );
+
+    if (!storedValue) {
+        return {};
+    }
+
+    try {
+        const parsedValue = JSON.parse(storedValue);
+        const rewardKeys = new Set(
+            ADVENTURE_ISLAND_REWARD_COLOR_OPTIONS.map((option) => option.key),
+        );
+
+        return Object.fromEntries(
+            Object.entries(parsedValue).filter(
+                ([rewardKey, color]) => rewardKeys.has(rewardKey) && isValidHexColor(color),
+            ),
+        );
+    } catch {
+        return {};
+    }
+}
+
+/**
+ * 20260428 khs
+ * 역할: 비연동 사용자의 달력 표시 필터 설정을 localStorage에서 읽는다.
+ * 파라미터 설명: 없음
+ * 반환값 설명: targets, groups를 포함한 달력 필터 상태 객체
+ */
+function getStoredCalendarFilters() {
+    const defaultFilters = {
+        targets: {},
+        groups: {},
+    };
+    const storedValue = window.localStorage.getItem(CALENDAR_FILTERS_STORAGE_KEY);
+
+    if (!storedValue) {
+        return defaultFilters;
+    }
+
+    try {
+        const parsedValue = JSON.parse(storedValue);
+
+        return {
+            targets: parsedValue.targets ?? {},
+            groups: parsedValue.groups ?? {},
+        };
+    } catch {
+        return defaultFilters;
+    }
+}
+
+/**
+ * 20260428 khs
+ * 역할: 비연동 사용자가 추가/수정한 일정 데이터를 localStorage에서 읽는다.
+ * 파라미터 설명: 없음
+ * 반환값 설명: localStorage에 저장된 일정 배열
+ */
+function getStoredLocalSchedules() {
+    const storedValue = window.localStorage.getItem(CALENDAR_LOCAL_SCHEDULES_STORAGE_KEY);
+
+    if (!storedValue) {
+        return [];
+    }
+
+    try {
+        const parsedValue = JSON.parse(storedValue);
+
+        if (!Array.isArray(parsedValue)) {
+            return [];
+        }
+
+        return parsedValue.filter((schedule) => schedule?.id && schedule?.sourceKind);
+    } catch {
+        return [];
+    }
+}
+
+/**
+ * 20260428 khs
+ * 역할: 비연동 사용자 타입별/모험섬 보상별 색상 설정을 FullCalendar 이벤트 색상에 적용한다.
+ * 파라미터 설명:
+ * - events: 기존 달력 이벤트 배열
+ * - typeColors: 일정 타입별 사용자 색상 설정 객체
+ * - adventureIslandRewardColors: 모험섬 보상별 사용자 색상 설정 객체
+ * 반환값 설명: 사용자 색상 정책이 반영된 달력 이벤트 배열
+ */
+function applyCalendarUserColors(events, typeColors, adventureIslandRewardColors) {
+    return events.map((event) => {
+        const targetKey = event.extendedProps?.filterTarget ?? event.extendedProps?.contentType;
+        const rewardColorKey =
+            targetKey === "adventureIsland" ? getAdventureIslandRewardColorKey(event) : "";
+        const backgroundColor =
+            targetKey === "adventureIsland"
+                ? adventureIslandRewardColors[rewardColorKey]
+                : typeColors[targetKey];
+
+        if (!backgroundColor) {
+            return event;
+        }
+
+        return {
+            ...event,
+            backgroundColor,
+            borderColor: getCalendarEventBorderColor(backgroundColor),
+            textColor: getReadableTextColor(backgroundColor),
+        };
+    });
+}
+
+function getAdventureIslandRewardColorKey(event) {
+    const rewardTypeKey = event.extendedProps?.rewardTypeKey ?? "";
+    const rewardName = event.extendedProps?.rewardName ?? "";
+
+    if (rewardTypeKey === "gold" || rewardName.includes("골드")) {
+        return "gold";
+    }
+
+    if (rewardTypeKey === "shilling" || rewardName.includes("실링")) {
+        return "shilling";
+    }
+
+    if (
+        rewardTypeKey === "oceanCoinChest" ||
+        rewardName.includes("대양") ||
+        rewardName.includes("해적주화") ||
+        rewardName.includes("주화") ||
+        rewardName.includes("해주")
+    ) {
+        return "oceanCoin";
+    }
+
+    if (rewardTypeKey === "legendCardPackIv" || rewardName.includes("카드")) {
+        return "card";
+    }
+
+    return "";
+}
+
+function getScheduleDateTime(date, time) {
+    return time ? `${date}T${time}:00` : date;
+}
+
+function getPrimaryDateTime(dateTimes = []) {
+    return dateTimes[0] ?? {
+        date: toDateKey(new Date()),
+        time: "",
+    };
+}
+
+function getDateTimesFromLegacySchedule(schedule) {
+    if (Array.isArray(schedule.dateTimes) && schedule.dateTimes.length > 0) {
+        return schedule.dateTimes.map((dateTime) => ({
+            date: dateTime.date ?? "",
+            time: dateTime.time ?? "",
+        }));
+    }
+
+    return [
+        {
+            date: schedule.date ?? toDateKey(new Date()),
+            time: schedule.time ?? "",
+        },
+    ];
+}
+
+function toScheduleTimeValue(timeText = "") {
+    const timeMatch = timeText.match(/(\d{2}):(\d{2})/);
+
+    return timeMatch ? `${timeMatch[1]}:${timeMatch[2]}` : "";
+}
+
+function getEventScheduleType(event) {
+    const targetKey = event.extendedProps?.filterTarget ?? event.extendedProps?.contentType;
+
+    return targetKey === "patchNote" ? "notice" : targetKey || "custom";
+}
+
+function createDefaultScheduleDraft(date = toDateKey(new Date())) {
+    return {
+        id: "",
+        sourceKind: "custom",
+        common: {
+            title: "",
+            type: "custom",
+            isVisible: true,
+            includeInBotResponse: false,
+            canNotify: false,
+            description: "",
+        },
+        dateTimes: [
+            {
+                date,
+                time: "",
+            },
+        ],
+        repeat: {
+            enabled: false,
+        },
+        typeSettings: {
+            ...DEFAULT_TYPE_SETTINGS.custom,
+        },
+        sourceUrl: "",
+    };
+}
+
+function normalizeScheduleDraft(schedule) {
+    if (schedule.common) {
+        return {
+            ...schedule,
+            dateTimes: getDateTimesFromLegacySchedule(schedule),
+            repeat: schedule.repeat ?? { enabled: false },
+            typeSettings: {
+                ...(DEFAULT_TYPE_SETTINGS[schedule.common.type] ?? {}),
+                ...(schedule.typeSettings ?? {}),
+            },
+        };
+    }
+
+    return {
+        id: schedule.id,
+        sourceKind: schedule.sourceKind,
+        common: {
+            title: schedule.title ?? "",
+            type: schedule.type ?? "custom",
+            isVisible: schedule.isVisible ?? true,
+            includeInBotResponse: schedule.includeInBotResponse ?? false,
+            canNotify: schedule.canNotify ?? false,
+            description: schedule.description ?? "",
+        },
+        dateTimes: getDateTimesFromLegacySchedule(schedule),
+        repeat: schedule.repeat ?? { enabled: false },
+        typeSettings: {
+            ...(DEFAULT_TYPE_SETTINGS[schedule.type ?? "custom"] ?? {}),
+            ...(schedule.typeSettings ?? {}),
+        },
+        sourceUrl: schedule.sourceUrl ?? "",
+    };
+}
+
+/**
+ * 20260428 khs
+ * 역할: FullCalendar 이벤트를 일정 수정 팝업 draft 값으로 변환한다.
+ * 파라미터 설명:
+ * - event: 수정할 FullCalendar 이벤트 객체
+ * - localSchedules: localStorage 기반 일정/override 배열
+ * 반환값 설명: 일정 수정 팝업에 표시할 draft 객체
+ */
+function createScheduleDraftFromEvent(event, localSchedules) {
+    const scheduleId = event.extendedProps?.localScheduleId ?? event.id;
+    const storedSchedule = localSchedules.find((schedule) => schedule.id === scheduleId);
+    const normalizedStoredSchedule = storedSchedule
+        ? normalizeScheduleDraft(storedSchedule)
+        : null;
+    const scheduleType = normalizedStoredSchedule?.common.type ?? getEventScheduleType(event);
+    const scheduleDate =
+        normalizedStoredSchedule?.dateTimes?.[0]?.date ??
+        event.startStr?.split("T")[0] ??
+        toDateKey(new Date());
+
+    return {
+        id: scheduleId,
+        sourceKind: normalizedStoredSchedule?.sourceKind ?? "systemOverride",
+        common: {
+            title: normalizedStoredSchedule?.common.title ?? event.title,
+            type: scheduleType,
+            isVisible: normalizedStoredSchedule?.common.isVisible ?? true,
+            includeInBotResponse:
+                normalizedStoredSchedule?.common.includeInBotResponse ?? false,
+            canNotify: normalizedStoredSchedule?.common.canNotify ?? false,
+            description:
+                normalizedStoredSchedule?.common.description ??
+                event.extendedProps?.description ??
+                "",
+        },
+        dateTimes: normalizedStoredSchedule?.dateTimes ?? [
+            {
+                date: scheduleDate,
+                time: toScheduleTimeValue(
+                    event.extendedProps?.displayTime ?? event.extendedProps?.sourceStartTime ?? "",
+                ),
+            },
+        ],
+        repeat: normalizedStoredSchedule?.repeat ?? { enabled: false },
+        typeSettings: normalizedStoredSchedule?.typeSettings ?? {
+            ...(DEFAULT_TYPE_SETTINGS[scheduleType] ?? {}),
+        },
+        sourceUrl: normalizedStoredSchedule?.sourceUrl ?? event.url,
+    };
+}
+
+function mapLocalScheduleToCalendarEvent(schedule) {
+    const normalizedSchedule = normalizeScheduleDraft(schedule);
+    const eventColors = getCalendarEventColors(normalizedSchedule.common.type);
+
+    return normalizedSchedule.dateTimes.map((dateTime, index) => ({
+        id: `${normalizedSchedule.id}::${index}`,
+        groupId: normalizedSchedule.id,
+        title: normalizedSchedule.common.title,
+        start: getScheduleDateTime(dateTime.date, dateTime.time),
+        allDay: !dateTime.time,
+        ...eventColors,
+        extendedProps: {
+            contentType: normalizedSchedule.common.type,
+            filterTarget: normalizedSchedule.common.type,
+            scheduleType: normalizedSchedule.common.type,
+            scheduleDate: dateTime.date,
+            displayTime: dateTime.time,
+            description: normalizedSchedule.common.description,
+            includeInBotResponse: normalizedSchedule.common.includeInBotResponse,
+            canNotify: normalizedSchedule.common.canNotify,
+            localScheduleId: normalizedSchedule.id,
+            typeSettings: normalizedSchedule.typeSettings,
+            source: {
+                sourceType: "local-user-schedule",
+                sourceId: normalizedSchedule.id,
+            },
+        },
+    }));
+}
+
+function applyLocalScheduleOverrides(serverEvents, localSchedules) {
+    const overrides = new Map(
+        localSchedules
+            .map((schedule) => normalizeScheduleDraft(schedule))
+            .filter((schedule) => schedule.sourceKind === "systemOverride")
+            .map((schedule) => [schedule.id, schedule]),
+    );
+    const customEvents = localSchedules
+        .map((schedule) => normalizeScheduleDraft(schedule))
+        .filter(
+            (schedule) =>
+                schedule.sourceKind === "custom" && schedule.common.isVisible !== false,
+        )
+        .flatMap((schedule) => mapLocalScheduleToCalendarEvent(schedule));
+    const overriddenServerEvents = serverEvents.flatMap((event) => {
+        const override = overrides.get(event.id);
+
+        if (!override) {
+            return [event];
+        }
+
+        if (override.common.isVisible === false) {
+            return [];
+        }
+        const primaryDateTime = getPrimaryDateTime(override.dateTimes);
+
+        return [
+            {
+                ...event,
+                title: override.common.title,
+                start: getScheduleDateTime(primaryDateTime.date, primaryDateTime.time),
+                allDay: !primaryDateTime.time,
+                extendedProps: {
+                    ...event.extendedProps,
+                    contentType: override.common.type,
+                    filterTarget: override.common.type,
+                    scheduleType: override.common.type,
+                    scheduleDate: primaryDateTime.date,
+                    displayTime: primaryDateTime.time,
+                    description: override.common.description,
+                    includeInBotResponse: override.common.includeInBotResponse,
+                    canNotify: override.common.canNotify,
+                    typeSettings: override.typeSettings,
+                },
+            },
+        ];
+    });
+
+    return [...overriddenServerEvents, ...customEvents];
+}
+
+/**
+ * 20260428 khs
+ * 역할: 대표 색상 목록에서 선택하는 일정 색상 드롭다운을 렌더링한다.
+ * 파라미터 설명:
+ * - value: 현재 선택된 `#RRGGBB` 색상 문자열
+ * - onChange: 색상 선택 시 호출할 변경 함수
+ * - disabled: 색상 선택 비활성화 여부
+ * - ariaLabel: 색상 선택 버튼의 접근성 라벨
+ * 반환값 설명: 색상 swatch 기반 Popover UI
+ */
+function CalendarColorSelect({ value, onChange, disabled = false, ariaLabel = "색상 선택" }) {
+    return (
+        <Popover>
+            <PopoverTrigger asChild>
+                <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={disabled}
+                    className="w-28 justify-between px-2"
+                    aria-label={ariaLabel}
+                >
+                    <span
+                        className="h-4 w-4 rounded-sm border"
+                        style={{ backgroundColor: value }}
+                    />
+                    <ChevronDown className="h-4 w-4" />
+                </Button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-48 p-2">
+                <div className="grid grid-cols-7 gap-1">
+                    {CALENDAR_COLOR_PRESETS.map((color) => (
+                        <button
+                            key={color.value}
+                            type="button"
+                            className={cn(
+                                "h-7 w-7 rounded-sm border outline-none focus-visible:ring-1 focus-visible:ring-ring",
+                                value === color.value ? "ring-2 ring-ring ring-offset-1" : "",
+                            )}
+                            style={{ backgroundColor: color.value }}
+                            title={color.name}
+                            aria-label={color.name}
+                            onClick={() => {
+                                onChange(color.value);
+                            }}
+                        />
+                    ))}
+                </div>
+            </PopoverContent>
+        </Popover>
+    );
+}
 
 function getDefaultCalendarEventDisplayOptions() {
     return {
@@ -85,8 +655,19 @@ function getStoredCalendarTodayFocusEnabled() {
     return storedValue === "true";
 }
 
+/**
+ * 20260428 khs
+ * 역할: Date 객체를 브라우저 로컬 기준 `YYYY-MM-DD` 날짜 키로 변환한다.
+ * 파라미터 설명:
+ * - date: 날짜 키를 만들 Date 객체
+ * 반환값 설명: UTC 변환 없이 로컬 연/월/일로 조합한 날짜 문자열
+ */
 function toDateKey(date) {
-    return date.toISOString().split("T")[0];
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+
+    return `${year}-${month}-${day}`;
 }
 
 function addDays(date, days) {
@@ -431,15 +1012,13 @@ function App() {
             label: t("calendar.firstDayOptions.wednesday", language),
         },
     ];
-    const [allEvents, setAllEvents] = useState([]);
+    const [serverEvents, setServerEvents] = useState([]);
+    const [localSchedules, setLocalSchedules] = useState(() => getStoredLocalSchedules());
     const [calendarFirstDay, setCalendarFirstDay] = useState(() => getStoredCalendarFirstDay());
     const [isCalendarTodayFocusEnabled, setIsCalendarTodayFocusEnabled] = useState(() =>
         getStoredCalendarTodayFocusEnabled(),
     );
-    const [calendarFilters, setCalendarFilters] = useState({
-        targets: {},
-        groups: {},
-    });
+    const [calendarFilters, setCalendarFilters] = useState(() => getStoredCalendarFilters());
     const [visibleMonthRange, setVisibleMonthRange] = useState(() => getMonthRange());
     const [calendarMonthRange, setCalendarMonthRange] = useState(() =>
         getCalendarMonthRange(),
@@ -450,21 +1029,65 @@ function App() {
     const [calendarContentDisplayOptions, setCalendarContentDisplayOptions] = useState(() =>
         getDefaultCalendarContentDisplayOptions(),
     );
+    const [calendarTypeColors, setCalendarTypeColors] = useState(() =>
+        getStoredCalendarTypeColors(),
+    );
+    const [adventureIslandRewardColors, setAdventureIslandRewardColors] = useState(() =>
+        getStoredAdventureIslandRewardColors(),
+    );
+    const [isAdventureIslandSettingsOpen, setIsAdventureIslandSettingsOpen] = useState(false);
+    const [adventureIslandSettingsDraft, setAdventureIslandSettingsDraft] = useState(null);
+    const [adventureIslandSettingsError, setAdventureIslandSettingsError] = useState("");
+    const [isCalendarSettingsOpen, setIsCalendarSettingsOpen] = useState(false);
+    const [calendarSettingsDraft, setCalendarSettingsDraft] = useState(null);
+    const [scheduleDialogMode, setScheduleDialogMode] = useState(null);
+    const [scheduleDraft, setScheduleDraft] = useState(null);
+    const [scheduleFormError, setScheduleFormError] = useState("");
     const [isCalendarDownloading, setIsCalendarDownloading] = useState(false);
 
+    const allEvents = useMemo(
+        () => applyLocalScheduleOverrides(serverEvents, localSchedules),
+        [serverEvents, localSchedules],
+    );
     const filterOptions = buildCalendarFilterOptions(allEvents);
     const orderedFilterTargets = sortCalendarTargets(
         filterOptions.targets,
         DEFAULT_CALENDAR_DISPLAY_ORDER,
     );
-    const visibleEvents = getVisibleCalendarEvents(
-        filterCalendarEvents(allEvents, calendarFilters),
-        calendarEventDisplayOptions,
+    const visibleEvents = useMemo(
+        () =>
+            applyCalendarUserColors(
+                getVisibleCalendarEvents(
+                    filterCalendarEvents(allEvents, calendarFilters),
+                    calendarEventDisplayOptions,
+                ),
+                calendarTypeColors,
+                adventureIslandRewardColors,
+            ),
+        [
+            allEvents,
+            adventureIslandRewardColors,
+            calendarEventDisplayOptions,
+            calendarFilters,
+            calendarTypeColors,
+        ],
     );
-    const eventDateKeys = getEventDateKeys(visibleEvents);
-    const calendarDisplayOrderMap = getCalendarDisplayOrderMap(
-        DEFAULT_CALENDAR_DISPLAY_ORDER,
+    const eventDateKeys = useMemo(() => getEventDateKeys(visibleEvents), [visibleEvents]);
+    const calendarDisplayOrderMap = useMemo(
+        () =>
+            getCalendarDisplayOrderMap(
+                DEFAULT_CALENDAR_DISPLAY_ORDER,
+            ),
+        [],
     );
+    const hiddenCalendarTargets = useMemo(
+        () =>
+            orderedFilterTargets.filter(
+                (target) => calendarFilters.targets[target.key] === false,
+            ),
+        [calendarFilters.targets, orderedFilterTargets],
+    );
+    const isSystemScheduleDraft = scheduleDraft?.sourceKind === "systemOverride";
 
     useEffect(() => {
         let isMounted = true;
@@ -477,7 +1100,7 @@ function App() {
                 });
 
                 if (isMounted) {
-                    setAllEvents(calendarEvents);
+                    setServerEvents(calendarEvents);
                     setCalendarFilters((previousFilters) =>
                         mergeCalendarFilterState(
                             previousFilters,
@@ -507,6 +1130,34 @@ function App() {
             String(isCalendarTodayFocusEnabled),
         );
     }, [isCalendarTodayFocusEnabled]);
+
+    useEffect(() => {
+        window.localStorage.setItem(
+            CALENDAR_FILTERS_STORAGE_KEY,
+            JSON.stringify(calendarFilters),
+        );
+    }, [calendarFilters]);
+
+    useEffect(() => {
+        window.localStorage.setItem(
+            CALENDAR_TYPE_COLORS_STORAGE_KEY,
+            JSON.stringify(calendarTypeColors),
+        );
+    }, [calendarTypeColors]);
+
+    useEffect(() => {
+        window.localStorage.setItem(
+            CALENDAR_ADVENTURE_ISLAND_REWARD_COLORS_STORAGE_KEY,
+            JSON.stringify(adventureIslandRewardColors),
+        );
+    }, [adventureIslandRewardColors]);
+
+    useEffect(() => {
+        window.localStorage.setItem(
+            CALENDAR_LOCAL_SCHEDULES_STORAGE_KEY,
+            JSON.stringify(localSchedules),
+        );
+    }, [localSchedules]);
 
     useEffect(() => {
         /**
@@ -608,6 +1259,315 @@ function App() {
             ...previousOptions,
             [optionKey]: checked,
         }));
+    }
+
+    /**
+     * 역할: 비연동 사용자의 일정 타입별 색상 설정을 갱신한다.
+     * 파라미터 설명:
+     * - targetKey: 색상을 변경할 일정 타입 키
+     * - color: `#RRGGBB` 형식 색상 문자열
+     * 반환값 설명: 없음
+     */
+    function updateCalendarTypeColor(targetKey, color) {
+        if (!isValidHexColor(color)) {
+            return;
+        }
+
+        setCalendarTypeColors((previousColors) => ({
+            ...previousColors,
+            [targetKey]: color,
+        }));
+    }
+
+    /**
+     * 역할: 비연동 사용자의 일정 타입별 색상 설정을 기본값으로 되돌린다.
+     * 파라미터 설명:
+     * - targetKey: 기본 색상으로 복원할 일정 타입 키
+     * 반환값 설명: 없음
+     */
+    function resetCalendarTypeColor(targetKey) {
+        setCalendarTypeColors((previousColors) => {
+            const nextColors = { ...previousColors };
+
+            delete nextColors[targetKey];
+
+            return nextColors;
+        });
+    }
+
+    function openAdventureIslandSettings() {
+        setAdventureIslandSettingsDraft({ ...adventureIslandRewardColors });
+        setAdventureIslandSettingsError("");
+        setIsAdventureIslandSettingsOpen(true);
+    }
+
+    function updateAdventureIslandRewardColor(rewardKey, color) {
+        if (!isValidHexColor(color)) {
+            return;
+        }
+
+        setAdventureIslandSettingsDraft((previousDraft) => ({
+            ...previousDraft,
+            [rewardKey]: color,
+        }));
+    }
+
+    function resetAdventureIslandRewardColor(rewardKey) {
+        setAdventureIslandSettingsDraft((previousDraft) => {
+            const nextDraft = { ...previousDraft };
+
+            delete nextDraft[rewardKey];
+
+            return nextDraft;
+        });
+    }
+
+    function applyAdventureIslandSettings() {
+        if (!adventureIslandSettingsDraft) {
+            return;
+        }
+
+        try {
+            window.localStorage.setItem(
+                CALENDAR_ADVENTURE_ISLAND_REWARD_COLORS_STORAGE_KEY,
+                JSON.stringify(adventureIslandSettingsDraft),
+            );
+            setAdventureIslandRewardColors(adventureIslandSettingsDraft);
+            setIsAdventureIslandSettingsOpen(false);
+            setAdventureIslandSettingsDraft(null);
+            setAdventureIslandSettingsError("");
+        } catch (error) {
+            console.error("Failed to save adventure island reward colors.", error);
+            setAdventureIslandSettingsError(
+                "저장에 실패했습니다. 기존 모험섬 보상 색상 설정을 유지합니다.",
+            );
+        }
+    }
+
+    /**
+     * 역할: 달력 형태 설정 팝업을 현재 설정값으로 초기화해 연다.
+     * 파라미터 설명: 없음
+     * 반환값 설명: 없음
+     */
+    function openCalendarSettings() {
+        setCalendarSettingsDraft({
+            firstDay: calendarFirstDay,
+            todayFocusEnabled: isCalendarTodayFocusEnabled,
+        });
+        setIsCalendarSettingsOpen(true);
+    }
+
+    /**
+     * 역할: 달력 형태 설정 팝업에서 편집한 값을 실제 달력 설정에 반영한다.
+     * 파라미터 설명: 없음
+     * 반환값 설명: 없음
+     */
+    function applyCalendarSettings() {
+        if (!calendarSettingsDraft) {
+            return;
+        }
+
+        setCalendarFirstDay(calendarSettingsDraft.firstDay);
+        setIsCalendarTodayFocusEnabled(calendarSettingsDraft.todayFocusEnabled);
+        setIsCalendarSettingsOpen(false);
+        setCalendarSettingsDraft(null);
+    }
+
+    function openCreateScheduleDialog() {
+        setScheduleDialogMode("create");
+        setScheduleDraft(createDefaultScheduleDraft(calendarMonthRange.fromDate));
+        setScheduleFormError("");
+    }
+
+    function openEditScheduleDialog(event) {
+        setScheduleDialogMode("edit");
+        setScheduleDraft(createScheduleDraftFromEvent(event, localSchedules));
+        setScheduleFormError("");
+    }
+
+    function closeScheduleDialog() {
+        setScheduleDialogMode(null);
+        setScheduleDraft(null);
+        setScheduleFormError("");
+    }
+
+    function updateScheduleCommonDraft(field, value) {
+        setScheduleDraft((previousDraft) => ({
+            ...previousDraft,
+            common: {
+                ...previousDraft.common,
+                [field]: value,
+            },
+        }));
+    }
+
+    function updateScheduleDateTimeDraft(index, field, value) {
+        setScheduleDraft((previousDraft) => ({
+            ...previousDraft,
+            dateTimes: previousDraft.dateTimes.map((dateTime, dateTimeIndex) =>
+                dateTimeIndex === index
+                    ? {
+                          ...dateTime,
+                          [field]: value,
+                      }
+                    : dateTime,
+            ),
+        }));
+    }
+
+    function addScheduleDateTimeDraft() {
+        setScheduleDraft((previousDraft) => ({
+            ...previousDraft,
+            dateTimes: [
+                ...previousDraft.dateTimes,
+                {
+                    date: previousDraft.dateTimes.at(-1)?.date ?? calendarMonthRange.fromDate,
+                    time: "",
+                },
+            ],
+        }));
+    }
+
+    function removeScheduleDateTimeDraft(index) {
+        setScheduleDraft((previousDraft) => ({
+            ...previousDraft,
+            dateTimes: previousDraft.dateTimes.filter((_, dateTimeIndex) => dateTimeIndex !== index),
+        }));
+    }
+
+    function updateScheduleRepeatDraft(field, value) {
+        setScheduleDraft((previousDraft) => ({
+            ...previousDraft,
+            repeat: {
+                ...previousDraft.repeat,
+                [field]: value,
+            },
+        }));
+    }
+
+    function updateScheduleTypeSettingDraft(field, value) {
+        setScheduleDraft((previousDraft) => ({
+            ...previousDraft,
+            typeSettings: {
+                ...previousDraft.typeSettings,
+                [field]: value,
+            },
+        }));
+    }
+
+    function validateScheduleCommon(draft) {
+        if (!draft.common.title.trim()) {
+            return "일정명을 입력해주세요.";
+        }
+
+        if (!draft.common.type) {
+            return "일정 유형을 선택해주세요.";
+        }
+
+        return "";
+    }
+
+    function validateScheduleDateTimes(draft) {
+        if (!draft.dateTimes.length) {
+            return "날짜/시간을 1개 이상 추가해주세요.";
+        }
+
+        if (draft.dateTimes.some((dateTime) => !dateTime.date)) {
+            return "날짜를 선택해주세요.";
+        }
+
+        if (
+            TIME_REQUIRED_SCHEDULE_TYPES.has(draft.common.type) &&
+            draft.dateTimes.some((dateTime) => !dateTime.time)
+        ) {
+            return "시간을 선택해주세요.";
+        }
+
+        return "";
+    }
+
+    function validateScheduleRepeat() {
+        return "";
+    }
+
+    function validateScheduleTypeSettings() {
+        return "";
+    }
+
+    function validateScheduleDraft(draft) {
+        return (
+            validateScheduleCommon(draft) ||
+            validateScheduleDateTimes(draft) ||
+            validateScheduleRepeat(draft) ||
+            validateScheduleTypeSettings(draft)
+        );
+    }
+
+    function saveScheduleDraft() {
+        if (!scheduleDraft) {
+            return;
+        }
+
+        const validationMessage = validateScheduleDraft(scheduleDraft);
+
+        if (validationMessage) {
+            setScheduleFormError(validationMessage);
+            return;
+        }
+
+        const nextSchedule = {
+            ...scheduleDraft,
+            id:
+                scheduleDraft.id ||
+                `custom-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+            sourceKind: scheduleDraft.sourceKind ?? "custom",
+            common: {
+                ...scheduleDraft.common,
+                title: scheduleDraft.common.title.trim(),
+                description: scheduleDraft.common.description.trim(),
+            },
+        };
+
+        setLocalSchedules((previousSchedules) => {
+            const filteredSchedules = previousSchedules.filter(
+                (schedule) => schedule.id !== nextSchedule.id,
+            );
+
+            return [...filteredSchedules, nextSchedule];
+        });
+        closeScheduleDialog();
+    }
+
+    function deleteScheduleDraft() {
+        if (!scheduleDraft?.id) {
+            return;
+        }
+
+        if (scheduleDraft.sourceKind === "custom") {
+            setLocalSchedules((previousSchedules) =>
+                previousSchedules.filter((schedule) => schedule.id !== scheduleDraft.id),
+            );
+        } else {
+            setLocalSchedules((previousSchedules) => {
+                const filteredSchedules = previousSchedules.filter(
+                    (schedule) => schedule.id !== scheduleDraft.id,
+                );
+
+                return [
+                    ...filteredSchedules,
+                    {
+                        ...scheduleDraft,
+                        sourceKind: "systemOverride",
+                        common: {
+                            ...scheduleDraft.common,
+                            isVisible: false,
+                        },
+                    },
+                ];
+            });
+        }
+
+        closeScheduleDialog();
     }
 
     async function handleCalendarPngDownload() {
@@ -727,46 +1687,6 @@ function App() {
 
     const remoteSections = [
         {
-            key: "firstDay",
-            title: t("remote.sections.firstDay.title", language),
-            content: (
-                <div className="space-y-4">
-                    <label
-                        className="text-sm font-medium leading-none"
-                        htmlFor="calendar-first-day"
-                    >
-                        {t("calendar.firstDayLabel", language)}
-                    </label>
-                    <Select
-                        value={String(calendarFirstDay)}
-                        onValueChange={(value) => {
-                            setCalendarFirstDay(Number(value));
-                        }}
-                    >
-                        <SelectTrigger id="calendar-first-day">
-                            <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {calendarFirstDayOptions.map((option) => (
-                                <SelectItem key={option.value} value={String(option.value)}>
-                                    {option.label}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                    <label className="flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-2 text-sm text-foreground">
-                        <Checkbox
-                            checked={isCalendarTodayFocusEnabled}
-                            onCheckedChange={(checked) => {
-                                setIsCalendarTodayFocusEnabled(checked === true);
-                            }}
-                        />
-                        <span>{t("calendar.todayFocusLabel", language)}</span>
-                    </label>
-                </div>
-            ),
-        },
-        {
             key: "filters",
             title: t("filters.title", language),
             content: (
@@ -780,6 +1700,9 @@ function App() {
                         );
                         const hasTargetGroups = Object.keys(targetGroups).length > 0;
                         const hasEventDisplayOptions = target.key === "event";
+                        const hasColorOptions =
+                            target.key !== "adventureIsland" &&
+                            CALENDAR_CUSTOMIZABLE_COLOR_TARGETS.includes(target.key);
                         const hasDisplayOptions =
                             hasEventDisplayOptions ||
                             CALENDAR_CONTENT_DISPLAY_TARGETS.includes(target.key);
@@ -792,7 +1715,7 @@ function App() {
                                       .map((groupKey) => [groupKey, targetGroups[groupKey]])
                                 : Object.entries(targetGroups);
                         const settingsContent =
-                            hasDisplayOptions || hasNoticeCategorySettings ? (
+                            hasColorOptions || hasDisplayOptions || hasNoticeCategorySettings ? (
                             <Popover>
                                 <PopoverTrigger asChild>
                                     <Button
@@ -811,6 +1734,48 @@ function App() {
                                             ? `${t(target.labelPath, language)} ${t("filters.notice.categories", language)}`
                                             : `${t(target.labelPath, language)} ${t("displayOptions.title", language)}`}
                                     </p>
+                                    {hasColorOptions ? (
+                                        <div className="space-y-2 border-b pb-3">
+                                            <label className="flex w-full items-center justify-between gap-3 rounded-md px-2 py-2 text-sm text-foreground">
+                                                <span>색상</span>
+                                                <CalendarColorSelect
+                                                    value={
+                                                        calendarTypeColors[target.key] ??
+                                                        getDefaultCalendarEventBackgroundColor(target.key)
+                                                    }
+                                                    disabled={!isTargetEnabled}
+                                                    onChange={(color) => {
+                                                        updateCalendarTypeColor(
+                                                            target.key,
+                                                            color,
+                                                        );
+                                                    }}
+                                                    ariaLabel={`${t(target.labelPath, language)} 색상`}
+                                                />
+                                            </label>
+                                            <Button
+                                                type="button"
+                                                variant="ghost"
+                                                size="sm"
+                                                disabled={!isTargetEnabled || !calendarTypeColors[target.key]}
+                                                onClick={() => {
+                                                    resetCalendarTypeColor(target.key);
+                                                }}
+                                            >
+                                                기본 색상
+                                            </Button>
+                                        </div>
+                                    ) : null}
+                                    {target.key === "adventureIsland" ? (
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={openAdventureIslandSettings}
+                                        >
+                                            보상 색상
+                                        </Button>
+                                    ) : null}
                                         {target.key === "notice" ? (
                                         <div className="space-y-2">
                                             {targetGroups.categories.options.map((option) => (
@@ -1050,8 +2015,39 @@ function App() {
                 </div>
             ),
         },
+        {
+            key: "hiddenSchedules",
+            title: "숨긴 일정",
+            content: (
+                <div className="space-y-2">
+                    {hiddenCalendarTargets.length > 0 ? (
+                        hiddenCalendarTargets.map((target) => (
+                            <div
+                                key={`hidden-schedule-target-${target.key}`}
+                                className="flex items-center gap-2 rounded-md border px-2 py-2"
+                            >
+                                <span className="min-w-0 flex-1 truncate text-sm">
+                                    {t(target.labelPath, language)}
+                                </span>
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => {
+                                        updateTargetFilter(target.key, true);
+                                    }}
+                                >
+                                    표시
+                                </Button>
+                            </div>
+                        ))
+                    ) : (
+                        <p className="text-sm text-muted-foreground">숨긴 일정 없음</p>
+                    )}
+                </div>
+            ),
+        },
     ];
-
     return (
         <main className="min-h-screen bg-background px-4 py-8 md:px-8">
             <section className="mx-auto max-w-7xl space-y-6">
@@ -1074,18 +2070,24 @@ function App() {
                             !isCalendarTodayFocusEnabled && "calendar-today-focus-disabled",
                         )}
                     >
-                        <div className="mb-3 flex justify-end">
+                        <div className="mb-3 flex justify-end gap-2">
                             <Button
                                 type="button"
                                 variant="outline"
                                 size="sm"
-                                onClick={handleCalendarPngDownload}
-                                disabled={isCalendarDownloading}
-                                aria-label="Download calendar as PNG"
-                                title="Download calendar as PNG"
+                                onClick={openCreateScheduleDialog}
                             >
-                                <Download className="h-4 w-4" />
-                                PNG
+                                일정 추가
+                            </Button>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="icon"
+                                onClick={openCalendarSettings}
+                                aria-label="달력 설정"
+                                title="달력 설정"
+                            >
+                                <Settings2 className="h-4 w-4" />
                             </Button>
                         </div>
                         <div ref={calendarDownloadTargetRef} className="calendar-download-target">
@@ -1130,13 +2132,9 @@ function App() {
                                 eventClassNames={getCalendarEventClassNames}
                                 eventContent={renderCalendarEventContent}
                                 eventClick={(info) => {
-                                    if (!info.event.url) {
-                                        return;
-                                    }
-
                                     info.jsEvent.preventDefault();
                                     clearCalendarEventSelection(info.jsEvent.target);
-                                    window.open(info.event.url, "_blank", "noopener,noreferrer");
+                                    openEditScheduleDialog(info.event);
                                 }}
                                 datesSet={(dateInfo) => {
                                     const currentStart = dateInfo.view.currentStart ?? dateInfo.start;
@@ -1164,6 +2162,618 @@ function App() {
                     <CalendarRemote title={t("remote.title", language)} sections={remoteSections} />
                 </div>
             </section>
+            <Dialog
+                open={isCalendarSettingsOpen && Boolean(calendarSettingsDraft)}
+                onOpenChange={(open) => {
+                    setIsCalendarSettingsOpen(open);
+
+                    if (!open) {
+                        setCalendarSettingsDraft(null);
+                    }
+                }}
+            >
+                <DialogContent className="max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                        <DialogDescription>달력 형태</DialogDescription>
+                        <DialogTitle>달력 설정</DialogTitle>
+                    </DialogHeader>
+                    {calendarSettingsDraft ? (
+                        <div className="mt-4 space-y-4">
+                            <label
+                                className="text-sm font-medium leading-none"
+                                htmlFor="calendar-settings-first-day"
+                            >
+                                {t("calendar.firstDayLabel", language)}
+                            </label>
+                            <Select
+                                value={String(calendarSettingsDraft.firstDay)}
+                                onValueChange={(value) => {
+                                    setCalendarSettingsDraft((previousDraft) => ({
+                                        ...previousDraft,
+                                        firstDay: Number(value),
+                                    }));
+                                }}
+                            >
+                                <SelectTrigger id="calendar-settings-first-day">
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {calendarFirstDayOptions.map((option) => (
+                                        <SelectItem
+                                            key={option.value}
+                                            value={String(option.value)}
+                                        >
+                                            {option.label}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            <label className="flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-2 text-sm text-foreground">
+                                <Checkbox
+                                    checked={calendarSettingsDraft.todayFocusEnabled}
+                                    onCheckedChange={(checked) => {
+                                        setCalendarSettingsDraft((previousDraft) => ({
+                                            ...previousDraft,
+                                            todayFocusEnabled: checked === true,
+                                        }));
+                                    }}
+                                />
+                                <span>{t("calendar.todayFocusLabel", language)}</span>
+                            </label>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={handleCalendarPngDownload}
+                                disabled={isCalendarDownloading}
+                            >
+                                <Download className="h-4 w-4" />
+                                PNG 다운로드
+                            </Button>
+                        </div>
+
+                    ) : null}
+                    <DialogFooter>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                    setIsCalendarSettingsOpen(false);
+                                    setCalendarSettingsDraft(null);
+                                }}
+                            >
+                                취소
+                            </Button>
+                            <Button type="button" size="sm" onClick={applyCalendarSettings}>
+                                확인
+                            </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+            <Dialog
+                open={isAdventureIslandSettingsOpen && Boolean(adventureIslandSettingsDraft)}
+                onOpenChange={(open) => {
+                    setIsAdventureIslandSettingsOpen(open);
+
+                    if (!open) {
+                        setAdventureIslandSettingsDraft(null);
+                        setAdventureIslandSettingsError("");
+                    }
+                }}
+            >
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>모험섬 설정</DialogTitle>
+                        <DialogDescription>
+                            보상별 색상은 개별 모험섬 일정이 아니라 전체 모험섬 일정 표시 정책으로
+                            적용됩니다.
+                        </DialogDescription>
+                    </DialogHeader>
+                    {adventureIslandSettingsDraft ? (
+                        <div className="mt-2 space-y-3">
+                            {ADVENTURE_ISLAND_REWARD_COLOR_OPTIONS.map((rewardOption) => {
+                                const defaultColor = getCalendarEventColors(
+                                    "adventureIsland",
+                                    rewardOption.defaultRewardTypeKey,
+                                ).backgroundColor;
+                                const selectedColor =
+                                    adventureIslandSettingsDraft[rewardOption.key] ?? defaultColor;
+
+                                return (
+                                    <div
+                                        key={`adventure-island-reward-color-${rewardOption.key}`}
+                                        className="flex items-center justify-between gap-3 rounded-md border px-3 py-2"
+                                    >
+                                        <span className="text-sm font-medium">
+                                            {rewardOption.label}
+                                        </span>
+                                        <div className="flex items-center gap-2">
+                                            <CalendarColorSelect
+                                                value={selectedColor}
+                                                onChange={(color) => {
+                                                    updateAdventureIslandRewardColor(
+                                                        rewardOption.key,
+                                                        color,
+                                                    );
+                                                }}
+                                                ariaLabel={`${rewardOption.label} 색상 선택`}
+                                            />
+                                            <Button
+                                                type="button"
+                                                variant="ghost"
+                                                size="sm"
+                                                disabled={
+                                                    !adventureIslandSettingsDraft[
+                                                        rewardOption.key
+                                                    ]
+                                                }
+                                                onClick={() => {
+                                                    resetAdventureIslandRewardColor(
+                                                        rewardOption.key,
+                                                    );
+                                                }}
+                                            >
+                                                기본
+                                            </Button>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                            {adventureIslandSettingsError ? (
+                                <p className="text-sm text-destructive">
+                                    {adventureIslandSettingsError}
+                                </p>
+                            ) : null}
+                        </div>
+                    ) : null}
+                    <DialogFooter>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                                setIsAdventureIslandSettingsOpen(false);
+                                setAdventureIslandSettingsDraft(null);
+                                setAdventureIslandSettingsError("");
+                            }}
+                        >
+                            취소
+                        </Button>
+                        <Button type="button" size="sm" onClick={applyAdventureIslandSettings}>
+                            저장
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+            <Dialog
+                open={Boolean(scheduleDialogMode)}
+                onOpenChange={(open) => {
+                    if (!open) {
+                        closeScheduleDialog();
+                    }
+                }}
+            >
+                <DialogContent className="max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                        <DialogTitle>
+                            {scheduleDialogMode === "create" ? "일정 추가" : "일정 수정"}
+                        </DialogTitle>
+                        <DialogDescription>
+                            일정 기본 정보와 노출 여부를 설정합니다.
+                        </DialogDescription>
+                    </DialogHeader>
+                    {scheduleDraft ? (
+                        <div className="mt-2 space-y-3">
+                            <section className="space-y-3 rounded-md border p-3">
+                                <h3 className="text-sm font-semibold">공통 설정</h3>
+                                <label className="space-y-1 text-sm">
+                                    <span className="font-medium">일정명</span>
+                                    <input
+                                        value={scheduleDraft.common.title}
+                                        disabled={isSystemScheduleDraft}
+                                        onChange={(event) => {
+                                            updateScheduleCommonDraft("title", event.target.value);
+                                        }}
+                                        className="h-9 w-full rounded-md border bg-background px-3 text-sm outline-none disabled:opacity-60 focus-visible:ring-1 focus-visible:ring-ring"
+                                    />
+                                </label>
+                                <label className="space-y-1 text-sm">
+                                    <span className="font-medium">일정 유형</span>
+                                    <Select
+                                        value={scheduleDraft.common.type}
+                                        disabled={isSystemScheduleDraft}
+                                        onValueChange={(value) => {
+                                            setScheduleDraft((previousDraft) => ({
+                                                ...previousDraft,
+                                                common: {
+                                                    ...previousDraft.common,
+                                                    type: value,
+                                                },
+                                                typeSettings: {
+                                                    ...(DEFAULT_TYPE_SETTINGS[value] ?? {}),
+                                                },
+                                            }));
+                                        }}
+                                    >
+                                        <SelectTrigger>
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {CALENDAR_SCHEDULE_TYPE_OPTIONS.map((option) => (
+                                                <SelectItem key={option.value} value={option.value}>
+                                                    {option.label}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </label>
+                                <div className="space-y-2">
+                                    <label className="flex cursor-pointer items-center gap-2 text-sm">
+                                        <Checkbox
+                                            checked={scheduleDraft.common.isVisible}
+                                            onCheckedChange={(checked) => {
+                                                updateScheduleCommonDraft(
+                                                    "isVisible",
+                                                    checked === true,
+                                                );
+                                            }}
+                                        />
+                                        <span>달력에 표시</span>
+                                    </label>
+                                    <label className="flex cursor-pointer items-center gap-2 text-sm">
+                                        <Checkbox
+                                            checked={scheduleDraft.common.includeInBotResponse}
+                                            onCheckedChange={(checked) => {
+                                                updateScheduleCommonDraft(
+                                                    "includeInBotResponse",
+                                                    checked === true,
+                                                );
+                                            }}
+                                        />
+                                        <span>봇 응답에 포함</span>
+                                    </label>
+                                    <label className="flex cursor-pointer items-center gap-2 text-sm">
+                                        <Checkbox
+                                            checked={scheduleDraft.common.canNotify}
+                                            onCheckedChange={(checked) => {
+                                                updateScheduleCommonDraft(
+                                                    "canNotify",
+                                                    checked === true,
+                                                );
+                                            }}
+                                        />
+                                        <span>추후 알림 대상으로 사용</span>
+                                    </label>
+                                </div>
+                                <label className="space-y-1 text-sm">
+                                    <span className="font-medium">설명</span>
+                                    <textarea
+                                        value={scheduleDraft.common.description}
+                                        disabled={isSystemScheduleDraft}
+                                        onChange={(event) => {
+                                            updateScheduleCommonDraft(
+                                                "description",
+                                                event.target.value,
+                                            );
+                                        }}
+                                        className="min-h-20 w-full resize-y rounded-md border bg-background px-3 py-2 text-sm outline-none disabled:opacity-60 focus-visible:ring-1 focus-visible:ring-ring"
+                                    />
+                                </label>
+                            </section>
+
+                            <section className="space-y-3 rounded-md border p-3">
+                                <div className="flex items-center justify-between gap-2">
+                                    <h3 className="text-sm font-semibold">날짜/시간 및 반복 설정</h3>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        disabled={isSystemScheduleDraft}
+                                        onClick={addScheduleDateTimeDraft}
+                                    >
+                                        시간 추가
+                                    </Button>
+                                </div>
+                                {scheduleDraft.dateTimes.map((dateTime, index) => (
+                                    <div
+                                        key={`schedule-datetime-${index}`}
+                                        className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]"
+                                    >
+                                        <input
+                                            type="date"
+                                            value={dateTime.date}
+                                            disabled={isSystemScheduleDraft}
+                                            onChange={(event) => {
+                                                updateScheduleDateTimeDraft(
+                                                    index,
+                                                    "date",
+                                                    event.target.value,
+                                                );
+                                            }}
+                                            className="h-9 rounded-md border bg-background px-3 text-sm outline-none disabled:opacity-60 focus-visible:ring-1 focus-visible:ring-ring"
+                                        />
+                                        <input
+                                            type="time"
+                                            value={dateTime.time}
+                                            disabled={isSystemScheduleDraft}
+                                            onChange={(event) => {
+                                                updateScheduleDateTimeDraft(
+                                                    index,
+                                                    "time",
+                                                    event.target.value,
+                                                );
+                                            }}
+                                            className="h-9 rounded-md border bg-background px-3 text-sm outline-none disabled:opacity-60 focus-visible:ring-1 focus-visible:ring-ring"
+                                        />
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="sm"
+                                            disabled={
+                                                isSystemScheduleDraft ||
+                                                scheduleDraft.dateTimes.length <= 1
+                                            }
+                                            onClick={() => {
+                                                removeScheduleDateTimeDraft(index);
+                                            }}
+                                        >
+                                            삭제
+                                        </Button>
+                                    </div>
+                                ))}
+                                <label className="flex cursor-pointer items-center gap-2 text-sm">
+                                    <Checkbox
+                                        checked={scheduleDraft.repeat.enabled}
+                                        disabled={isSystemScheduleDraft}
+                                        onCheckedChange={(checked) => {
+                                            updateScheduleRepeatDraft(
+                                                "enabled",
+                                                checked === true,
+                                            );
+                                        }}
+                                    />
+                                    <span>반복 사용</span>
+                                </label>
+                                {scheduleDraft.repeat.enabled ? (
+                                    <div className="rounded-md border border-dashed px-3 py-2 text-xs text-muted-foreground">
+                                        반복 상세 규칙은 추후 확장합니다.
+                                    </div>
+                                ) : null}
+                            </section>
+
+                            <section className="space-y-3 rounded-md border p-3">
+                                <h3 className="text-sm font-semibold">타입별 개별 설정</h3>
+                                {scheduleDraft.common.type === "notice" ? (
+                                    <>
+                                        <label className="space-y-1 text-sm">
+                                            <span className="font-medium">공지 링크</span>
+                                            <input
+                                                value={scheduleDraft.typeSettings.link ?? ""}
+                                                disabled={isSystemScheduleDraft}
+                                                onChange={(event) => {
+                                                    updateScheduleTypeSettingDraft(
+                                                        "link",
+                                                        event.target.value,
+                                                    );
+                                                }}
+                                                className="h-9 w-full rounded-md border bg-background px-3 text-sm outline-none disabled:opacity-60 focus-visible:ring-1 focus-visible:ring-ring"
+                                            />
+                                        </label>
+                                        <label className="flex cursor-pointer items-center gap-2 text-sm">
+                                            <Checkbox
+                                                checked={Boolean(scheduleDraft.typeSettings.important)}
+                                                disabled={isSystemScheduleDraft}
+                                                onCheckedChange={(checked) => {
+                                                    updateScheduleTypeSettingDraft(
+                                                        "important",
+                                                        checked === true,
+                                                    );
+                                                }}
+                                            />
+                                            <span>중요 여부</span>
+                                        </label>
+                                    </>
+                                ) : null}
+                                {scheduleDraft.common.type === "adventureIsland" ? (
+                                    <div className="grid gap-2 sm:grid-cols-3">
+                                        <input
+                                            value={scheduleDraft.typeSettings.islandName ?? ""}
+                                            disabled={isSystemScheduleDraft}
+                                            placeholder="섬 이름"
+                                            onChange={(event) => {
+                                                updateScheduleTypeSettingDraft(
+                                                    "islandName",
+                                                    event.target.value,
+                                                );
+                                            }}
+                                            className="h-9 rounded-md border bg-background px-3 text-sm outline-none disabled:opacity-60 focus-visible:ring-1 focus-visible:ring-ring"
+                                        />
+                                        <input
+                                            value={scheduleDraft.typeSettings.reward ?? ""}
+                                            disabled={isSystemScheduleDraft}
+                                            placeholder="보상"
+                                            onChange={(event) => {
+                                                updateScheduleTypeSettingDraft(
+                                                    "reward",
+                                                    event.target.value,
+                                                );
+                                            }}
+                                            className="h-9 rounded-md border bg-background px-3 text-sm outline-none disabled:opacity-60 focus-visible:ring-1 focus-visible:ring-ring"
+                                        />
+                                        <input
+                                            value={scheduleDraft.typeSettings.period ?? ""}
+                                            disabled={isSystemScheduleDraft}
+                                            placeholder="오전/오후"
+                                            onChange={(event) => {
+                                                updateScheduleTypeSettingDraft(
+                                                    "period",
+                                                    event.target.value,
+                                                );
+                                            }}
+                                            className="h-9 rounded-md border bg-background px-3 text-sm outline-none disabled:opacity-60 focus-visible:ring-1 focus-visible:ring-ring"
+                                        />
+                                    </div>
+                                ) : null}
+                                {scheduleDraft.common.type === "fieldBoss" ? (
+                                    <input
+                                        value={scheduleDraft.typeSettings.bossName ?? ""}
+                                        disabled={isSystemScheduleDraft}
+                                        placeholder="보스명"
+                                        onChange={(event) => {
+                                            updateScheduleTypeSettingDraft(
+                                                "bossName",
+                                                event.target.value,
+                                            );
+                                        }}
+                                        className="h-9 w-full rounded-md border bg-background px-3 text-sm outline-none disabled:opacity-60 focus-visible:ring-1 focus-visible:ring-ring"
+                                    />
+                                ) : null}
+                                {scheduleDraft.common.type === "chaosGate" ? (
+                                    <input
+                                        value={scheduleDraft.typeSettings.region ?? ""}
+                                        disabled={isSystemScheduleDraft}
+                                        placeholder="지역"
+                                        onChange={(event) => {
+                                            updateScheduleTypeSettingDraft(
+                                                "region",
+                                                event.target.value,
+                                            );
+                                        }}
+                                        className="h-9 w-full rounded-md border bg-background px-3 text-sm outline-none disabled:opacity-60 focus-visible:ring-1 focus-visible:ring-ring"
+                                    />
+                                ) : null}
+                                {scheduleDraft.common.type === "event" ? (
+                                    <div className="grid gap-2 sm:grid-cols-3">
+                                        <input
+                                            value={scheduleDraft.typeSettings.link ?? ""}
+                                            disabled={isSystemScheduleDraft}
+                                            placeholder="이벤트 링크"
+                                            onChange={(event) => {
+                                                updateScheduleTypeSettingDraft(
+                                                    "link",
+                                                    event.target.value,
+                                                );
+                                            }}
+                                            className="h-9 rounded-md border bg-background px-3 text-sm outline-none disabled:opacity-60 focus-visible:ring-1 focus-visible:ring-ring"
+                                        />
+                                        <input
+                                            type="date"
+                                            value={scheduleDraft.typeSettings.startDate ?? ""}
+                                            disabled={isSystemScheduleDraft}
+                                            onChange={(event) => {
+                                                updateScheduleTypeSettingDraft(
+                                                    "startDate",
+                                                    event.target.value,
+                                                );
+                                            }}
+                                            className="h-9 rounded-md border bg-background px-3 text-sm outline-none disabled:opacity-60 focus-visible:ring-1 focus-visible:ring-ring"
+                                        />
+                                        <input
+                                            type="date"
+                                            value={scheduleDraft.typeSettings.endDate ?? ""}
+                                            disabled={isSystemScheduleDraft}
+                                            onChange={(event) => {
+                                                updateScheduleTypeSettingDraft(
+                                                    "endDate",
+                                                    event.target.value,
+                                                );
+                                            }}
+                                            className="h-9 rounded-md border bg-background px-3 text-sm outline-none disabled:opacity-60 focus-visible:ring-1 focus-visible:ring-ring"
+                                        />
+                                    </div>
+                                ) : null}
+                                {scheduleDraft.common.type === "package" ? (
+                                    <div className="grid gap-2 sm:grid-cols-3">
+                                        <input
+                                            value={scheduleDraft.typeSettings.link ?? ""}
+                                            disabled={isSystemScheduleDraft}
+                                            placeholder="패키지 링크"
+                                            onChange={(event) => {
+                                                updateScheduleTypeSettingDraft(
+                                                    "link",
+                                                    event.target.value,
+                                                );
+                                            }}
+                                            className="h-9 rounded-md border bg-background px-3 text-sm outline-none disabled:opacity-60 focus-visible:ring-1 focus-visible:ring-ring"
+                                        />
+                                        <input
+                                            type="date"
+                                            value={scheduleDraft.typeSettings.saleStartDate ?? ""}
+                                            disabled={isSystemScheduleDraft}
+                                            onChange={(event) => {
+                                                updateScheduleTypeSettingDraft(
+                                                    "saleStartDate",
+                                                    event.target.value,
+                                                );
+                                            }}
+                                            className="h-9 rounded-md border bg-background px-3 text-sm outline-none disabled:opacity-60 focus-visible:ring-1 focus-visible:ring-ring"
+                                        />
+                                        <input
+                                            type="date"
+                                            value={scheduleDraft.typeSettings.saleEndDate ?? ""}
+                                            disabled={isSystemScheduleDraft}
+                                            onChange={(event) => {
+                                                updateScheduleTypeSettingDraft(
+                                                    "saleEndDate",
+                                                    event.target.value,
+                                                );
+                                            }}
+                                            className="h-9 rounded-md border bg-background px-3 text-sm outline-none disabled:opacity-60 focus-visible:ring-1 focus-visible:ring-ring"
+                                        />
+                                    </div>
+                                ) : null}
+                                {scheduleDraft.common.type === "custom" ? (
+                                    <p className="text-xs text-muted-foreground">추가 필드 없음</p>
+                                ) : null}
+                            </section>
+                            {scheduleFormError ? (
+                                <p className="text-sm text-destructive">{scheduleFormError}</p>
+                            ) : null}
+                            {scheduleDraft.sourceUrl ? (
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                        window.open(
+                                            scheduleDraft.sourceUrl,
+                                            "_blank",
+                                            "noopener,noreferrer",
+                                        );
+                                    }}
+                                >
+                                    <ExternalLink className="h-4 w-4" />
+                                    원본
+                                </Button>
+                            ) : null}
+                        </div>
+                    ) : null}
+                    <DialogFooter className="flex-wrap">
+                        {scheduleDialogMode === "edit" && !isSystemScheduleDraft ? (
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={deleteScheduleDraft}
+                            >
+                                삭제
+                            </Button>
+                        ) : null}
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={closeScheduleDialog}
+                        >
+                            취소
+                        </Button>
+                        <Button type="button" size="sm" onClick={saveScheduleDraft}>
+                            저장
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </main>
     );
 }

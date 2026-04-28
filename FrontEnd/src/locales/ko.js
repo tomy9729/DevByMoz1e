@@ -36,6 +36,8 @@ const ko = {
             adventureIsland: "모험섬",
             chaosGate: "카오스게이트",
             fieldBoss: "필드보스",
+            package: "패키지",
+            custom: "커스텀 일정",
         },
         notice: {
             categories: "카테고리",

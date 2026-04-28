@@ -1,4 +1,4 @@
-const CALENDAR_EVENT_COLORS = {
+export const CALENDAR_EVENT_COLORS = {
     event: {
         backgroundColor: "#5b7c99",
         borderColor: "#446178",
@@ -48,6 +48,16 @@ const CALENDAR_EVENT_COLORS = {
             },
         },
     },
+    package: {
+        backgroundColor: "#8a6f3f",
+        borderColor: "#6b552e",
+        textColor: "#fff8e8",
+    },
+    custom: {
+        backgroundColor: "#565b66",
+        borderColor: "#3f444d",
+        textColor: "#f8fafc",
+    },
 };
 
 export function getCalendarEventColors(contentType, rewardTypeKey = "") {
@@ -59,4 +69,15 @@ export function getCalendarEventColors(contentType, rewardTypeKey = "") {
     }
 
     return CALENDAR_EVENT_COLORS[contentType] ?? CALENDAR_EVENT_COLORS.event;
+}
+
+/**
+ * 20260428 khs
+ * 역할: 콘텐츠 타입별 기본 배경색을 반환한다.
+ * 파라미터 설명:
+ * - contentType: 조회할 일정 타입 키
+ * 반환값 설명: 타입에 매칭되는 기본 배경색 문자열
+ */
+export function getDefaultCalendarEventBackgroundColor(contentType) {
+    return getCalendarEventColors(contentType).backgroundColor;
 }

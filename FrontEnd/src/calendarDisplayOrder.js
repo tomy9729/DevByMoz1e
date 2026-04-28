@@ -4,6 +4,8 @@ export const DEFAULT_CALENDAR_DISPLAY_ORDER = [
     "chaosGate",
     "fieldBoss",
     "adventureIsland",
+    "package",
+    "custom",
 ];
 
 /**

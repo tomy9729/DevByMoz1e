@@ -47,9 +47,30 @@ const CALENDAR_FILTER_TARGET_DEFINITIONS = [
             },
         ],
     },
+    {
+        key: "package",
+        labelPath: "filters.targets.package",
+    },
+    {
+        key: "custom",
+        labelPath: "filters.targets.custom",
+    },
 ];
 
-const ADVENTURE_ISLAND_REWARD_FILTER_ORDER = ["골드", "카드", "실링", "해주"];
+const ADVENTURE_ISLAND_REWARD_FILTER_ORDER = ["골드", "카드", "실링", "대양의 주화"];
+
+function normalizeAdventureIslandRewardLabel(rewardName = "") {
+    if (
+        rewardName.includes("대양") ||
+        rewardName.includes("해적주화") ||
+        rewardName.includes("주화") ||
+        rewardName.includes("해주")
+    ) {
+        return "대양의 주화";
+    }
+
+    return rewardName;
+}
 
 function getTargetDefinition(targetKey) {
     return (
@@ -62,7 +83,7 @@ function getTargetDefinition(targetKey) {
  * 역할: 모험섬 보상 필터 표시 순서를 우선순위 기준으로 정렬한다.
  * 파라미터 설명:
  * - options: 보상 필터 옵션 배열
- * 반환값 설명: 골드, 카드, 실링, 해주 우선순위가 반영된 옵션 배열
+ * 반환값 설명: 골드, 카드, 실링, 대양의 주화 우선순위가 반영된 옵션 배열
  */
 function sortAdventureIslandRewardOptions(options) {
     return [...options].sort((left, right) => {
@@ -102,7 +123,9 @@ function getAdventureIslandFilterValues(event) {
 
     return {
         islandName: event.extendedProps?.islandName ?? titleIslandName,
-        rewardName: event.extendedProps?.rewardName ?? titleRewardName,
+        rewardName: normalizeAdventureIslandRewardLabel(
+            event.extendedProps?.rewardName ?? titleRewardName,
+        ),
     };
 }
 

@@ -42,9 +42,40 @@ const DISPLAYABLE_GAME_CONTENT_TYPES = [
 const ADVENTURE_ISLAND_MAJOR_REWARDS = [
     { key: "gold", sourceNames: ["골드"] },
     { key: "shilling", sourceNames: ["실링"] },
-    { key: "oceanCoinChest", sourceNames: ["대양의 주화 상자", "대륙의 주화 상자"] },
+    {
+        key: "oceanCoinChest",
+        sourceNames: [
+            "대양의 주화 상자",
+            "대륙의 주화 상자",
+            "대양의 주화",
+            "해적 주화",
+            "해적주화",
+            "해주",
+        ],
+    },
     { key: "legendCardPackIv", sourceNames: ["전설 ~ 고급 카드 팩 IV"] },
 ];
+
+/**
+ * 20260428 khs
+ * 역할: 기존 모험섬 주화 보상 표기를 화면 표시용 보상명으로 통일한다.
+ * 파라미터 설명:
+ * - rewardName: API 또는 DB에서 받은 보상명 문자열
+ * 반환값 설명: 주화 계열은 `대양의 주화`로 통일한 보상명 문자열
+ */
+function normalizeAdventureIslandRewardName(rewardName = "") {
+    if (
+        rewardName.includes("대양") ||
+        rewardName.includes("해적 주화") ||
+        rewardName.includes("해적주화") ||
+        rewardName.includes("주화") ||
+        rewardName.includes("해주")
+    ) {
+        return "대양의 주화";
+    }
+
+    return rewardName;
+}
 
 /**
  * 20260421 khs
@@ -573,7 +604,7 @@ function getAdventureIslandReward(content, startTime) {
 
         return {
             rewardTypeKey: rewardType.key,
-            rewardName: getShortRewardName(rewardItem.Name),
+            rewardName: normalizeAdventureIslandRewardName(getShortRewardName(rewardItem.Name)),
             rewardIconUrl: rewardItem.Icon ?? "",
         };
     }
@@ -701,7 +732,9 @@ export function mapAdventureIslandRecordToCalendarEvent(adventureIsland) {
     const periodLabel = getAdventureIslandPeriodLabelFromRecord(adventureIsland.period);
     const periodText = periodLabel ? `[${periodLabel}] ` : "";
     const rewardType = getAdventureIslandMajorRewardType(adventureIsland.rewardName ?? "");
-    const rewardName = adventureIsland.rewardShortName ?? adventureIsland.rewardName ?? "";
+    const rewardName = normalizeAdventureIslandRewardName(
+        adventureIsland.rewardShortName ?? adventureIsland.rewardName ?? "",
+    );
     const eventColors = getCalendarEventColors("adventureIsland", rewardType?.key ?? "");
 
     return {
@@ -737,7 +770,14 @@ export function mapAdventureIslandRecordToCalendarEvent(adventureIsland) {
 export function mapLostArkScheduleToCalendarEvent(schedule) {
     const display = schedule.display ?? {};
     const contentType = schedule.type === "patchNote" ? "notice" : schedule.type;
-    const rewardType = getAdventureIslandMajorRewardType(display.rewardName ?? "");
+    const normalizedDisplay =
+        contentType === "adventureIsland"
+            ? {
+                  ...display,
+                  rewardName: normalizeAdventureIslandRewardName(display.rewardName ?? ""),
+              }
+            : display;
+    const rewardType = getAdventureIslandMajorRewardType(normalizedDisplay.rewardName ?? "");
     const eventColors = getCalendarEventColors(contentType, rewardType?.key ?? "");
     const start = schedule.startDate ?? schedule.scheduleDate;
     const end = schedule.endDate ? addOneDay(schedule.endDate) : undefined;
@@ -751,9 +791,9 @@ export function mapLostArkScheduleToCalendarEvent(schedule) {
         url: schedule.source?.sourceUrl,
         ...eventColors,
         extendedProps: {
-            ...display,
-            contentType: display.contentType ?? contentType,
-            filterTarget: display.filterTarget ?? contentType,
+            ...normalizedDisplay,
+            contentType: normalizedDisplay.contentType ?? contentType,
+            filterTarget: normalizedDisplay.filterTarget ?? contentType,
             rewardTypeKey: rewardType?.key ?? display.rewardTypeKey ?? "",
             scheduleType: schedule.type,
             scheduleDate: schedule.scheduleDate,
