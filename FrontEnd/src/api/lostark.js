@@ -5,6 +5,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "";
 const LOSTARK_EVENTS_ENDPOINT = createApiUrl("/api/lostark/news/events");
 const LOSTARK_NOTICES_ENDPOINT = createApiUrl("/api/lostark/news/notices");
 const LOSTARK_ADVENTURE_ISLANDS_ENDPOINT = createApiUrl("/api/lostark/adventure-islands");
+const LOSTARK_CALENDAR_SCHEDULES_ENDPOINT = createApiUrl("/api/lostark/calendar/schedules");
 const LOSTARK_SHARED_REQUEST_CACHE = {
     events: {
         data: null,
@@ -16,6 +17,7 @@ const LOSTARK_SHARED_REQUEST_CACHE = {
     },
 };
 const LOSTARK_ADVENTURE_ISLAND_REQUEST_CACHE = new Map();
+const LOSTARK_CALENDAR_SCHEDULE_REQUEST_CACHE = new Map();
 const FIXED_GAME_CONTENT_SCHEDULES = {
     chaosGate: [1, 4, 6, 0],
     fieldBoss: [2, 5, 0],
@@ -402,6 +404,33 @@ async function fetchAdventureIslandsWithMonthCache(query, request) {
 }
 
 /**
+ * 20260428 khs
+ * 역할: 같은 연/월 일정 API 요청이 이미 진행 중이면 기존 요청을 재사용한다.
+ * 파라미터 설명:
+ * - query: `year`, `month`를 포함한 월별 일정 조회 조건
+ * - request: 실제 월별 일정 네트워크 요청을 수행하는 함수
+ * 반환값 설명: 월별 일정 API 응답 Promise
+ */
+async function fetchCalendarSchedulesWithMonthCache(query, request) {
+    const cacheKey = `${query.year ?? ""}|${query.month ?? ""}`;
+    const cacheEntry = LOSTARK_CALENDAR_SCHEDULE_REQUEST_CACHE.get(cacheKey);
+
+    if (cacheEntry?.promise) {
+        return cacheEntry.promise;
+    }
+
+    const requestPromise = request().finally(() => {
+        LOSTARK_CALENDAR_SCHEDULE_REQUEST_CACHE.delete(cacheKey);
+    });
+
+    LOSTARK_CALENDAR_SCHEDULE_REQUEST_CACHE.set(cacheKey, {
+        promise: requestPromise,
+    });
+
+    return requestPromise;
+}
+
+/**
  * 역할: 콘텐츠 타입 키로 표시 타입 객체를 조회한다.
  * 파라미터 설명:
  * - typeKey: 조회할 콘텐츠 타입 키
@@ -698,6 +727,44 @@ export function mapAdventureIslandRecordToCalendarEvent(adventureIsland) {
     };
 }
 
+/**
+ * 20260428 khs
+ * 역할: 백엔드 월별 일정 API 응답을 기존 FullCalendar 표시 구조로 변환한다.
+ * 파라미터 설명:
+ * - schedule: 월별 일정 API가 반환한 단일 일정 데이터
+ * 반환값 설명: FullCalendar에서 사용할 이벤트 객체
+ */
+export function mapLostArkScheduleToCalendarEvent(schedule) {
+    const display = schedule.display ?? {};
+    const contentType = schedule.type === "patchNote" ? "notice" : schedule.type;
+    const rewardType = getAdventureIslandMajorRewardType(display.rewardName ?? "");
+    const eventColors = getCalendarEventColors(contentType, rewardType?.key ?? "");
+    const start = schedule.startDate ?? schedule.scheduleDate;
+    const end = schedule.endDate ? addOneDay(schedule.endDate) : undefined;
+
+    return {
+        id: schedule.id,
+        title: schedule.title,
+        start,
+        end,
+        allDay: true,
+        url: schedule.source?.sourceUrl,
+        ...eventColors,
+        extendedProps: {
+            ...display,
+            contentType: display.contentType ?? contentType,
+            filterTarget: display.filterTarget ?? contentType,
+            rewardTypeKey: rewardType?.key ?? display.rewardTypeKey ?? "",
+            scheduleType: schedule.type,
+            scheduleDate: schedule.scheduleDate,
+            displayTime: schedule.displayTime,
+            description: schedule.description,
+            source: schedule.source,
+            sortOrder: schedule.sortOrder,
+        },
+    };
+}
+
 export function mapLostArkGameContentToCalendarEvents(content) {
     const displayType = getDisplayableGameContentType(content);
 
@@ -902,6 +969,60 @@ async function fetchAdventureIslands(query = {}) {
     });
 }
 
+/**
+ * 20260428 khs
+ * 역할: 백엔드 월별 일정 API에서 달력 표시용 통합 일정 목록을 조회한다.
+ * 파라미터 설명:
+ * - query: `year`, `month`를 포함한 조회 조건
+ * 반환값 설명: 월별 일정 원본 배열 Promise
+ */
+async function fetchLostArkCalendarSchedules(query) {
+    return fetchCalendarSchedulesWithMonthCache(query, async () => {
+        const searchParams = new URLSearchParams({
+            year: String(query.year),
+            month: String(query.month),
+        });
+        const response = await fetch(
+            `${LOSTARK_CALENDAR_SCHEDULES_ENDPOINT}?${searchParams.toString()}`,
+            {
+                headers: {
+                    accept: "application/json",
+                },
+            },
+        );
+
+        if (!response.ok) {
+            throw new Error(`Failed to fetch Lost Ark calendar schedules: ${response.status}`);
+        }
+
+        return response.json();
+    });
+}
+
+/**
+ * 20260428 khs
+ * 역할: 기존 월 범위 객체에서 월별 일정 API 조회에 필요한 연/월 값을 계산한다.
+ * 파라미터 설명:
+ * - calendarMonthQuery: `fromDate`를 포함한 현재 달력 월 범위 객체
+ * 반환값 설명: `year`, `month`를 포함한 월별 일정 조회 조건 또는 null
+ */
+function getCalendarScheduleMonthQuery(calendarMonthQuery = {}) {
+    if (!calendarMonthQuery.fromDate) {
+        return null;
+    }
+
+    const [year, month] = calendarMonthQuery.fromDate.split("-").map(Number);
+
+    if (!year || !month) {
+        return null;
+    }
+
+    return {
+        year,
+        month,
+    };
+}
+
 
 /**
  * 역할: 게임 콘텐츠 API 실패가 전체 달력 로딩을 막지 않도록 빈 배열로 보정한다.
@@ -915,6 +1036,20 @@ async function fetchAdventureIslands(query = {}) {
  * 반환값 설명: FullCalendar 이벤트 배열 Promise
  */
 export async function fetchLostArkCalendarEvents(options = {}) {
+    const calendarScheduleMonthQuery = getCalendarScheduleMonthQuery(
+        options.calendarMonthQuery,
+    );
+
+    if (calendarScheduleMonthQuery) {
+        try {
+            const schedules = await fetchLostArkCalendarSchedules(calendarScheduleMonthQuery);
+
+            return schedules.map((schedule) => mapLostArkScheduleToCalendarEvent(schedule));
+        } catch (error) {
+            console.error("Failed to fetch Lost Ark calendar schedules.", error);
+        }
+    }
+
     const [events, notices, adventureIslands] = await Promise.all([
         fetchLostArkEventsSafely(),
         fetchLostArkNoticesSafely(),

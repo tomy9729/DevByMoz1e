@@ -1,11 +1,13 @@
 import { Module } from "@nestjs/common";
 import { AdventureIslandsController } from "./controllers/adventure-islands.controller";
+import { LostArkCalendarSchedulesController } from "./controllers/lostark-calendar-schedules.controller";
 import { LostArkEventsController } from "./controllers/lostark-events.controller";
 import { LostArkGameContentsController } from "./controllers/lostark-game-contents.controller";
 import { LostArkNoticesController } from "./controllers/lostark-notices.controller";
 import { LostArkClient } from "./lostark.client";
 import { AdventureIslandsService } from "./services/adventure-islands.service";
 import { CharactersService } from "./services/characters.service";
+import { LostArkCalendarSchedulesService } from "./services/lostark-calendar-schedules.service";
 import { LostArkEventsService } from "./services/lostark-events.service";
 import { LostArkGameContentsService } from "./services/lostark-game-contents.service";
 import { LostArkNoticesService } from "./services/lostark-notices.service";
@@ -16,6 +18,7 @@ import { LostArkNoticesService } from "./services/lostark-notices.service";
         LostArkNoticesController,
         LostArkGameContentsController,
         AdventureIslandsController,
+        LostArkCalendarSchedulesController,
     ],
     providers: [
         LostArkClient,
@@ -23,6 +26,7 @@ import { LostArkNoticesService } from "./services/lostark-notices.service";
         LostArkNoticesService,
         LostArkGameContentsService,
         AdventureIslandsService,
+        LostArkCalendarSchedulesService,
         CharactersService,
     ],
     exports: [AdventureIslandsService, CharactersService, LostArkGameContentsService, LostArkNoticesService],
