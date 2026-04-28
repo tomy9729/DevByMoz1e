@@ -12,6 +12,21 @@ enum AdventureIslandPeriod {
   weekendAfternoon
 }
 
+enum CalendarOwnerType {
+  personal
+  group
+}
+
+enum CalendarScheduleKind {
+  lostarkSystem
+  user
+}
+
+enum CalendarAlarmChannel {
+  kakaoDirect
+  kakaoGroup
+}
+
 model AdventureIsland {
   id              String                @id @default(cuid())
   lostArkDate     String
@@ -72,6 +87,95 @@ model LostArkNotice {
   updatedAt   DateTime @updatedAt
 
   @@index([noticeDate, type])
+}
+
+model CalendarOwner {
+  id                      String                           @id @default(cuid())
+  type                    CalendarOwnerType
+  kakaoUserKey            String?
+  kakaoRoomKey            String?
+  displayName             String?
+  enabled                 Boolean                          @default(true)
+  createdAt               DateTime                         @default(now())
+  updatedAt               DateTime                         @updatedAt
+  lostArkScheduleSettings LostArkSchedulePreference[]
+  scheduleTypeSettings    CalendarScheduleTypePreference[]
+  userSchedules           UserCalendarSchedule[]
+  alarms                  CalendarScheduleAlarm[]
+
+  @@unique([type, kakaoUserKey])
+  @@unique([type, kakaoRoomKey])
+  @@index([enabled])
+}
+
+model LostArkSchedulePreference {
+  id           String        @id @default(cuid())
+  ownerId      String
+  scheduleKey  String
+  scheduleType String
+  isVisible    Boolean       @default(true)
+  alarmEnabled Boolean       @default(false)
+  color        String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  owner        CalendarOwner @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@unique([ownerId, scheduleKey])
+  @@index([ownerId, scheduleType])
+}
+
+model CalendarScheduleTypePreference {
+  id           String        @id @default(cuid())
+  ownerId      String
+  scheduleType String
+  isVisible    Boolean       @default(true)
+  alarmEnabled Boolean       @default(false)
+  color        String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  owner        CalendarOwner @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@unique([ownerId, scheduleType])
+}
+
+model UserCalendarSchedule {
+  id            String                  @id @default(cuid())
+  ownerId       String
+  title         String
+  scheduleDate  String
+  startDateTime String?
+  endDateTime   String?
+  allDay        Boolean                 @default(true)
+  description   String?
+  color         String?
+  isVisible     Boolean                 @default(true)
+  sortOrder     Int                     @default(100)
+  rawData       Json                    @default("{}")
+  createdAt     DateTime                @default(now())
+  updatedAt     DateTime                @updatedAt
+  owner         CalendarOwner           @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  alarms        CalendarScheduleAlarm[]
+
+  @@index([ownerId, scheduleDate])
+}
+
+model CalendarScheduleAlarm {
+  id             String                @id @default(cuid())
+  ownerId        String
+  scheduleKind   CalendarScheduleKind
+  scheduleKey    String?
+  userScheduleId String?
+  enabled        Boolean               @default(true)
+  remindMinutes  Int                   @default(0)
+  channel        CalendarAlarmChannel
+  message        String?
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+  owner          CalendarOwner         @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  userSchedule   UserCalendarSchedule? @relation(fields: [userScheduleId], references: [id], onDelete: Cascade)
+
+  @@index([ownerId, scheduleKind, scheduleKey])
+  @@index([userScheduleId])
 }
 
 model BotAlarmSetting {

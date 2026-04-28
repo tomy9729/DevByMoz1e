@@ -26,15 +26,18 @@ export const ADVENTURE_ISLAND_SHORT_NAMES: Record<string, string> = {
 export const ADVENTURE_ISLAND_MAJOR_REWARDS = [
     { key: "gold", sourceNames: ["골드"] },
     { key: "shilling", sourceNames: ["실링"] },
-    { key: "oceanCoinChest", sourceNames: ["대양의 주화 상자", "대륙의 주화 상자"] },
+    {
+        key: "oceanCoinChest",
+        sourceNames: ["대양의 주화 상자", "대륙의 주화 상자", "대양의 주화", "해적 주화", "해적주화", "해주"],
+    },
     { key: "legendCardPackIv", sourceNames: ["전설 ~ 고급 카드 팩 IV"] },
 ] as const;
 
 export const ADVENTURE_ISLAND_REWARD_SHORT_NAMES: Record<string, string> = {
-    "대양의 주화 상자": "해주",
-    "대륙의 주화 상자": "해주",
-    "해적 주화": "해주",
-    해적주화: "해주",
+    "대양의 주화 상자": "대양의 주화",
+    "대륙의 주화 상자": "대양의 주화",
+    "해적 주화": "대양의 주화",
+    해적주화: "대양의 주화",
     "전설 ~ 고급 카드 팩 III": "카드",
     "전설 ~ 고급 카드 팩 IV": "카드",
     "전설 ~ 고급 카드 팩 III/전설 ~ 고급 카드 팩 IV/영웅 호감도 상자": "카드",

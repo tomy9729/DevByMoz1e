@@ -126,6 +126,108 @@ async function main() {
     await client.query(
         'CREATE INDEX IF NOT EXISTS "LostArkNotice_noticeDate_type_idx" ON "LostArkNotice"("noticeDate", "type");',
     );
+    await client.query(`DO $$ BEGIN
+        CREATE TYPE "CalendarOwnerType" AS ENUM ('personal', 'group');
+    EXCEPTION
+        WHEN duplicate_object THEN null;
+    END $$;`);
+    await client.query(`DO $$ BEGIN
+        CREATE TYPE "CalendarScheduleKind" AS ENUM ('lostarkSystem', 'user');
+    EXCEPTION
+        WHEN duplicate_object THEN null;
+    END $$;`);
+    await client.query(`DO $$ BEGIN
+        CREATE TYPE "CalendarAlarmChannel" AS ENUM ('kakaoDirect', 'kakaoGroup');
+    EXCEPTION
+        WHEN duplicate_object THEN null;
+    END $$;`);
+    await client.query(`CREATE TABLE IF NOT EXISTS "CalendarOwner" (
+        "id" TEXT PRIMARY KEY,
+        "type" "CalendarOwnerType" NOT NULL,
+        "kakaoUserKey" TEXT,
+        "kakaoRoomKey" TEXT,
+        "displayName" TEXT,
+        "enabled" BOOLEAN NOT NULL DEFAULT true,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );`);
+    await client.query(
+        'CREATE UNIQUE INDEX IF NOT EXISTS "CalendarOwner_type_kakaoUserKey_key" ON "CalendarOwner"("type", "kakaoUserKey");',
+    );
+    await client.query(
+        'CREATE UNIQUE INDEX IF NOT EXISTS "CalendarOwner_type_kakaoRoomKey_key" ON "CalendarOwner"("type", "kakaoRoomKey");',
+    );
+    await client.query(
+        'CREATE INDEX IF NOT EXISTS "CalendarOwner_enabled_idx" ON "CalendarOwner"("enabled");',
+    );
+    await client.query(`CREATE TABLE IF NOT EXISTS "LostArkSchedulePreference" (
+        "id" TEXT PRIMARY KEY,
+        "ownerId" TEXT NOT NULL REFERENCES "CalendarOwner"("id") ON DELETE CASCADE ON UPDATE CASCADE,
+        "scheduleKey" TEXT NOT NULL,
+        "scheduleType" TEXT NOT NULL,
+        "isVisible" BOOLEAN NOT NULL DEFAULT true,
+        "alarmEnabled" BOOLEAN NOT NULL DEFAULT false,
+        "color" TEXT,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );`);
+    await client.query(
+        'CREATE UNIQUE INDEX IF NOT EXISTS "LostArkSchedulePreference_ownerId_scheduleKey_key" ON "LostArkSchedulePreference"("ownerId", "scheduleKey");',
+    );
+    await client.query(
+        'CREATE INDEX IF NOT EXISTS "LostArkSchedulePreference_ownerId_scheduleType_idx" ON "LostArkSchedulePreference"("ownerId", "scheduleType");',
+    );
+    await client.query(`CREATE TABLE IF NOT EXISTS "CalendarScheduleTypePreference" (
+        "id" TEXT PRIMARY KEY,
+        "ownerId" TEXT NOT NULL REFERENCES "CalendarOwner"("id") ON DELETE CASCADE ON UPDATE CASCADE,
+        "scheduleType" TEXT NOT NULL,
+        "isVisible" BOOLEAN NOT NULL DEFAULT true,
+        "alarmEnabled" BOOLEAN NOT NULL DEFAULT false,
+        "color" TEXT,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );`);
+    await client.query(
+        'CREATE UNIQUE INDEX IF NOT EXISTS "CalendarScheduleTypePreference_ownerId_scheduleType_key" ON "CalendarScheduleTypePreference"("ownerId", "scheduleType");',
+    );
+    await client.query(`CREATE TABLE IF NOT EXISTS "UserCalendarSchedule" (
+        "id" TEXT PRIMARY KEY,
+        "ownerId" TEXT NOT NULL REFERENCES "CalendarOwner"("id") ON DELETE CASCADE ON UPDATE CASCADE,
+        "title" TEXT NOT NULL,
+        "scheduleDate" TEXT NOT NULL,
+        "startDateTime" TEXT,
+        "endDateTime" TEXT,
+        "allDay" BOOLEAN NOT NULL DEFAULT true,
+        "description" TEXT,
+        "color" TEXT,
+        "isVisible" BOOLEAN NOT NULL DEFAULT true,
+        "sortOrder" INTEGER NOT NULL DEFAULT 100,
+        "rawData" JSONB NOT NULL DEFAULT '{}',
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );`);
+    await client.query(
+        'CREATE INDEX IF NOT EXISTS "UserCalendarSchedule_ownerId_scheduleDate_idx" ON "UserCalendarSchedule"("ownerId", "scheduleDate");',
+    );
+    await client.query(`CREATE TABLE IF NOT EXISTS "CalendarScheduleAlarm" (
+        "id" TEXT PRIMARY KEY,
+        "ownerId" TEXT NOT NULL REFERENCES "CalendarOwner"("id") ON DELETE CASCADE ON UPDATE CASCADE,
+        "scheduleKind" "CalendarScheduleKind" NOT NULL,
+        "scheduleKey" TEXT,
+        "userScheduleId" TEXT REFERENCES "UserCalendarSchedule"("id") ON DELETE CASCADE ON UPDATE CASCADE,
+        "enabled" BOOLEAN NOT NULL DEFAULT true,
+        "remindMinutes" INTEGER NOT NULL DEFAULT 0,
+        "channel" "CalendarAlarmChannel" NOT NULL,
+        "message" TEXT,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );`);
+    await client.query(
+        'CREATE INDEX IF NOT EXISTS "CalendarScheduleAlarm_ownerId_scheduleKind_scheduleKey_idx" ON "CalendarScheduleAlarm"("ownerId", "scheduleKind", "scheduleKey");',
+    );
+    await client.query(
+        'CREATE INDEX IF NOT EXISTS "CalendarScheduleAlarm_userScheduleId_idx" ON "CalendarScheduleAlarm"("userScheduleId");',
+    );
     await client.query(`CREATE TABLE IF NOT EXISTS "BotAlarmSetting" (
         "key" TEXT PRIMARY KEY,
         "enabled" BOOLEAN NOT NULL DEFAULT true,

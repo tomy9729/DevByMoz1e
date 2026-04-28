@@ -161,6 +161,27 @@ export class LostArkCalendarSchedulesService {
         return "";
     }
 
+    /**
+     * 20260428 khs
+     * 역할: 기존 DB에 남아 있을 수 있는 모험섬 주화 보상 표기를 응답 표시명으로 통일한다.
+     * 파라미터 설명:
+     * - rewardName: DB 또는 API에서 받은 보상명 문자열
+     * 반환값 설명: 주화 계열은 `대양의 주화`로 통일한 보상명 문자열
+     */
+    private normalizeAdventureIslandRewardName(rewardName = "") {
+        if (
+            rewardName.includes("대양") ||
+            rewardName.includes("해적 주화") ||
+            rewardName.includes("해적주화") ||
+            rewardName.includes("주화") ||
+            rewardName.includes("해주")
+        ) {
+            return "대양의 주화";
+        }
+
+        return rewardName;
+    }
+
     private getScheduleTimeSortValue(displayTime = "") {
         const timeMatch = displayTime.match(/^(\d{2}):(\d{2})/);
 
@@ -276,6 +297,9 @@ export class LostArkCalendarSchedulesService {
         const periodLabel = this.getAdventureIslandPeriodLabel(adventureIsland.period);
         const periodText = periodLabel ? `[${periodLabel}] ` : "";
         const displayTime = adventureIsland.startTime.split("T")[1]?.slice(0, 5) ?? "";
+        const rewardName = this.normalizeAdventureIslandRewardName(
+            adventureIsland.rewardShortName ?? adventureIsland.rewardName ?? "",
+        );
 
         return {
             id: `adventure-island-${adventureIsland.lostArkDate}-${adventureIsland.period}-${adventureIsland.contentsName}`,
@@ -285,7 +309,7 @@ export class LostArkCalendarSchedulesService {
             displayTime,
             description: [
                 adventureIsland.contentsName,
-                adventureIsland.rewardShortName ?? adventureIsland.rewardName ?? "",
+                rewardName,
             ]
                 .filter(Boolean)
                 .join(" / "),
@@ -303,7 +327,7 @@ export class LostArkCalendarSchedulesService {
                 sourceStartTime: adventureIsland.startTime,
                 filterTarget: "adventureIsland",
                 islandName: adventureIsland.contentsName,
-                rewardName: adventureIsland.rewardShortName ?? adventureIsland.rewardName ?? "",
+                rewardName,
                 rewardIconUrl: adventureIsland.rewardIconUrl ?? "",
                 contentIconUrl:
                     adventureIsland.contentImageUrl ?? adventureIsland.contentIconUrl ?? "",
