@@ -1,0 +1,25 @@
+{
+  "name": "frontend-vue",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc -b && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@fullcalendar/core": "^6.1.20",
+    "@fullcalendar/vue3": "^6.1.20",
+    "pinia": "^3.0.4",
+    "primevue": "^4.5.5",
+    "vue": "^3.5.12",
+    "vue-router": "^5.0.6"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.1.4",
+    "typescript": "~5.6.2",
+    "vite": "^5.4.10",
+    "vue-tsc": "^2.1.8"
+  }
+}
