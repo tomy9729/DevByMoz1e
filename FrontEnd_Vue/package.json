@@ -11,7 +11,9 @@
   "dependencies": {
     "@fullcalendar/core": "^6.1.20",
     "@fullcalendar/vue3": "^6.1.20",
+    "@primeuix/themes": "^2.0.3",
     "pinia": "^3.0.4",
+    "primeicons": "^7.0.0",
     "primevue": "^4.5.5",
     "vue": "^3.5.12",
     "vue-router": "^5.0.6"
