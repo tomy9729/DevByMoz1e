@@ -27,6 +27,16 @@ enum CalendarAlarmChannel {
   kakaoGroup
 }
 
+enum CalendarSourceType {
+  lostark
+  user
+}
+
+enum CalendarEventSourceType {
+  lostark
+  user
+}
+
 model AdventureIsland {
   id              String                @id @default(cuid())
   lostArkDate     String
@@ -73,6 +83,45 @@ model AdventureIslandTest {
 
   @@unique([sourceKey, lostArkDate, period, contentsName])
   @@index([sourceKey, lostArkDate, period])
+}
+
+model Calendar {
+  id           String             @id @default(cuid())
+  name         String
+  defaultColor String
+  isVisible    Boolean            @default(true)
+  sortOrder    Int                @default(100)
+  sourceType   CalendarSourceType
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+  events       CalendarEvent[]
+
+  @@unique([sourceType, name])
+  @@index([isVisible, sortOrder])
+}
+
+model CalendarEvent {
+  id                 String                  @id @default(cuid())
+  calendarId         String
+  title              String
+  description        String?
+  startDateTime      DateTime
+  endDateTime        DateTime
+  allDay             Boolean                 @default(false)
+  color              String?
+  sourceType         CalendarEventSourceType
+  externalSourceType String?
+  externalSourceId   String?
+  recurrenceRule     String?
+  alarmEnabled       Boolean                 @default(false)
+  rawData            Json                    @default("{}")
+  createdAt          DateTime                @default(now())
+  updatedAt          DateTime                @updatedAt
+  calendar           Calendar                @relation(fields: [calendarId], references: [id], onDelete: Cascade)
+
+  @@unique([sourceType, externalSourceType, externalSourceId])
+  @@index([calendarId, startDateTime, endDateTime])
+  @@index([sourceType, externalSourceType])
 }
 
 model LostArkNotice {
