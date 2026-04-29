@@ -1,133 +1,123 @@
 <template>
   <section class="calendar-page">
-    <aside class="calendar-sidebar">
-      <Button
-        class="calendar-add-schedule-button"
-        icon="pi pi-plus"
-        label="일정 추가"
-        @click="onClickAddSchedule"
+    <CalendarSideBar
+      v-model:selectedDate="selectedDate"
+      v-model:activeCalendarGroups="activeCalendarGroups"
+      :selected-calendar-id="selectedCalendarId"
+      :lostark-calendars="lostarkCalendars"
+      :my-calendars="myCalendars"
+      :is-calendar-list-loading="isCalendarListLoading"
+      :calendar-list-error-message="calendarListErrorMessage"
+      @select-calendar="setSelectedCalendar"
+      @click-add-schedule="onClickAddSchedule"
+      @click-add-calendar="onClickAddCalendar"
+    />
+    <section class="calendar-area">
+      <div class="calendar-toolbar">
+        <div class="calendar-toolbar-left">
+          <Button
+            label="오늘"
+            size="small"
+            @click="onClickToday"
+          />
+          <Button
+            icon="pi pi-chevron-left"
+            size="small"
+            text
+            aria-label="이전"
+            @click="onClickPrev"
+          />
+          <Button
+            icon="pi pi-chevron-right"
+            size="small"
+            text
+            aria-label="다음"
+            @click="onClickNext"
+          />
+          <h2 class="calendar-toolbar-title">{{ currentCalendarTitle }}</h2>
+        </div>
+        <div class="calendar-toolbar-right">
+          <Button
+            icon="pi pi-search"
+            size="small"
+            text
+            aria-label="검색"
+            @click="onClickSearch"
+          />
+          <Button
+            icon="pi pi-cog"
+            size="small"
+            text
+            aria-label="설정"
+            @click="onClickSetting"
+          />
+          <Select
+            v-model="selectedCalendarView"
+            class="calendar-view-select"
+            :options="calendarViewOptions"
+            option-label="name"
+            option-value="id"
+          />
+        </div>
+      </div>
+      <FullCalendar
+        ref="calendarRef"
+        class="calendar-fullcalendar"
+        :options="calendarOptions"
       />
-      <DatePicker
-        v-model="selectedDate"
-        class="calendar-mini-datepicker"
-        inline
-      />
-      <Message v-if="calendarListErrorMessage" severity="error" size="small">
-        {{ calendarListErrorMessage }}
-      </Message>
-      <Accordion v-model:value="activeCalendarGroups" multiple>
-        <AccordionPanel value="lostark">
-          <AccordionHeader>로스트아크 캘린더</AccordionHeader>
-          <AccordionContent>
-            <div class="calendar-list">
-              <div
-                v-for="calendarItem in lostarkCalendars"
-                :key="calendarItem.id"
-                class="calendar-list-item"
-                :class="{ 'calendar-list-item-selected': calendarItem.id === selectedCalendarId }"
-                @click="setSelectedCalendar(calendarItem.id)"
-              >
-                <Checkbox
-                  v-model="calendarItem.isVisible"
-                  binary
-                  @click.stop
-                />
-                <span
-                  v-if="calendarItem.name === '공지사항' || calendarItem.name === '패치노트'"
-                  class="calendar-list-prime-icon"
-                  :class="getCalendarPrimeIconClass(calendarItem.name)"
-                  aria-hidden="true"
-                ></span>
-                <img
-                  v-else-if="calendarItem.iconUrl != null && calendarItem.iconUrl !== ''"
-                  class="calendar-list-icon"
-                  :src="calendarItem.iconUrl"
-                  :alt="`${calendarItem.name} 아이콘`"
-                />
-                <span
-                  v-else
-                  class="calendar-list-fallback-icon"
-                  :style="{ backgroundColor: calendarItem.defaultColor }"
-                  aria-hidden="true"
-                ></span>
-                <span class="calendar-list-name">{{ calendarItem.name }}</span>
-              </div>
-              <p v-if="!isCalendarListLoading && lostarkCalendars.length === 0" class="calendar-list-empty">
-                표시할 캘린더가 없습니다.
-              </p>
-            </div>
-          </AccordionContent>
-        </AccordionPanel>
-        <AccordionPanel value="mine">
-          <AccordionHeader>
-            <span class="calendar-accordion-header">
-              <span>내 캘린더</span>
-              <Button
-                icon="pi pi-plus"
-                text
-                rounded
-                size="small"
-                aria-label="캘린더 추가"
-                @click.stop="onClickAddCalendar"
-              />
-            </span>
-          </AccordionHeader>
-          <AccordionContent>
-            <div class="calendar-list">
-              <div
-                v-for="calendarItem in myCalendars"
-                :key="calendarItem.id"
-                class="calendar-list-item"
-                :class="{ 'calendar-list-item-selected': calendarItem.id === selectedCalendarId }"
-                @click="setSelectedCalendar(calendarItem.id)"
-              >
-                <Checkbox
-                  v-model="calendarItem.isVisible"
-                  binary
-                  @click.stop
-                />
-                <span
-                  class="calendar-list-color"
-                  :style="{ backgroundColor: calendarItem.defaultColor }"
-                  aria-hidden="true"
-                ></span>
-                <span class="calendar-list-name">{{ calendarItem.name }}</span>
-              </div>
-              <p v-if="!isCalendarListLoading && myCalendars.length === 0" class="calendar-list-empty">
-                추가된 캘린더가 없습니다.
-              </p>
-            </div>
-          </AccordionContent>
-        </AccordionPanel>
-      </Accordion>
-    </aside>
-    <section class="calendar-area"></section>
+    </section>
   </section>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import Accordion from 'primevue/accordion'
-import AccordionContent from 'primevue/accordioncontent'
-import AccordionHeader from 'primevue/accordionheader'
-import AccordionPanel from 'primevue/accordionpanel'
+import FullCalendar from '@fullcalendar/vue3'
+import dayGridPlugin from '@fullcalendar/daygrid'
+import koLocale from '@fullcalendar/core/locales/ko'
 import Button from 'primevue/button'
-import Checkbox from 'primevue/checkbox'
-import DatePicker from 'primevue/datepicker'
-import Message from 'primevue/message'
+import Select from 'primevue/select'
+import CalendarSideBar from './CalendarSideBar.vue'
 import { getCalendars, type CalendarListItem } from './CalendarFetcher'
 
 defineOptions({
   name: 'Page_Calendar',
 })
 
+// Page state.
 const selectedDate = ref<Date | null>(new Date())
+const activeCalendarGroups = ref(['lostark', 'mine'])
 const selectedCalendarId = ref<string | null>(null)
 const calendars = ref<CalendarListItem[]>([])
-const activeCalendarGroups = ref(['lostark', 'mine'])
 const isCalendarListLoading = ref(false)
 const calendarListErrorMessage = ref('')
 
+// FullCalendar view settings.
+const calendarRef = ref<InstanceType<typeof FullCalendar> | null>(null)
+const currentCalendarTitle = ref('')
+const selectedCalendarView = ref('month')
+const calendarViewOptions = [
+  { id: 'year', name: '년간 달력' },
+  { id: 'month', name: '월간 달력' },
+  { id: 'week', name: '주간 달력' },
+]
+
+const calendarOptions = {
+  plugins: [dayGridPlugin],
+  initialView: 'dayGridMonth',
+  headerToolbar: false as const,
+  datesSet(calendarInfo: { view: { title: string } }): void {
+    currentCalendarTitle.value = calendarInfo.view.title
+  },
+  locale: koLocale,
+  height: '100%',
+  expandRows: true,
+  fixedWeekCount: false,
+  weekends: true,
+  dayMaxEventRows: true,
+  handleWindowResize: true,
+}
+
+// Derived calendar groups for the sidebar.
 const lostarkCalendars = computed(() => {
   return calendars.value.filter((calendarItem) => calendarItem.sourceType === 'lostark')
 })
@@ -137,22 +127,14 @@ const myCalendars = computed(() => {
 })
 
 /**
- * Gets PrimeVue icon class for built-in calendar labels.
+ * Handles calendar selection.
  *
- * @param calendarName Calendar name.
- * @returns Prime icon class name.
+ * @param calendarId Calendar id.
+ * @returns void
  * @public
  */
-function getCalendarPrimeIconClass(calendarName: string): string {
-  if (calendarName === '공지사항') {
-    return 'pi pi-bell'
-  }
-
-  if (calendarName === '패치노트') {
-    return 'pi pi-file-edit'
-  }
-
-  return ''
+function setSelectedCalendar(calendarId: string): void {
+  selectedCalendarId.value = calendarId
 }
 
 /**
@@ -175,16 +157,54 @@ function onClickAddCalendar(): void {
 }
 
 /**
- * Sets selected calendar id.
+ * Moves calendar to today.
  *
- * @param calendarId Calendar id.
  * @returns void
  * @public
  */
-function setSelectedCalendar(calendarId: string): void {
-  selectedCalendarId.value = calendarId
+function onClickToday(): void {
+  calendarRef.value?.getApi().today()
 }
 
+/**
+ * Moves calendar to previous range.
+ *
+ * @returns void
+ * @public
+ */
+function onClickPrev(): void {
+  calendarRef.value?.getApi().prev()
+}
+
+/**
+ * Moves calendar to next range.
+ *
+ * @returns void
+ * @public
+ */
+function onClickNext(): void {
+  calendarRef.value?.getApi().next()
+}
+
+/**
+ * Handles search icon button click.
+ *
+ * @returns void
+ * @public
+ */
+function onClickSearch(): void {
+}
+
+/**
+ * Handles setting icon button click.
+ *
+ * @returns void
+ * @public
+ */
+function onClickSetting(): void {
+}
+
+// Calendar list loading.
 /**
  * Loads calendar list from server.
  *
@@ -210,7 +230,24 @@ function getCalendarList(): void {
     })
 }
 
+// Initial data load.
 onMounted(() => {
   getCalendarList()
 })
 </script>
+
+<style scoped>
+.calendar-area {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.calendar-fullcalendar {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+}
+</style>
