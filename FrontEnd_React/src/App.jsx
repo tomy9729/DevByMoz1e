@@ -441,6 +441,10 @@ function createScheduleDraftFromEvent(event, localSchedules) {
         ? normalizeScheduleDraft(storedSchedule)
         : null;
     const scheduleType = normalizedStoredSchedule?.common.type ?? getEventScheduleType(event);
+    const eventTitle =
+        scheduleType === "adventureIsland"
+            ? getAdventureIslandTitleWithoutPeriod(event.title)
+            : event.title;
     const scheduleDate =
         normalizedStoredSchedule?.dateTimes?.[0]?.date ??
         event.startStr?.split("T")[0] ??
@@ -450,7 +454,7 @@ function createScheduleDraftFromEvent(event, localSchedules) {
         id: scheduleId,
         sourceKind: normalizedStoredSchedule?.sourceKind ?? "systemOverride",
         common: {
-            title: normalizedStoredSchedule?.common.title ?? event.title,
+            title: normalizedStoredSchedule?.common.title ?? eventTitle,
             type: scheduleType,
             isVisible: normalizedStoredSchedule?.common.isVisible ?? true,
             includeInBotResponse:
@@ -1636,10 +1640,8 @@ function App() {
         const baseTitle = getCalendarEventBaseTitle(event.title);
         const tooltipTitle = getCalendarEventTooltipTitle(event);
         const eventDisplayTitle = getCalendarEventDisplayTitle(event, baseTitle);
-        const shouldShowPeriod =
-            contentType !== "adventureIsland" || displayOption.period !== false;
-        const visibleTitle =
-            contentType === "adventureIsland" && !shouldShowPeriod
+        const visibleEventTitle =
+            contentType === "adventureIsland"
                 ? getAdventureIslandTitleWithoutPeriod(eventDisplayTitle)
                 : eventDisplayTitle;
         const shouldShowText = displayOption.text !== false;
@@ -1653,7 +1655,7 @@ function App() {
             <span className="calendar-event-inline">
                 {shouldShowText ? (
                     <span className="calendar-event-title" title={tooltipTitle}>
-                        {contentType === "adventureIsland" ? visibleTitle : event.title}
+                        {contentType === "adventureIsland" ? visibleEventTitle : event.title}
                     </span>
                 ) : null}
                 {shouldShowImage ? (

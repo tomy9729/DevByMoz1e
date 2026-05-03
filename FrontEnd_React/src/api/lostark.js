@@ -648,10 +648,7 @@ function getGameContentEventTitle(content, displayType, startTime) {
 
     // 20260330 khs
     // 제목 조합 시작: 주말 모험섬은 오전/오후를 가장 앞에 붙이고, 뒤에 섬 이름과 주요 보상을 연결한다.
-    const periodLabel = getAdventureIslandPeriodLabel(getAdventureIslandPeriod(startTime));
-    const periodText = periodLabel ? `[${periodLabel}] ` : "";
-
-    return `${periodText}${getShortIslandName(content.ContentsName)}`;
+    return getShortIslandName(content.ContentsName);
     // 20260330 khs
     // 제목 조합 끝
 }
@@ -729,8 +726,6 @@ export function mapLostArkNoticeToCalendarEvent(notice) {
  * 반환값 설명: FullCalendar에서 사용할 모험섬 이벤트 객체
  */
 export function mapAdventureIslandRecordToCalendarEvent(adventureIsland) {
-    const periodLabel = getAdventureIslandPeriodLabelFromRecord(adventureIsland.period);
-    const periodText = periodLabel ? `[${periodLabel}] ` : "";
     const rewardType = getAdventureIslandMajorRewardType(adventureIsland.rewardName ?? "");
     const rewardName = normalizeAdventureIslandRewardName(
         adventureIsland.rewardShortName ?? adventureIsland.rewardName ?? "",
@@ -739,7 +734,7 @@ export function mapAdventureIslandRecordToCalendarEvent(adventureIsland) {
 
     return {
         id: `adventure-island-${adventureIsland.lostArkDate}-${adventureIsland.period}-${adventureIsland.contentsName}`,
-        title: `${periodText}${adventureIsland.shortName ?? adventureIsland.contentsName}`,
+        title: adventureIsland.shortName ?? adventureIsland.contentsName,
         start: adventureIsland.lostArkDate,
         allDay: true,
         ...eventColors,
