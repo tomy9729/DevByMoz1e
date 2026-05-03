@@ -3,7 +3,6 @@ import {
     ADVENTURE_ISLAND_KEYWORDS,
     ADVENTURE_ISLAND_MAJOR_REWARDS,
     ADVENTURE_ISLAND_REWARD_SHORT_NAMES,
-    ADVENTURE_ISLAND_SHORT_NAMES,
 } from "./lostark.constants";
 import { LostArkGameContent, LostArkRewardItem } from "./lostark.types";
 
@@ -187,7 +186,7 @@ export function extractAdventureIslandRecords(
                 period,
                 categoryName: content.CategoryName,
                 contentsName: content.ContentsName,
-                shortName: ADVENTURE_ISLAND_SHORT_NAMES[content.ContentsName] ?? content.ContentsName,
+                shortName: content.ContentsName,
                 rewardName: rewardName || null,
                 rewardShortName: rewardName
                     ? ADVENTURE_ISLAND_REWARD_SHORT_NAMES[rewardName] ?? rewardName

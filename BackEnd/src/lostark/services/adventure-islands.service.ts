@@ -29,11 +29,43 @@ export class AdventureIslandsService {
         createdAt: true,
         updatedAt: true,
     };
+    private adventureIslandShortNamesNormalized = false;
 
     constructor(
         private readonly prismaService: PrismaService,
         private readonly lostArkClient: LostArkClient,
     ) {}
+
+    private async normalizeAdventureIslandShortNames() {
+        if (this.adventureIslandShortNamesNormalized) {
+            return;
+        }
+
+        const storedAdventureIslands = await this.prismaService.adventureIsland.findMany({
+            select: {
+                id: true,
+                contentsName: true,
+                shortName: true,
+            },
+        });
+
+        for (const adventureIsland of storedAdventureIslands) {
+            if (adventureIsland.shortName === adventureIsland.contentsName) {
+                continue;
+            }
+
+            await this.prismaService.adventureIsland.update({
+                where: {
+                    id: adventureIsland.id,
+                },
+                data: {
+                    shortName: adventureIsland.contentsName,
+                },
+            });
+        }
+
+        this.adventureIslandShortNamesNormalized = true;
+    }
 
     private matchesAdventureIslandQuery(
         adventureIsland: {
@@ -133,6 +165,8 @@ export class AdventureIslandsService {
     }
 
     async getAdventureIslands(query: QueryAdventureIslandsDto) {
+        await this.normalizeAdventureIslandShortNames();
+
         return this.prismaService.adventureIsland.findMany({
             where: this.buildAdventureIslandWhereInput(query),
             select: this.adventureIslandSelect,
@@ -195,6 +229,13 @@ export class AdventureIslandsService {
         const assetMap = await this.getAdventureIslandAssetMap(
             [...new Set(seedRecords.map((item) => item.contentsName))],
         );
+
+        await this.prismaService.adventureIsland.deleteMany({
+            where: {
+                sourceType: "manual",
+                sourceKey: ADVENTURE_ISLAND_TEST_NOTE_SOURCE_KEY,
+            } as Prisma.AdventureIslandWhereInput,
+        });
 
         for (const record of seedRecords) {
             const asset = assetMap.get(record.contentsName);

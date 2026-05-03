@@ -357,14 +357,21 @@ export class CalendarService {
 
         for (const adventureIsland of adventureIslands) {
             const rewardName = adventureIsland.rewardShortName ?? adventureIsland.rewardName ?? "";
-            const calendarKey = this.getAdventureIslandCalendarKey(rewardName);
+            let calendarKey: AdventureIslandCalendarKey;
+
+            try {
+                calendarKey = this.getAdventureIslandCalendarKey(rewardName);
+            } catch {
+                continue;
+            }
+
             const calendar = await this.getOrCreateAdventureIslandCalendar(calendarKey);
             const { startDateTime, endDateTime } = this.createAdventureIslandEventDateRange(
                 adventureIsland.startTime,
             );
             const periodLabel = this.getPeriodLabel(adventureIsland.period);
             const titlePrefix = periodLabel ? `[${periodLabel}] ` : "";
-            const title = `${titlePrefix}${adventureIsland.shortName ?? adventureIsland.contentsName}`;
+            const title = `${titlePrefix}${adventureIsland.contentsName}`;
             const description = [adventureIsland.contentsName, rewardName].filter(Boolean).join(" / ");
 
             await this.prismaService.calendarEvent.upsert({
@@ -503,14 +510,9 @@ export class CalendarService {
         return syncedCount;
     }
 
-    /**
-     * @public
-     * @param query Period query.
-     * @returns Visible events with calendar and display color.
-     */
-    async getCalendarEvents(query: QueryCalendarEventsDto) {
-        const fromDate = this.parseQueryDate(query.from);
-        const toDate = this.parseQueryDate(query.to, true);
+    private async getCalendarEventsByRange(fromText: string, toText: string) {
+        const fromDate = this.parseQueryDate(fromText);
+        const toDate = this.parseQueryDate(toText, true);
 
         if (fromDate > toDate) {
             throw new BadRequestException("Invalid date range.");
@@ -543,6 +545,14 @@ export class CalendarService {
         });
 
         return events.map((event) => this.mapCalendarEvent(event));
+    }
+
+    async getCalendarEvents(query: QueryCalendarEventsDto) {
+        return this.getCalendarEventsByRange(query.from, query.to);
+    }
+
+    async getSchedules(startDate: string, endDate: string) {
+        return this.getCalendarEventsByRange(startDate, endDate);
     }
 
     /**

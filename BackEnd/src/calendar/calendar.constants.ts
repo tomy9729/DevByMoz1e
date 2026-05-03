@@ -15,7 +15,7 @@ export const ADVENTURE_ISLAND_CALENDAR_DEFINITIONS = {
     },
     oceanCoin: {
         name: "모험섬 대양의 주화",
-        defaultColor: "#0ea5e9",
+        defaultColor: "#f97316",
         iconUrl: "https://cdn-lostark.game.onstove.com/efui_iconatlas/use/use_2_8.png",
         sortOrder: 30,
     },

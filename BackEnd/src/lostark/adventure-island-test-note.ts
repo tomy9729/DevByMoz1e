@@ -42,45 +42,45 @@ const CONTENTS_NAME_BY_ALIAS: Record<
         contentsName: "\uBAAC\uD14C\uC12C",
         shortName: "\uBAAC\uD14C\uC12C",
     },
-    "\uBCFC\uB77C\uB974": {
-        contentsName: "\uBCFC\uB77C\uB974 \uC12C",
-        shortName: "\uBCFC\uB77C\uB974",
-    },
     "\uBE14\uB8E8\uD640": {
         contentsName: "\uBE14\uB8E8\uD640 \uC12C",
-        shortName: "\uBE14\uB8E8\uD640",
+        shortName: "\uBE14\uB8E8\uD640 \uC12C",
+    },
+    "\uBCFC\uB77C\uB974": {
+        contentsName: "\uBCFC\uB77C\uB974 \uC12C",
+        shortName: "\uBCFC\uB77C\uB974 \uC12C",
     },
     "\uD558\uBAA8\uB2C8": {
         contentsName: "\uD558\uBAA8\uB2C8 \uC12C",
-        shortName: "\uD558\uBAA8\uB2C8",
+        shortName: "\uD558\uBAA8\uB2C8 \uC12C",
     },
     "\uD558\uBAA8\uB2C8\uC12C": {
         contentsName: "\uD558\uBAA8\uB2C8 \uC12C",
-        shortName: "\uD558\uBAA8\uB2C8",
+        shortName: "\uD558\uBAA8\uB2C8 \uC12C",
     },
     "\uC2A4\uB178\uC6B0\uD321": {
         contentsName: "\uC2A4\uB178\uC6B0\uD321 \uC544\uC77C\uB79C\uB4DC",
-        shortName: "\uC2A4\uB178\uC6B0\uD321",
+        shortName: "\uC2A4\uB178\uC6B0\uD321 \uC544\uC77C\uB79C\uB4DC",
     },
     "\uC6B0\uAC08": {
         contentsName: "\uC6B0\uAC70\uC9C4 \uAC08\uB300\uC758 \uC12C",
-        shortName: "\uC6B0\uAC08\uC12C",
+        shortName: "\uC6B0\uAC70\uC9C4 \uAC08\uB300\uC758 \uC12C",
     },
     "\uC6B0\uAC08\uC12C": {
         contentsName: "\uC6B0\uAC70\uC9C4 \uAC08\uB300\uC758 \uC12C",
-        shortName: "\uC6B0\uAC08\uC12C",
+        shortName: "\uC6B0\uAC70\uC9C4 \uAC08\uB300\uC758 \uC12C",
     },
     "\uC794\uC7A5\uC12C": {
         contentsName: "\uC794\uD639\uD55C \uC7A5\uB09C\uAC10 \uC131",
-        shortName: "\uC794\uC7A5\uC12C",
+        shortName: "\uC794\uD639\uD55C \uC7A5\uB09C\uAC10 \uC131",
     },
     "\uC8FD\uD611": {
         contentsName: "\uC8FD\uC74C\uC758 \uD611\uACE1",
-        shortName: "\uC8FD\uD611",
+        shortName: "\uC8FD\uC74C\uC758 \uD611\uACE1",
     },
     "\uCFF5\uB355\uCFF5": {
         contentsName: "\uCFF5\uB355\uCFF5 \uC544\uC77C\uB79C\uB4DC",
-        shortName: "\uCFF5\uB355\uCFF5",
+        shortName: "\uCFF5\uB355\uCFF5 \uC544\uC77C\uB79C\uB4DC",
     },
     "\uD3EC\uB974\uD398": {
         contentsName: "\uD3EC\uB974\uD398",
@@ -92,15 +92,15 @@ const CONTENTS_NAME_BY_ALIAS: Record<
     },
     "\uD658\uB098": {
         contentsName: "\uD658\uC601 \uB098\uBE44 \uC12C",
-        shortName: "\uD658\uB098\uC12C",
+        shortName: "\uD658\uC601 \uB098\uBE44 \uC12C",
     },
     "\uD658\uB098\uC12C": {
         contentsName: "\uD658\uC601 \uB098\uBE44 \uC12C",
-        shortName: "\uD658\uB098\uC12C",
+        shortName: "\uD658\uC601 \uB098\uBE44 \uC12C",
     },
     "\uB77C\uC77C\uB77C\uC774": {
         contentsName: "\uB77C\uC77C\uB77C\uC774 \uC544\uC77C\uB79C\uB4DC",
-        shortName: "\uB77C\uC77C\uB77C\uC774",
+        shortName: "\uB77C\uC77C\uB77C\uC774 \uC544\uC77C\uB79C\uB4DC",
     },
 };
 
@@ -416,6 +416,11 @@ const TEST_NOTE_SCHEDULE: ManualScheduleItem[] = [
             "\uC218\uB77C\uB3C4:\uD574\uC8FC",
             "\uB77C\uC77C\uB77C\uC774:\uC2E4\uB9C1",
         ],
+        weekendAfternoon: [
+            "\uAE30\uD68C:\uC2E4\uB9C1",
+            "\uBCFC\uB77C\uB974:\uCE74\uB4DC",
+            "\uC6B0\uAC08:\uD574\uC8FC",
+        ],
     },
     {
         date: `${TEST_NOTE_YEAR}-05-31`,
@@ -423,6 +428,11 @@ const TEST_NOTE_SCHEDULE: ManualScheduleItem[] = [
             "\uC8FD\uD611:\uC2E4\uB9C1",
             "\uD658\uB098\uC12C:\uCE74\uB4DC",
             "\uCFF5\uB355\uCFF5:\uD574\uC8FC",
+        ],
+        weekendAfternoon: [
+            "\uACE0\uC548\uC12C:\uD574\uC8FC",
+            "\uBA54\uB370\uC774\uC544:\uCE74\uB4DC",
+            "\uBE14\uB8E8\uD640:\uC2E4\uB9C1",
         ],
     },
 ];
@@ -493,7 +503,7 @@ function buildPeriodRecords(
             period,
             categoryName: TEST_NOTE_CATEGORY_NAME,
             contentsName: parsedToken.contentInfo.contentsName,
-            shortName: parsedToken.contentInfo.shortName,
+            shortName: parsedToken.contentInfo.contentsName,
             rewardName: parsedToken.rewardInfo.rewardName,
             rewardShortName: parsedToken.rewardInfo.rewardShortName,
             rewardIconUrl: parsedToken.rewardInfo.rewardIconUrl,
