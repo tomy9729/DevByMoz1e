@@ -1,5 +1,5 @@
 import { Type } from "class-transformer";
-import { IsBoolean, IsDate, IsOptional, IsString } from "class-validator";
+import { IsArray, IsBoolean, IsDate, IsOptional, IsString, ValidateNested } from "class-validator";
 
 export class QueryCalendarEventsDto {
     @IsString()
@@ -7,6 +7,20 @@ export class QueryCalendarEventsDto {
 
     @IsString()
     to!: string;
+}
+
+export class CalendarEventTimeDto {
+    @Type(() => Date)
+    @IsDate()
+    startDateTime!: Date;
+
+    @Type(() => Date)
+    @IsDate()
+    endDateTime!: Date;
+
+    @IsOptional()
+    @IsBoolean()
+    allDay?: boolean;
 }
 
 export class CreateCalendarEventDto {
@@ -20,25 +34,14 @@ export class CreateCalendarEventDto {
     @IsString()
     description?: string;
 
-    @Type(() => Date)
-    @IsDate()
-    startDateTime!: Date;
-
-    @Type(() => Date)
-    @IsDate()
-    endDateTime!: Date;
-
-    @IsOptional()
-    @IsBoolean()
-    allDay?: boolean;
+    @IsArray()
+    @ValidateNested({ each: true })
+    @Type(() => CalendarEventTimeDto)
+    times!: CalendarEventTimeDto[];
 
     @IsOptional()
     @IsString()
     color?: string;
-
-    @IsOptional()
-    @IsString()
-    recurrenceRule?: string;
 
     @IsOptional()
     @IsBoolean()
@@ -59,26 +62,14 @@ export class UpdateCalendarEventDto {
     description?: string;
 
     @IsOptional()
-    @Type(() => Date)
-    @IsDate()
-    startDateTime?: Date;
-
-    @IsOptional()
-    @Type(() => Date)
-    @IsDate()
-    endDateTime?: Date;
-
-    @IsOptional()
-    @IsBoolean()
-    allDay?: boolean;
+    @IsArray()
+    @ValidateNested({ each: true })
+    @Type(() => CalendarEventTimeDto)
+    times?: CalendarEventTimeDto[];
 
     @IsOptional()
     @IsString()
     color?: string;
-
-    @IsOptional()
-    @IsString()
-    recurrenceRule?: string;
 
     @IsOptional()
     @IsBoolean()

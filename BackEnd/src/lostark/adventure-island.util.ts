@@ -17,7 +17,7 @@ export interface AdventureIslandRecordInput {
     rewardIconUrl: string | null;
     contentIconUrl: string | null;
     contentImageUrl: string | null;
-    startTime: string;
+    startTime: Date;
     rawData: LostArkGameContent;
 }
 
@@ -33,6 +33,12 @@ function parseDateTime(dateTime: string) {
         hour,
         minute,
     };
+}
+
+function createKoreaDateTime(dateTime: string) {
+    const { year, month, day, hour, minute } = parseDateTime(dateTime);
+
+    return new Date(Date.UTC(year, month - 1, day, hour, minute, 0, 0));
 }
 
 function formatDateParts(year: number, month: number, day: number) {
@@ -170,16 +176,16 @@ export function extractAdventureIslandRecords(
             continue;
         }
 
-        for (const startTime of content.StartTimes ?? []) {
-            const lostArkDate = toLostArkDateOnly(startTime);
-            const period = getAdventureIslandPeriod(startTime);
+        for (const startTimeText of content.StartTimes ?? []) {
+            const lostArkDate = toLostArkDateOnly(startTimeText);
+            const period = getAdventureIslandPeriod(startTimeText);
             const uniqueKey = [lostArkDate, period, content.ContentsName].join("|");
 
             if (uniqueRecords.has(uniqueKey)) {
                 continue;
             }
 
-            const reward = getAdventureIslandReward(content, startTime);
+            const reward = getAdventureIslandReward(content, startTimeText);
             const rewardName = reward.rewardName;
             const record: AdventureIslandRecordInput = {
                 lostArkDate,
@@ -194,7 +200,7 @@ export function extractAdventureIslandRecords(
                 rewardIconUrl: reward.rewardIconUrl || null,
                 contentIconUrl: getGameContentIconUrl(content) || null,
                 contentImageUrl: getGameContentImageUrl(content) || null,
-                startTime,
+                startTime: createKoreaDateTime(startTimeText),
                 rawData: content,
             };
 

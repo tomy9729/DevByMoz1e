@@ -447,7 +447,7 @@ export interface AdventureIslandTestSeedRecord {
     rewardName: string;
     rewardShortName: string;
     rewardIconUrl: string;
-    startTime: string;
+    startTime: Date;
     rawData: {
         source: string;
         date: string;
@@ -459,7 +459,10 @@ export interface AdventureIslandTestSeedRecord {
 }
 
 function buildStartTime(date: string, period: AdventureIslandPeriod) {
-    return `${date}T${START_TIME_BY_PERIOD[period]}`;
+    const [year, month, day] = date.split("-").map(Number);
+    const [hour = 0, minute = 0, second = 0] = START_TIME_BY_PERIOD[period].split(":").map(Number);
+
+    return new Date(Date.UTC(year, month - 1, day, hour, minute, second, 0));
 }
 
 function parseScheduleToken(token: string) {

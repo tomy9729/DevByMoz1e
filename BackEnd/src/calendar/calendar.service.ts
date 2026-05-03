@@ -10,6 +10,7 @@ import {
     LostArkNoticeCalendarKey,
 } from "./calendar.constants";
 import {
+    CalendarEventTimeDto,
     CreateCalendarEventDto,
     QueryCalendarEventsDto,
     UpdateCalendarEventDto,
@@ -25,13 +26,33 @@ export class CalendarService {
     }
 
     private toDateText(date: Date) {
-        return this.formatDateParts(date.getFullYear(), date.getMonth() + 1, date.getDate());
+        return this.formatDateParts(date.getUTCFullYear(), date.getUTCMonth() + 1, date.getUTCDate());
+    }
+
+    private createKoreaTimestampDate(
+        year: number,
+        month: number,
+        day: number,
+        hour = 0,
+        minute = 0,
+        second = 0,
+        millisecond = 0,
+    ) {
+        return new Date(Date.UTC(year, month - 1, day, hour, minute, second, millisecond));
     }
 
     private parseQueryDate(value: string, isRangeEnd = false) {
-        const date = /^\d{4}-\d{2}-\d{2}$/.test(value)
-            ? new Date(`${value}T${isRangeEnd ? "23:59:59.999" : "00:00:00.000"}`)
-            : new Date(value);
+        const date = (() => {
+            if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+                const [year, month, day] = value.split("-").map(Number);
+
+                return isRangeEnd
+                    ? this.createKoreaTimestampDate(year, month, day, 23, 59, 59, 999)
+                    : this.createKoreaTimestampDate(year, month, day);
+            }
+
+            return new Date(value);
+        })();
 
         if (Number.isNaN(date.getTime())) {
             throw new BadRequestException("Invalid date range.");
@@ -217,19 +238,51 @@ export class CalendarService {
         }
     }
 
-    private createAdventureIslandEventDateRange(startTime: string) {
+    private createAdventureIslandEventDateRange(startTime: Date) {
         const startDateTime = new Date(startTime);
 
         if (Number.isNaN(startDateTime.getTime())) {
             throw new BadRequestException("Invalid adventure island start time.");
         }
 
-        const endDateTime = new Date(startDateTime.getTime() + 60 * 60 * 1000);
+        const endDateTime = new Date(startDateTime);
 
         return {
             startDateTime,
             endDateTime,
         };
+    }
+
+    private assertEventTimes(times: CalendarEventTimeDto[] | undefined) {
+        if (!Array.isArray(times) || times.length === 0) {
+            throw new BadRequestException("At least one schedule time is required.");
+        }
+
+        for (const time of times) {
+            if (time.startDateTime > time.endDateTime) {
+                throw new BadRequestException("Schedule start time must be before end time.");
+            }
+        }
+    }
+
+    private createEventTimeCreateManyInput(times: CalendarEventTimeDto[]) {
+        return times.map((time, timeIndex) => ({
+            startDateTime: time.startDateTime,
+            endDateTime: time.endDateTime,
+            allDay: time.allDay ?? false,
+            sortOrder: (timeIndex + 1) * 100,
+        }));
+    }
+
+    private formatTimestampText(date: Date) {
+        const year = date.getUTCFullYear();
+        const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+        const day = String(date.getUTCDate()).padStart(2, "0");
+        const hour = String(date.getUTCHours()).padStart(2, "0");
+        const minute = String(date.getUTCMinutes()).padStart(2, "0");
+        const second = String(date.getUTCSeconds()).padStart(2, "0");
+
+        return `${year}-${month}-${day}T${hour}:${minute}:${second}`;
     }
 
     private createAllDayEventDateRange(date: Date) {
@@ -249,17 +302,23 @@ export class CalendarService {
         id: string;
         title: string;
         description: string | null;
-        startDateTime: Date;
-        endDateTime: Date;
-        allDay: boolean;
         color: string | null;
         sourceType: CalendarEventSourceType;
         externalSourceType: string | null;
         externalSourceId: string | null;
-        recurrenceRule: string | null;
         alarmEnabled: boolean;
         createdAt: Date;
         updatedAt: Date;
+        times: {
+            id: string;
+            eventId: string;
+            startDateTime: Date;
+            endDateTime: Date;
+            allDay: boolean;
+            sortOrder: number;
+            createdAt: Date;
+            updatedAt: Date;
+        }[];
         calendar: {
             id: string;
             name: string;
@@ -269,8 +328,31 @@ export class CalendarService {
             sourceType: CalendarSourceType;
         };
     }) {
+        const orderedTimes = [...event.times].sort((leftTime, rightTime) => {
+            if (leftTime.sortOrder !== rightTime.sortOrder) {
+                return leftTime.sortOrder - rightTime.sortOrder;
+            }
+
+            return leftTime.startDateTime.getTime() - rightTime.startDateTime.getTime();
+        });
+
         return {
-            ...event,
+            id: event.id,
+            title: event.title,
+            description: event.description,
+            color: event.color,
+            sourceType: event.sourceType,
+            externalSourceType: event.externalSourceType,
+            externalSourceId: event.externalSourceId,
+            alarmEnabled: event.alarmEnabled,
+            createdAt: event.createdAt,
+            updatedAt: event.updatedAt,
+            calendar: event.calendar,
+            times: orderedTimes.map((time) => ({
+                ...time,
+                startDateTime: this.formatTimestampText(time.startDateTime),
+                endDateTime: this.formatTimestampText(time.endDateTime),
+            })),
             displayColor: event.color ?? event.calendar.defaultColor,
         };
     }
@@ -386,15 +468,21 @@ export class CalendarService {
                     calendarId: calendar.id,
                     title,
                     description,
-                    startDateTime,
-                    endDateTime,
-                    allDay: false,
                     color: null,
                     sourceType: CalendarEventSourceType.lostark,
                     externalSourceType: ADVENTURE_ISLAND_CALENDAR_SOURCE_TYPE,
                     externalSourceId: adventureIsland.id,
-                    recurrenceRule: null,
                     alarmEnabled: false,
+                    times: {
+                        create: [
+                            {
+                                startDateTime,
+                                endDateTime,
+                                allDay: false,
+                                sortOrder: 100,
+                            },
+                        ],
+                    },
                     rawData: {
                         adventureIslandId: adventureIsland.id,
                         lostArkDate: adventureIsland.lostArkDate,
@@ -410,11 +498,19 @@ export class CalendarService {
                     calendarId: calendar.id,
                     title,
                     description,
-                    startDateTime,
-                    endDateTime,
-                    allDay: false,
                     externalSourceType: ADVENTURE_ISLAND_CALENDAR_SOURCE_TYPE,
                     externalSourceId: adventureIsland.id,
+                    times: {
+                        deleteMany: {},
+                        create: [
+                            {
+                                startDateTime,
+                                endDateTime,
+                                allDay: false,
+                                sortOrder: 100,
+                            },
+                        ],
+                    },
                     rawData: {
                         adventureIslandId: adventureIsland.id,
                         lostArkDate: adventureIsland.lostArkDate,
@@ -472,15 +568,21 @@ export class CalendarService {
                     calendarId: calendar.id,
                     title,
                     description: notice.title,
-                    startDateTime,
-                    endDateTime,
-                    allDay: true,
                     color: null,
                     sourceType: CalendarEventSourceType.lostark,
                     externalSourceType: LOSTARK_NOTICE_CALENDAR_SOURCE_TYPE,
                     externalSourceId: notice.id,
-                    recurrenceRule: null,
                     alarmEnabled: false,
+                    times: {
+                        create: [
+                            {
+                                startDateTime,
+                                endDateTime,
+                                allDay: true,
+                                sortOrder: 100,
+                            },
+                        ],
+                    },
                     rawData: {
                         noticeId: notice.id,
                         type: notice.type,
@@ -491,11 +593,19 @@ export class CalendarService {
                     calendarId: calendar.id,
                     title,
                     description: notice.title,
-                    startDateTime,
-                    endDateTime,
-                    allDay: true,
                     externalSourceType: LOSTARK_NOTICE_CALENDAR_SOURCE_TYPE,
                     externalSourceId: notice.id,
+                    times: {
+                        deleteMany: {},
+                        create: [
+                            {
+                                startDateTime,
+                                endDateTime,
+                                allDay: true,
+                                sortOrder: 100,
+                            },
+                        ],
+                    },
                     rawData: {
                         noticeId: notice.id,
                         type: notice.type,
@@ -524,11 +634,15 @@ export class CalendarService {
 
         const events = await this.prismaService.calendarEvent.findMany({
             where: {
-                startDateTime: {
-                    lte: toDate,
-                },
-                endDateTime: {
-                    gte: fromDate,
+                times: {
+                    some: {
+                        startDateTime: {
+                            lte: toDate,
+                        },
+                        endDateTime: {
+                            gte: fromDate,
+                        },
+                    },
                 },
                 calendar: {
                     isVisible: true,
@@ -536,15 +650,25 @@ export class CalendarService {
             },
             include: {
                 calendar: true,
+                times: {
+                    orderBy: [{ sortOrder: "asc" }, { startDateTime: "asc" }],
+                },
             },
-            orderBy: [
-                { startDateTime: "asc" },
-                { calendar: { sortOrder: "asc" } },
-                { title: "asc" },
-            ],
+            orderBy: [{ calendar: { sortOrder: "asc" } }, { title: "asc" }],
         });
 
-        return events.map((event) => this.mapCalendarEvent(event));
+        return events
+            .map((event) => this.mapCalendarEvent(event))
+            .sort((leftEvent, rightEvent) => {
+                const leftStartTime = leftEvent.times[0]?.startDateTime ?? "";
+                const rightStartTime = rightEvent.times[0]?.startDateTime ?? "";
+
+                if (leftStartTime !== rightStartTime) {
+                    return leftStartTime.localeCompare(rightStartTime);
+                }
+
+                return leftEvent.title.localeCompare(rightEvent.title);
+            });
     }
 
     async getCalendarEvents(query: QueryCalendarEventsDto) {
@@ -562,24 +686,27 @@ export class CalendarService {
      */
     async createUserEvent(dto: CreateCalendarEventDto) {
         await this.assertUserCalendar(dto.calendarId);
+        this.assertEventTimes(dto.times);
 
         const event = await this.prismaService.calendarEvent.create({
             data: {
                 calendarId: dto.calendarId,
                 title: dto.title,
                 description: dto.description,
-                startDateTime: dto.startDateTime,
-                endDateTime: dto.endDateTime,
-                allDay: dto.allDay ?? false,
                 color: dto.color,
                 sourceType: CalendarEventSourceType.user,
                 externalSourceType: null,
                 externalSourceId: null,
-                recurrenceRule: dto.recurrenceRule,
                 alarmEnabled: dto.alarmEnabled ?? false,
+                times: {
+                    create: this.createEventTimeCreateManyInput(dto.times),
+                },
             },
             include: {
                 calendar: true,
+                times: {
+                    orderBy: [{ sortOrder: "asc" }, { startDateTime: "asc" }],
+                },
             },
         });
 
@@ -611,6 +738,10 @@ export class CalendarService {
             await this.assertUserCalendar(dto.calendarId);
         }
 
+        if (dto.times != null) {
+            this.assertEventTimes(dto.times);
+        }
+
         const event = await this.prismaService.calendarEvent.update({
             where: {
                 id: eventId,
@@ -619,15 +750,21 @@ export class CalendarService {
                 calendarId: dto.calendarId,
                 title: dto.title,
                 description: dto.description,
-                startDateTime: dto.startDateTime,
-                endDateTime: dto.endDateTime,
-                allDay: dto.allDay,
                 color: dto.color,
-                recurrenceRule: dto.recurrenceRule,
                 alarmEnabled: dto.alarmEnabled,
+                times:
+                    dto.times == null
+                        ? undefined
+                        : {
+                              deleteMany: {},
+                              create: this.createEventTimeCreateManyInput(dto.times),
+                          },
             },
             include: {
                 calendar: true,
+                times: {
+                    orderBy: [{ sortOrder: "asc" }, { startDateTime: "asc" }],
+                },
             },
         });
 

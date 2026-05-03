@@ -64,7 +64,7 @@ async function main() {
         "rewardIconUrl" TEXT,
         "contentIconUrl" TEXT,
         "contentImageUrl" TEXT,
-        "startTime" TEXT NOT NULL,
+        "startTime" TIMESTAMP(3) NOT NULL,
         "rawData" JSONB NOT NULL,
         "collectedAt" TIMESTAMP(3) NOT NULL,
         "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -75,6 +75,9 @@ async function main() {
     await client.query('ALTER TABLE "AdventureIsland" ADD COLUMN IF NOT EXISTS "rewardIconUrl" TEXT;');
     await client.query('ALTER TABLE "AdventureIsland" ADD COLUMN IF NOT EXISTS "contentIconUrl" TEXT;');
     await client.query('ALTER TABLE "AdventureIsland" ADD COLUMN IF NOT EXISTS "contentImageUrl" TEXT;');
+    await client.query(
+        'ALTER TABLE "AdventureIsland" ALTER COLUMN "startTime" TYPE TIMESTAMP(3) USING "startTime"::timestamp;',
+    ).catch(() => undefined);
     await client.query(
         'CREATE UNIQUE INDEX IF NOT EXISTS "AdventureIsland_lostArkDate_period_contentsName_key" ON "AdventureIsland"("lostArkDate", "period", "contentsName");',
     );
@@ -97,7 +100,7 @@ async function main() {
         "rewardIconUrl" TEXT,
         "contentIconUrl" TEXT,
         "contentImageUrl" TEXT,
-        "startTime" TEXT NOT NULL,
+        "startTime" TIMESTAMP(3) NOT NULL,
         "rawData" JSONB NOT NULL,
         "collectedAt" TIMESTAMP(3) NOT NULL,
         "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -106,6 +109,9 @@ async function main() {
     await client.query(
         'CREATE UNIQUE INDEX IF NOT EXISTS "AdventureIslandTest_sourceKey_lostArkDate_period_contentsName_key" ON "AdventureIslandTest"("sourceKey", "lostArkDate", "period", "contentsName");',
     );
+    await client.query(
+        'ALTER TABLE "AdventureIslandTest" ALTER COLUMN "startTime" TYPE TIMESTAMP(3) USING "startTime"::timestamp;',
+    ).catch(() => undefined);
     await client.query(
         'CREATE INDEX IF NOT EXISTS "AdventureIslandTest_sourceKey_lostArkDate_period_idx" ON "AdventureIslandTest"("sourceKey", "lostArkDate", "period");',
     );
@@ -141,6 +147,103 @@ async function main() {
     EXCEPTION
         WHEN duplicate_object THEN null;
     END $$;`);
+    await client.query(`DO $$ BEGIN
+        CREATE TYPE "CalendarSourceType" AS ENUM ('lostark', 'user');
+    EXCEPTION
+        WHEN duplicate_object THEN null;
+    END $$;`);
+    await client.query(`DO $$ BEGIN
+        CREATE TYPE "CalendarEventSourceType" AS ENUM ('lostark', 'user');
+    EXCEPTION
+        WHEN duplicate_object THEN null;
+    END $$;`);
+    await client.query(`CREATE TABLE IF NOT EXISTS "Calendar" (
+        "id" TEXT PRIMARY KEY,
+        "name" TEXT NOT NULL,
+        "defaultColor" TEXT NOT NULL,
+        "iconUrl" TEXT,
+        "isVisible" BOOLEAN NOT NULL DEFAULT true,
+        "sortOrder" INTEGER NOT NULL DEFAULT 100,
+        "sourceType" "CalendarSourceType" NOT NULL,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );`);
+    await client.query(
+        'CREATE UNIQUE INDEX IF NOT EXISTS "Calendar_sourceType_name_key" ON "Calendar"("sourceType", "name");',
+    );
+    await client.query(
+        'CREATE INDEX IF NOT EXISTS "Calendar_isVisible_sortOrder_idx" ON "Calendar"("isVisible", "sortOrder");',
+    );
+    await client.query(`CREATE TABLE IF NOT EXISTS "CalendarEvent" (
+        "id" TEXT PRIMARY KEY,
+        "calendarId" TEXT NOT NULL REFERENCES "Calendar"("id") ON DELETE CASCADE ON UPDATE CASCADE,
+        "title" TEXT NOT NULL,
+        "description" TEXT,
+        "color" TEXT,
+        "sourceType" "CalendarEventSourceType" NOT NULL,
+        "externalSourceType" TEXT,
+        "externalSourceId" TEXT,
+        "alarmEnabled" BOOLEAN NOT NULL DEFAULT false,
+        "rawData" JSONB NOT NULL DEFAULT '{}',
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );`);
+    await client.query('ALTER TABLE "CalendarEvent" ADD COLUMN IF NOT EXISTS "color" TEXT;');
+    await client.query('ALTER TABLE "CalendarEvent" ADD COLUMN IF NOT EXISTS "alarmEnabled" BOOLEAN NOT NULL DEFAULT false;');
+    await client.query('ALTER TABLE "CalendarEvent" ADD COLUMN IF NOT EXISTS "rawData" JSONB NOT NULL DEFAULT \'{}\';');
+    await client.query('ALTER TABLE "CalendarEvent" ALTER COLUMN "startDateTime" DROP NOT NULL;').catch(() => undefined);
+    await client.query('ALTER TABLE "CalendarEvent" ALTER COLUMN "endDateTime" DROP NOT NULL;').catch(() => undefined);
+    await client.query('ALTER TABLE "CalendarEvent" ALTER COLUMN "allDay" DROP NOT NULL;').catch(() => undefined);
+    await client.query(
+        'CREATE UNIQUE INDEX IF NOT EXISTS "CalendarEvent_sourceType_externalSourceType_externalSourceId_key" ON "CalendarEvent"("sourceType", "externalSourceType", "externalSourceId");',
+    );
+    await client.query(
+        'CREATE INDEX IF NOT EXISTS "CalendarEvent_calendarId_idx" ON "CalendarEvent"("calendarId");',
+    );
+    await client.query(
+        'CREATE INDEX IF NOT EXISTS "CalendarEvent_sourceType_externalSourceType_idx" ON "CalendarEvent"("sourceType", "externalSourceType");',
+    );
+    await client.query(`CREATE TABLE IF NOT EXISTS "CalendarEventTime" (
+        "id" TEXT PRIMARY KEY,
+        "eventId" TEXT NOT NULL REFERENCES "CalendarEvent"("id") ON DELETE CASCADE ON UPDATE CASCADE,
+        "startDateTime" TIMESTAMP(3) NOT NULL,
+        "endDateTime" TIMESTAMP(3) NOT NULL,
+        "allDay" BOOLEAN NOT NULL DEFAULT false,
+        "sortOrder" INTEGER NOT NULL DEFAULT 100,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );`);
+    await client.query(
+        'CREATE INDEX IF NOT EXISTS "CalendarEventTime_eventId_sortOrder_idx" ON "CalendarEventTime"("eventId", "sortOrder");',
+    );
+    await client.query(
+        'CREATE INDEX IF NOT EXISTS "CalendarEventTime_startDateTime_endDateTime_idx" ON "CalendarEventTime"("startDateTime", "endDateTime");',
+    );
+    await client.query(`INSERT INTO "CalendarEventTime" (
+        "id",
+        "eventId",
+        "startDateTime",
+        "endDateTime",
+        "allDay",
+        "sortOrder",
+        "createdAt",
+        "updatedAt"
+    )
+    SELECT
+        CONCAT('legacy-', "id"),
+        "id",
+        "startDateTime",
+        "endDateTime",
+        COALESCE("allDay", false),
+        100,
+        "createdAt",
+        "updatedAt"
+    FROM "CalendarEvent"
+    WHERE "startDateTime" IS NOT NULL
+      AND "endDateTime" IS NOT NULL
+      AND NOT EXISTS (
+        SELECT 1 FROM "CalendarEventTime" WHERE "CalendarEventTime"."eventId" = "CalendarEvent"."id"
+      );`).catch(() => undefined);
     await client.query(`CREATE TABLE IF NOT EXISTS "CalendarOwner" (
         "id" TEXT PRIMARY KEY,
         "type" "CalendarOwnerType" NOT NULL,

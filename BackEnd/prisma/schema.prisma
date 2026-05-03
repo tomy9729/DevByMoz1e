@@ -51,7 +51,7 @@ model AdventureIsland {
   rewardIconUrl   String?
   contentIconUrl  String?
   contentImageUrl String?
-  startTime       String
+  startTime       DateTime
   rawData         Json
   collectedAt     DateTime
   createdAt       DateTime              @default(now())
@@ -75,7 +75,7 @@ model AdventureIslandTest {
   rewardIconUrl   String?
   contentIconUrl  String?
   contentImageUrl String?
-  startTime       String
+  startTime       DateTime
   rawData         Json
   collectedAt     DateTime
   createdAt       DateTime              @default(now())
@@ -106,23 +106,35 @@ model CalendarEvent {
   calendarId         String
   title              String
   description        String?
-  startDateTime      DateTime
-  endDateTime        DateTime
-  allDay             Boolean                 @default(false)
   color              String?
   sourceType         CalendarEventSourceType
   externalSourceType String?
   externalSourceId   String?
-  recurrenceRule     String?
   alarmEnabled       Boolean                 @default(false)
   rawData            Json                    @default("{}")
   createdAt          DateTime                @default(now())
   updatedAt          DateTime                @updatedAt
   calendar           Calendar                @relation(fields: [calendarId], references: [id], onDelete: Cascade)
+  times              CalendarEventTime[]
 
   @@unique([sourceType, externalSourceType, externalSourceId])
-  @@index([calendarId, startDateTime, endDateTime])
+  @@index([calendarId])
   @@index([sourceType, externalSourceType])
+}
+
+model CalendarEventTime {
+  id            String        @id @default(cuid())
+  eventId       String
+  startDateTime DateTime
+  endDateTime   DateTime
+  allDay        Boolean       @default(false)
+  sortOrder     Int           @default(100)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  event         CalendarEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId, sortOrder])
+  @@index([startDateTime, endDateTime])
 }
 
 model LostArkNotice {

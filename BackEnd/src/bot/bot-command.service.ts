@@ -13,7 +13,7 @@ interface BotAdventureIsland {
     contentsName: string;
     rewardShortName: string | null;
     rewardName: string | null;
-    startTime: string;
+    startTime: Date;
 }
 
 interface ParsedAdventureIslandQuery {
