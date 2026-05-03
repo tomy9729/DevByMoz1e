@@ -89,6 +89,7 @@ model Calendar {
   id           String             @id @default(cuid())
   name         String
   defaultColor String
+  iconUrl      String?
   isVisible    Boolean            @default(true)
   sortOrder    Int                @default(100)
   sourceType   CalendarSourceType

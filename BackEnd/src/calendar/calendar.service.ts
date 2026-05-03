@@ -8,7 +8,6 @@ import {
     LOSTARK_NOTICE_CALENDAR_DEFINITIONS,
     LOSTARK_NOTICE_CALENDAR_SOURCE_TYPE,
     LostArkNoticeCalendarKey,
-    USER_DEFAULT_CALENDAR_DEFINITION,
 } from "./calendar.constants";
 import {
     CreateCalendarEventDto,
@@ -57,6 +56,61 @@ export class CalendarService {
         return value.replace(/\s+/g, "").toLowerCase();
     }
 
+    private async renameLegacyCalendar(oldName: string, newName: string) {
+        const legacyCalendar = await this.prismaService.calendar.findUnique({
+            where: {
+                sourceType_name: {
+                    sourceType: CalendarSourceType.lostark,
+                    name: oldName,
+                },
+            },
+        });
+
+        if (legacyCalendar == null) {
+            return;
+        }
+
+        const currentCalendar = await this.prismaService.calendar.findUnique({
+            where: {
+                sourceType_name: {
+                    sourceType: CalendarSourceType.lostark,
+                    name: newName,
+                },
+            },
+        });
+
+        if (currentCalendar != null) {
+            await this.prismaService.calendar.delete({
+                where: {
+                    id: legacyCalendar.id,
+                },
+            });
+
+            return;
+        }
+
+        await this.prismaService.calendar.update({
+            where: {
+                id: legacyCalendar.id,
+            },
+            data: {
+                name: newName,
+            },
+        });
+    }
+
+    private async cleanupLegacyCalendars() {
+        await this.prismaService.calendar.deleteMany({
+            where: {
+                sourceType: CalendarSourceType.lostark,
+                name: "모험섬 기타",
+            },
+        });
+
+        await this.renameLegacyCalendar("로스트아크 공지사항", "공지사항");
+        await this.renameLegacyCalendar("로스트아크 패치노트", "패치노트");
+    }
+
     private getAdventureIslandCalendarKey(rewardName = ""): AdventureIslandCalendarKey {
         const normalizedRewardName = this.normalizeText(rewardName);
 
@@ -84,7 +138,7 @@ export class CalendarService {
             return "shilling";
         }
 
-        return "other";
+        throw new BadRequestException("Unknown adventure island reward.");
     }
 
     private getLostArkNoticeCalendarKey(noticeType = ""): LostArkNoticeCalendarKey {
@@ -110,11 +164,13 @@ export class CalendarService {
             create: {
                 name: calendarDefinition.name,
                 defaultColor: calendarDefinition.defaultColor,
+                iconUrl: calendarDefinition.iconUrl,
                 isVisible: true,
                 sortOrder: calendarDefinition.sortOrder,
                 sourceType: CalendarSourceType.lostark,
             },
             update: {
+                iconUrl: calendarDefinition.iconUrl,
                 sortOrder: calendarDefinition.sortOrder,
                 sourceType: CalendarSourceType.lostark,
             },
@@ -146,6 +202,8 @@ export class CalendarService {
     }
 
     private async ensureDefaultCalendars() {
+        await this.cleanupLegacyCalendars();
+
         for (const calendarKey of Object.keys(
             ADVENTURE_ISLAND_CALENDAR_DEFINITIONS,
         ) as AdventureIslandCalendarKey[]) {
@@ -157,26 +215,6 @@ export class CalendarService {
         ) as LostArkNoticeCalendarKey[]) {
             await this.getOrCreateLostArkNoticeCalendar(calendarKey);
         }
-
-        await this.prismaService.calendar.upsert({
-            where: {
-                sourceType_name: {
-                    sourceType: CalendarSourceType.user,
-                    name: USER_DEFAULT_CALENDAR_DEFINITION.name,
-                },
-            },
-            create: {
-                name: USER_DEFAULT_CALENDAR_DEFINITION.name,
-                defaultColor: USER_DEFAULT_CALENDAR_DEFINITION.defaultColor,
-                isVisible: true,
-                sortOrder: USER_DEFAULT_CALENDAR_DEFINITION.sortOrder,
-                sourceType: CalendarSourceType.user,
-            },
-            update: {
-                sortOrder: USER_DEFAULT_CALENDAR_DEFINITION.sortOrder,
-                sourceType: CalendarSourceType.user,
-            },
-        });
     }
 
     private createAdventureIslandEventDateRange(startTime: string) {
