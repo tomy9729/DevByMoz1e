@@ -239,6 +239,56 @@ button {
   width: 128px;
 }
 
+.schedule-popup-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.schedule-popup-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.schedule-popup-label {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.schedule-popup-time-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.schedule-popup-time-header {
+  justify-content: space-between;
+}
+
+.schedule-popup-time-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.schedule-popup-time-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) 36px;
+  align-items: center;
+  gap: 8px;
+}
+
+.schedule-popup-time-separator {
+  color: #64748b;
+  font-weight: 700;
+  text-align: center;
+}
+
+.schedule-popup-time-row .p-datepicker {
+  min-width: 0;
+}
+
 @media (max-width: 720px) {
   .main-header {
     grid-template-columns: 1fr;
@@ -253,5 +303,9 @@ button {
 
   .main-header-right {
     display: none;
+  }
+
+  .schedule-popup-time-row {
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) 36px;
   }
 }

@@ -14,17 +14,38 @@ export interface CalendarScheduleItem {
   id: string
   title: string
   description?: string | null
+  color?: string | null
+  displayColor?: string | null
+  sourceType?: string
+  times: CalendarScheduleTimeItem[]
+  calendar: CalendarListItem
+}
+
+export interface CalendarScheduleTimeItem {
+  id: string
+  eventId: string
   startDateTime: string
   endDateTime: string
   allDay: boolean
-  color?: string | null
-  displayColor?: string | null
-  calendar: CalendarListItem
+  sortOrder: number
 }
 
 export interface CalendarScheduleQuery {
   startDate: string
   endDate: string
+}
+
+export interface CalendarScheduleTimePayload {
+  startDateTime: Date
+  endDateTime: Date
+  allDay?: boolean
+}
+
+export interface CalendarScheduleMutationPayload {
+  calendarId: string
+  title: string
+  description?: string
+  times: CalendarScheduleTimePayload[]
 }
 
 const API_BASE_URL =
@@ -51,9 +72,14 @@ export function getCalendars(): Promise<CalendarListItem[]> {
   })
 }
 
-export function getCalendarSchedules(
-  query: CalendarScheduleQuery,
-): Promise<CalendarScheduleItem[]> {
+/**
+ * Gets calendar schedules with their time list.
+ *
+ * @param query Schedule range query.
+ * @returns Calendar schedule list.
+ * @public
+ */
+export function getCalendarSchedules(query: CalendarScheduleQuery): Promise<CalendarScheduleItem[]> {
   const searchParams = new URLSearchParams({
     startDate: query.startDate,
     endDate: query.endDate,
@@ -70,5 +96,61 @@ export function getCalendarSchedules(
     }
 
     return response.json() as Promise<CalendarScheduleItem[]>
+  })
+}
+
+/**
+ * Creates a user calendar schedule.
+ *
+ * @param payload Schedule creation payload.
+ * @returns Created schedule.
+ * @public
+ */
+export function createCalendarSchedule(
+  payload: CalendarScheduleMutationPayload,
+): Promise<CalendarScheduleItem> {
+  return fetch(`${API_BASE_URL}/api/calendar/events`, {
+    method: 'POST',
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+      'ngrok-skip-browser-warning': 'true',
+    },
+    body: JSON.stringify(payload),
+  }).then((response) => {
+    if (!response.ok) {
+      throw new Error(`Failed to create schedule. status=${response.status}`)
+    }
+
+    return response.json() as Promise<CalendarScheduleItem>
+  })
+}
+
+/**
+ * Updates a user calendar schedule.
+ *
+ * @param scheduleId Schedule id.
+ * @param payload Schedule update payload.
+ * @returns Updated schedule.
+ * @public
+ */
+export function updateCalendarSchedule(
+  scheduleId: string,
+  payload: CalendarScheduleMutationPayload,
+): Promise<CalendarScheduleItem> {
+  return fetch(`${API_BASE_URL}/api/calendar/events/${scheduleId}`, {
+    method: 'PATCH',
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+      'ngrok-skip-browser-warning': 'true',
+    },
+    body: JSON.stringify(payload),
+  }).then((response) => {
+    if (!response.ok) {
+      throw new Error(`Failed to update schedule. status=${response.status}`)
+    }
+
+    return response.json() as Promise<CalendarScheduleItem>
   })
 }

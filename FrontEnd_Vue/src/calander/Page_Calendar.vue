@@ -70,22 +70,38 @@
         :options="calendarOptions"
       />
     </section>
+    <ScheduleEventPopup
+      v-model:visible="schedulePopupStuff.visible"
+      :mode="schedulePopupStuff.mode"
+      :schedule="schedulePopupStuff.schedule"
+      :calendars="calendars"
+      :selected-calendar-id="selectedCalendarId"
+      :selected-date="selectedDate"
+      @save="saveSchedulePopup"
+    />
   </section>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import type { EventClickArg, EventInput } from '@fullcalendar/core'
 import FullCalendar from '@fullcalendar/vue3'
 import dayGridPlugin from '@fullcalendar/daygrid'
 import koLocale from '@fullcalendar/core/locales/ko'
 import Button from 'primevue/button'
 import Select from 'primevue/select'
 import CalendarSideBar from './CalendarSideBar.vue'
+import ScheduleEventPopup, {
+  type ScheduleEventPopupSavePayload,
+} from './ScheduleEventPopup.vue'
 import {
+  createCalendarSchedule,
   getCalendarSchedules,
   getCalendars,
+  updateCalendarSchedule,
   type CalendarListItem,
   type CalendarScheduleItem,
+  type CalendarScheduleMutationPayload,
 } from './CalendarFetcher'
 
 defineOptions({
@@ -102,6 +118,15 @@ const isCalendarListLoading = ref(false)
 const calendarListErrorMessage = ref('')
 const isScheduleLoading = ref(false)
 const scheduleErrorMessage = ref('')
+const schedulePopupStuff = ref<{
+  visible: boolean
+  mode: 'add' | 'edit'
+  schedule: CalendarScheduleItem | null
+}>({
+  visible: false,
+  mode: 'add',
+  schedule: null,
+})
 
 // FullCalendar view settings.
 const calendarRef = ref<InstanceType<typeof FullCalendar> | null>(null)
@@ -126,7 +151,7 @@ const visibleEvents = computed(() => {
 
   return schedules.value
     .filter((schedule) => visibleCalendarIdSet.has(schedule.calendar.id))
-    .map(mapScheduleToCalendarEvent)
+    .flatMap(mapScheduleToCalendarEvents)
 })
 
 const calendarOptions = computed(() => {
@@ -143,6 +168,7 @@ const calendarOptions = computed(() => {
     weekends: true,
     dayMaxEventRows: true,
     handleWindowResize: true,
+    eventClick: onClickCalendarEvent,
     events: visibleEvents.value,
   }
 })
@@ -183,26 +209,28 @@ function addDays(date: Date, days: number): Date {
   return nextDate
 }
 
-function mapScheduleToCalendarEvent(schedule: CalendarScheduleItem) {
+function mapScheduleToCalendarEvents(schedule: CalendarScheduleItem): EventInput[] {
   const displayColor =
     schedule.displayColor ?? schedule.color ?? schedule.calendar.defaultColor
 
-  return {
-    id: schedule.id,
-    title: schedule.title,
-    start: schedule.startDateTime,
-    end: schedule.endDateTime,
-    allDay: schedule.allDay,
-    backgroundColor: displayColor,
-    borderColor: displayColor,
-    extendedProps: {
-      calendarId: schedule.calendar.id,
-      calendarName: schedule.calendar.name,
-      sourceType: schedule.calendar.sourceType,
-      description: schedule.description,
-      displayColor,
-    },
-  }
+  return schedule.times.map((time) => ({
+      id: `${schedule.id}:${time.id}`,
+      title: schedule.title,
+      start: time.startDateTime,
+      end: time.endDateTime,
+      allDay: time.allDay,
+      backgroundColor: displayColor,
+      borderColor: displayColor,
+      extendedProps: {
+        scheduleId: schedule.id,
+        timeId: time.id,
+        calendarId: schedule.calendar.id,
+        calendarName: schedule.calendar.name,
+        sourceType: schedule.sourceType ?? schedule.calendar.sourceType,
+        description: schedule.description,
+        displayColor,
+      },
+    }))
 }
 
 function getScheduleList(startDate: string, endDate: string): void {
@@ -259,7 +287,104 @@ function handleDatesSet(calendarInfo: { start: Date; end: Date; view: { title: s
   getScheduleList(nextRange.startDate, nextRange.endDate)
 }
 
+/**
+ * Opens the add schedule popup.
+ *
+ * @returns void
+ * @public
+ */
 function onClickAddSchedule(): void {
+  schedulePopupStuff.value = {
+    visible: true,
+    mode: 'add',
+    schedule: null,
+  }
+}
+
+/**
+ * Opens the edit schedule popup from a calendar event click.
+ *
+ * @param eventClickInfo FullCalendar event click payload.
+ * @returns void
+ * @public
+ */
+function onClickCalendarEvent(eventClickInfo: EventClickArg): void {
+  const scheduleId = eventClickInfo.event.extendedProps.scheduleId
+
+  if (typeof scheduleId !== 'string') {
+    return
+  }
+
+  const schedule = schedules.value.find((scheduleItem) => scheduleItem.id === scheduleId)
+
+  if (schedule == null) {
+    return
+  }
+
+  schedulePopupStuff.value = {
+    visible: true,
+    mode: 'edit',
+    schedule,
+  }
+}
+
+/**
+ * Creates a schedule mutation payload from popup data.
+ *
+ * @param payload Popup save payload.
+ * @returns Calendar schedule mutation payload.
+ * @public
+ */
+function createScheduleMutationPayload(payload: ScheduleEventPopupSavePayload): CalendarScheduleMutationPayload {
+  return {
+    calendarId: payload.calendarId,
+    title: payload.title,
+    description: payload.description,
+    times: payload.timeRanges,
+  }
+}
+
+/**
+ * Reloads schedules for the current visible range.
+ *
+ * @returns void
+ * @public
+ */
+function refreshCurrentScheduleList(): void {
+  if (currentScheduleRange.value == null) {
+    return
+  }
+
+  getScheduleList(currentScheduleRange.value.startDate, currentScheduleRange.value.endDate)
+}
+
+/**
+ * Saves popup schedule changes.
+ *
+ * @param payload Popup save payload.
+ * @returns void
+ * @public
+ */
+function saveSchedulePopup(payload: ScheduleEventPopupSavePayload): void {
+  if (payload.timeRanges.length === 0) {
+    return
+  }
+
+  const saveRequest =
+    schedulePopupStuff.value.mode === 'edit' && payload.id != null
+      ? updateCalendarSchedule(payload.id, createScheduleMutationPayload(payload))
+      : createCalendarSchedule(createScheduleMutationPayload(payload))
+
+  scheduleErrorMessage.value = ''
+
+  saveRequest
+    .then(() => {
+      schedulePopupStuff.value.visible = false
+      refreshCurrentScheduleList()
+    })
+    .catch(() => {
+      scheduleErrorMessage.value = '일정을 저장하지 못했습니다.'
+    })
 }
 
 /**
