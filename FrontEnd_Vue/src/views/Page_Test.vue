@@ -1,11 +1,9 @@
 <template>
-  <MainView />
+    <section class="test-page"></section>
 </template>
 
 <script setup lang="ts">
-import MainView from './views/MainView.vue'
-
 defineOptions({
-  name: 'App',
+    name: "Page_Test",
 })
 </script>
