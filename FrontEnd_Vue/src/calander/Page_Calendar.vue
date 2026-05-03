@@ -262,25 +262,61 @@ function handleDatesSet(calendarInfo: { start: Date; end: Date; view: { title: s
 function onClickAddSchedule(): void {
 }
 
+/**
+ * Handles add calendar button click.
+ *
+ * @returns void
+ * @public
+ */
 function onClickAddCalendar(): void {
   // TODO: Add calendar creation entry point.
 }
 
+/**
+ * Moves calendar to today.
+ *
+ * @returns void
+ * @public
+ */
 function onClickToday(): void {
   calendarRef.value?.getApi().today()
 }
 
+/**
+ * Moves calendar to previous range.
+ *
+ * @returns void
+ * @public
+ */
 function onClickPrev(): void {
   calendarRef.value?.getApi().prev()
 }
 
+/**
+ * Moves calendar to next range.
+ *
+ * @returns void
+ * @public
+ */
 function onClickNext(): void {
   calendarRef.value?.getApi().next()
 }
 
+/**
+ * Handles search icon button click.
+ *
+ * @returns void
+ * @public
+ */
 function onClickSearch(): void {
 }
 
+/**
+ * Handles setting icon button click.
+ *
+ * @returns void
+ * @public
+ */
 function onClickSetting(): void {
 }
 
