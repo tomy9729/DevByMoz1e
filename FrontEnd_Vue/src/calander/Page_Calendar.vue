@@ -60,6 +60,10 @@
           />
         </div>
       </div>
+      <p v-if="isScheduleLoading" class="calendar-loading-message">일정 불러오는 중...</p>
+      <p v-else-if="scheduleErrorMessage" class="calendar-error-message">
+        {{ scheduleErrorMessage }}
+      </p>
       <FullCalendar
         ref="calendarRef"
         class="calendar-fullcalendar"
@@ -77,7 +81,12 @@ import koLocale from '@fullcalendar/core/locales/ko'
 import Button from 'primevue/button'
 import Select from 'primevue/select'
 import CalendarSideBar from './CalendarSideBar.vue'
-import { getCalendars, type CalendarListItem } from './CalendarFetcher'
+import {
+  getCalendarSchedules,
+  getCalendars,
+  type CalendarListItem,
+  type CalendarScheduleItem,
+} from './CalendarFetcher'
 
 defineOptions({
   name: 'Page_Calendar',
@@ -88,34 +97,55 @@ const selectedDate = ref<Date | null>(new Date())
 const activeCalendarGroups = ref(['lostark', 'mine'])
 const selectedCalendarId = ref<string | null>(null)
 const calendars = ref<CalendarListItem[]>([])
+const schedules = ref<CalendarScheduleItem[]>([])
 const isCalendarListLoading = ref(false)
 const calendarListErrorMessage = ref('')
+const isScheduleLoading = ref(false)
+const scheduleErrorMessage = ref('')
 
 // FullCalendar view settings.
 const calendarRef = ref<InstanceType<typeof FullCalendar> | null>(null)
 const currentCalendarTitle = ref('')
 const selectedCalendarView = ref('month')
+const currentScheduleRange = ref<{ startDate: string; endDate: string } | null>(null)
+let scheduleRequestSequence = 0
 const calendarViewOptions = [
   { id: 'year', name: '년간 달력' },
   { id: 'month', name: '월간 달력' },
   { id: 'week', name: '주간 달력' },
 ]
 
-const calendarOptions = {
-  plugins: [dayGridPlugin],
-  initialView: 'dayGridMonth',
-  headerToolbar: false as const,
-  datesSet(calendarInfo: { view: { title: string } }): void {
-    currentCalendarTitle.value = calendarInfo.view.title
-  },
-  locale: koLocale,
-  height: '100%',
-  expandRows: true,
-  fixedWeekCount: false,
-  weekends: true,
-  dayMaxEventRows: true,
-  handleWindowResize: true,
-}
+const visibleCalendarIds = computed(() => {
+  return calendars.value
+    .filter((calendarItem) => calendarItem.isVisible)
+    .map((calendarItem) => calendarItem.id)
+})
+
+const visibleEvents = computed(() => {
+  const visibleCalendarIdSet = new Set(visibleCalendarIds.value)
+
+  return schedules.value
+    .filter((schedule) => visibleCalendarIdSet.has(schedule.calendar.id))
+    .map(mapScheduleToCalendarEvent)
+})
+
+const calendarOptions = computed(() => {
+  return {
+    plugins: [dayGridPlugin],
+    initialView: 'dayGridMonth',
+    headerToolbar: false as const,
+    datesSet: handleDatesSet,
+    displayEventTime: false,
+    locale: koLocale,
+    height: '100%',
+    expandRows: true,
+    fixedWeekCount: false,
+    weekends: true,
+    dayMaxEventRows: true,
+    handleWindowResize: true,
+    events: visibleEvents.value,
+  }
+})
 
 // Derived calendar groups for the sidebar.
 const lostarkCalendars = computed(() => {
@@ -137,70 +167,120 @@ function setSelectedCalendar(calendarId: string): void {
   selectedCalendarId.value = calendarId
 }
 
-/**
- * Handles add schedule button click.
- *
- * @returns void
- * @public
- */
+function toDateKey(date: Date): string {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+
+  return `${year}-${month}-${day}`
+}
+
+function addDays(date: Date, days: number): Date {
+  const nextDate = new Date(date)
+
+  nextDate.setDate(nextDate.getDate() + days)
+
+  return nextDate
+}
+
+function mapScheduleToCalendarEvent(schedule: CalendarScheduleItem) {
+  const displayColor =
+    schedule.displayColor ?? schedule.color ?? schedule.calendar.defaultColor
+
+  return {
+    id: schedule.id,
+    title: schedule.title,
+    start: schedule.startDateTime,
+    end: schedule.endDateTime,
+    allDay: schedule.allDay,
+    backgroundColor: displayColor,
+    borderColor: displayColor,
+    extendedProps: {
+      calendarId: schedule.calendar.id,
+      calendarName: schedule.calendar.name,
+      sourceType: schedule.calendar.sourceType,
+      description: schedule.description,
+      displayColor,
+    },
+  }
+}
+
+function getScheduleList(startDate: string, endDate: string): void {
+  const requestId = ++scheduleRequestSequence
+
+  isScheduleLoading.value = true
+  scheduleErrorMessage.value = ''
+  schedules.value = []
+
+  getCalendarSchedules({
+    startDate,
+    endDate,
+  })
+    .then((scheduleList) => {
+      if (requestId !== scheduleRequestSequence) {
+        return
+      }
+
+      schedules.value = Array.isArray(scheduleList) ? scheduleList : []
+    })
+    .catch(() => {
+      if (requestId !== scheduleRequestSequence) {
+        return
+      }
+
+      schedules.value = []
+      scheduleErrorMessage.value = '일정 목록을 불러오지 못했습니다.'
+    })
+    .finally(() => {
+      if (requestId !== scheduleRequestSequence) {
+        return
+      }
+
+      isScheduleLoading.value = false
+    })
+}
+
+function handleDatesSet(calendarInfo: { start: Date; end: Date; view: { title: string } }): void {
+  currentCalendarTitle.value = calendarInfo.view.title
+
+  const nextRange = {
+    startDate: toDateKey(calendarInfo.start),
+    endDate: toDateKey(addDays(calendarInfo.end, -1)),
+  }
+
+  if (
+    currentScheduleRange.value?.startDate === nextRange.startDate &&
+    currentScheduleRange.value?.endDate === nextRange.endDate
+  ) {
+    return
+  }
+
+  currentScheduleRange.value = nextRange
+  getScheduleList(nextRange.startDate, nextRange.endDate)
+}
+
 function onClickAddSchedule(): void {
 }
 
-/**
- * Handles add calendar button click.
- *
- * @returns void
- * @public
- */
 function onClickAddCalendar(): void {
   // TODO: Add calendar creation entry point.
 }
 
-/**
- * Moves calendar to today.
- *
- * @returns void
- * @public
- */
 function onClickToday(): void {
   calendarRef.value?.getApi().today()
 }
 
-/**
- * Moves calendar to previous range.
- *
- * @returns void
- * @public
- */
 function onClickPrev(): void {
   calendarRef.value?.getApi().prev()
 }
 
-/**
- * Moves calendar to next range.
- *
- * @returns void
- * @public
- */
 function onClickNext(): void {
   calendarRef.value?.getApi().next()
 }
 
-/**
- * Handles search icon button click.
- *
- * @returns void
- * @public
- */
 function onClickSearch(): void {
 }
 
-/**
- * Handles setting icon button click.
- *
- * @returns void
- * @public
- */
 function onClickSetting(): void {
 }
 
