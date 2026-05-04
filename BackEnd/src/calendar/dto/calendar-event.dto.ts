@@ -17,10 +17,6 @@ export class CalendarEventTimeDto {
     @Type(() => Date)
     @IsDate()
     endDateTime!: Date;
-
-    @IsOptional()
-    @IsBoolean()
-    allDay?: boolean;
 }
 
 export class CreateCalendarEventDto {

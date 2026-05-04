@@ -213,12 +213,11 @@ function mapScheduleToCalendarEvents(schedule: CalendarScheduleItem): EventInput
   const displayColor =
     schedule.displayColor ?? schedule.color ?? schedule.calendar.defaultColor
 
-  return schedule.times.map((time) => ({
+    return schedule.times.map((time) => ({
       id: `${schedule.id}:${time.id}`,
       title: schedule.title,
       start: time.startDateTime,
       end: time.endDateTime,
-      allDay: time.allDay,
       backgroundColor: displayColor,
       borderColor: displayColor,
       extendedProps: {

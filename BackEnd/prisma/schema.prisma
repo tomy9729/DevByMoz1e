@@ -127,7 +127,6 @@ model CalendarEventTime {
   eventId       String
   startDateTime DateTime
   endDateTime   DateTime
-  allDay        Boolean       @default(false)
   sortOrder     Int           @default(100)
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
@@ -207,7 +206,6 @@ model UserCalendarSchedule {
   scheduleDate  String
   startDateTime String?
   endDateTime   String?
-  allDay        Boolean                 @default(true)
   description   String?
   color         String?
   isVisible     Boolean                 @default(true)

@@ -26,7 +26,6 @@ export interface CalendarScheduleTimeItem {
     eventId: string
     startDateTime: string
     endDateTime: string
-    allDay: boolean
     sortOrder: number
 }
 
@@ -38,7 +37,6 @@ export interface CalendarScheduleQuery {
 export interface CalendarScheduleTimePayload {
     startDateTime: Date
     endDateTime: Date
-    allDay?: boolean
 }
 
 export interface CalendarScheduleMutationPayload {

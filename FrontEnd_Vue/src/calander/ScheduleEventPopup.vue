@@ -129,7 +129,6 @@ interface ScheduleEventTimeRow {
   key: number
   startDateTime: Date | null
   endDateTime: Date | null
-  allDay: boolean
 }
 
 interface ScheduleEventForm {
@@ -142,7 +141,6 @@ interface ScheduleEventForm {
 export interface ScheduleEventPopupTimeRange {
   startDateTime: Date
   endDateTime: Date
-  allDay: boolean
 }
 
 export interface ScheduleEventPopupSavePayload {
@@ -281,14 +279,12 @@ export default defineComponent({
      *
      * @param startInput Optional start date value.
      * @param endInput Optional end date value.
-     * @param allDay All day flag.
      * @returns Schedule popup time row.
      * @public
      */
     createTimeRow(
       startInput?: Date | string | null,
       endInput?: Date | string | null,
-      allDay = false,
     ): ScheduleEventTimeRow {
       const startDateTime = this.createDate(startInput) ?? this.createDefaultStartDate()
       const endDateTime =
@@ -298,7 +294,6 @@ export default defineComponent({
         key: ++timeRowSequence,
         startDateTime,
         endDateTime,
-        allDay,
       }
     },
 
@@ -352,9 +347,7 @@ export default defineComponent({
           title: this.schedule.title,
           description: this.schedule.description ?? '',
           calendarId: this.schedule.calendar.id,
-          timeRows: this.schedule.times.map((time) =>
-            this.createTimeRow(time.startDateTime, time.endDateTime, time.allDay),
-          ),
+          timeRows: this.schedule.times.map((time) => this.createTimeRow(time.startDateTime, time.endDateTime)),
         }
 
         return
@@ -432,7 +425,6 @@ export default defineComponent({
           .map((timeRow: ScheduleEventTimeRow & { startDateTime: Date; endDateTime: Date }) => ({
             startDateTime: timeRow.startDateTime,
             endDateTime: timeRow.endDateTime,
-            allDay: timeRow.allDay,
           })),
       })
     },

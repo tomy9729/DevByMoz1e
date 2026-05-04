@@ -3,7 +3,7 @@ import {
     Injectable,
     MethodNotAllowedException,
 } from "@nestjs/common";
-import { CalendarEventSourceType, CalendarSourceType, Prisma } from "@prisma/client";
+import { CalendarEventSourceType, CalendarSourceType } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import {
     ADVENTURE_ISLAND_CALENDAR_DEFINITIONS,
@@ -14,7 +14,6 @@ import {
     LostArkNoticeCalendarKey,
 } from "./calendar.constants";
 import {
-    CalendarEventTimeDto,
     CreateCalendarEventDto,
     QueryCalendarEventsDto,
     UpdateCalendarEventDto,
@@ -50,7 +49,6 @@ type CalendarEventRecord = {
         eventId: string;
         startDateTime: Date;
         endDateTime: Date;
-        allDay: boolean;
         sortOrder: number;
         createdAt: Date;
         updatedAt: Date;
@@ -254,6 +252,12 @@ export class CalendarService {
         };
     }
 
+    /**
+     * @private
+     * @param startDateTime Event time start.
+     * @param endDateTime Event time end.
+     * @returns Whether the time covers a full day range.
+     */
     private formatTimestampText(date: Date) {
         const year = date.getUTCFullYear();
         const month = String(date.getUTCMonth() + 1).padStart(2, "0");
@@ -362,7 +366,6 @@ export class CalendarService {
                     eventId: `virtual:${adventureIsland.id}`,
                     startDateTime,
                     endDateTime,
-                    allDay: false,
                     sortOrder: 100,
                     createdAt: adventureIsland.createdAt,
                     updatedAt: adventureIsland.updatedAt,
@@ -418,7 +421,6 @@ export class CalendarService {
                     eventId: `virtual:${notice.id}`,
                     startDateTime,
                     endDateTime,
-                    allDay: true,
                     sortOrder: 100,
                     createdAt: notice.createdAt,
                     updatedAt: notice.updatedAt,
