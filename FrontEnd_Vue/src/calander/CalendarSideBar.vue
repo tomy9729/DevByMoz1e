@@ -10,6 +10,7 @@
       v-model="selectedDateModel"
       class="calendar-mini-datepicker"
       inline
+      @date-select="onSelectDate"
     />
     <Message v-if="calendarListErrorMessage" severity="error" size="small">
       {{ calendarListErrorMessage }}
@@ -130,6 +131,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (event: 'update:selectedDate', value: Date | null): void
+  (event: 'select-date', value: Date): void
   (event: 'update:activeCalendarGroups', value: string[]): void
   (event: 'select-calendar', calendarId: string): void
   (event: 'click-add-schedule'): void
@@ -153,6 +155,17 @@ const activeCalendarGroupsModel = computed({
     emit('update:activeCalendarGroups', value)
   },
 })
+
+/**
+ * Handles DatePicker date selection.
+ *
+ * @param value Selected date.
+ * @returns void
+ * @public
+ */
+function onSelectDate(value: Date): void {
+  emit('select-date', value)
+}
 
 /**
  * Gets PrimeVue icon class for built-in calendar labels.

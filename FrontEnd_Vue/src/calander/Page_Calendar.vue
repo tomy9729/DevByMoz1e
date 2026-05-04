@@ -4,7 +4,7 @@
             :selected-calendar-id="selectedCalendarId" :lostark-calendars="lostarkCalendars" :my-calendars="myCalendars"
             :is-calendar-list-loading="isCalendarListLoading" :calendar-list-error-message="calendarListErrorMessage"
             @select-calendar="setSelectedCalendar" @click-add-schedule="onClickAddSchedule"
-            @click-add-calendar="onClickAddCalendar" />
+            @click-add-calendar="onClickAddCalendar" @select-date="moveCalendarToDate" />
         <section class="calendar-area">
             <div class="calendar-toolbar">
                 <div class="calendar-toolbar-left">
@@ -152,6 +152,21 @@ function addDays(date: Date, days: number): Date {
     nextDate.setDate(nextDate.getDate() + days)
 
     return nextDate
+}
+
+/**
+ * Moves FullCalendar to the selected date.
+ *
+ * @param date Selected date.
+ * @returns void
+ * @public
+ */
+function moveCalendarToDate(date: Date): void {
+    if (Number.isNaN(date.getTime())) {
+        return
+    }
+
+    calendarRef.value?.getApi().gotoDate(toDateKey(date))
 }
 
 /**
