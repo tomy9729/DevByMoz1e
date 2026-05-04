@@ -385,67 +385,12 @@ export class CharactersService {
             throw new NotFoundException(`Lost Ark character ${characterName} was not found.`);
         }
 
-        const refreshedAt = new Date();
         const normalized = this.normalizeArmory(rawData, characterName);
-        const bracelet = (normalized.bracelet ?? Prisma.JsonNull) as Prisma.InputJsonValue;
-        const abilityStone = (normalized.abilityStone ?? Prisma.JsonNull) as Prisma.InputJsonValue;
 
-        return this.prismaService.characterInfo.upsert({
-            where: {
-                characterName: normalized.characterName,
-            },
-            create: {
-                characterName: normalized.characterName,
-                serverName: normalized.serverName,
-                className: normalized.className,
-                itemLevel: normalized.itemLevel,
-                rosterLevel: normalized.rosterLevel,
-                guildName: normalized.guildName,
-                pvpInfo: normalized.pvpInfo as Prisma.InputJsonValue,
-                combatInfo: normalized.combatInfo as Prisma.InputJsonValue,
-                equipment: normalized.equipment as Prisma.InputJsonValue,
-                accessories: normalized.accessories as Prisma.InputJsonValue,
-                abilityStone,
-                gems: normalized.gems as Prisma.InputJsonValue,
-                cards: normalized.cards as Prisma.InputJsonValue,
-                engravings: normalized.engravings as Prisma.InputJsonValue,
-                bracelet,
-                skills: normalized.skills as Prisma.InputJsonValue,
-                arkPassive: normalized.arkPassive as Prisma.InputJsonValue,
-                avatars: normalized.avatars as Prisma.InputJsonValue,
-                profile: normalized.profile as Prisma.InputJsonValue,
-                collectibles: normalized.collectibles as Prisma.InputJsonValue,
-                arkGrid: normalized.arkGrid as Prisma.InputJsonValue,
-                other: normalized.other as Prisma.InputJsonValue,
-                rawData: normalized.rawData as Prisma.InputJsonValue,
-                refreshedAt,
-            },
-            update: {
-                serverName: normalized.serverName,
-                className: normalized.className,
-                itemLevel: normalized.itemLevel,
-                rosterLevel: normalized.rosterLevel,
-                guildName: normalized.guildName,
-                pvpInfo: normalized.pvpInfo as Prisma.InputJsonValue,
-                combatInfo: normalized.combatInfo as Prisma.InputJsonValue,
-                equipment: normalized.equipment as Prisma.InputJsonValue,
-                accessories: normalized.accessories as Prisma.InputJsonValue,
-                abilityStone,
-                gems: normalized.gems as Prisma.InputJsonValue,
-                cards: normalized.cards as Prisma.InputJsonValue,
-                engravings: normalized.engravings as Prisma.InputJsonValue,
-                bracelet,
-                skills: normalized.skills as Prisma.InputJsonValue,
-                arkPassive: normalized.arkPassive as Prisma.InputJsonValue,
-                avatars: normalized.avatars as Prisma.InputJsonValue,
-                profile: normalized.profile as Prisma.InputJsonValue,
-                collectibles: normalized.collectibles as Prisma.InputJsonValue,
-                arkGrid: normalized.arkGrid as Prisma.InputJsonValue,
-                other: normalized.other as Prisma.InputJsonValue,
-                rawData: normalized.rawData as Prisma.InputJsonValue,
-                refreshedAt,
-            },
-        });
+        return {
+            ...normalized,
+            refreshedAt: new Date(),
+        };
     }
 
     private getDisplayValue(value: unknown, fallback = "-") {

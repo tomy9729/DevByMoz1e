@@ -1,4 +1,14 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from "@nestjs/common";
+import {
+    Body,
+    Controller,
+    Delete,
+    Get,
+    MethodNotAllowedException,
+    Param,
+    Patch,
+    Post,
+    Query,
+} from "@nestjs/common";
 import { CalendarService } from "./calendar.service";
 import {
     CreateCalendarEventDto,
@@ -27,7 +37,7 @@ export class CalendarEventsController {
      */
     @Post()
     createUserEvent(@Body() dto: CreateCalendarEventDto) {
-        return this.calendarService.createUserEvent(dto);
+        throw new MethodNotAllowedException("Calendar event mutations are disabled.");
     }
 
     /**
@@ -38,7 +48,7 @@ export class CalendarEventsController {
      */
     @Patch(":id")
     updateUserEvent(@Param("id") eventId: string, @Body() dto: UpdateCalendarEventDto) {
-        return this.calendarService.updateUserEvent(eventId, dto);
+        throw new MethodNotAllowedException("Calendar event mutations are disabled.");
     }
 
     /**
@@ -48,6 +58,6 @@ export class CalendarEventsController {
      */
     @Delete(":id")
     deleteUserEvent(@Param("id") eventId: string) {
-        return this.calendarService.deleteUserEvent(eventId);
+        throw new MethodNotAllowedException("Calendar event mutations are disabled.");
     }
 }

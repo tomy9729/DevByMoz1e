@@ -1,4 +1,4 @@
-import { Injectable, Logger } from "@nestjs/common";
+import { Injectable, Logger, MethodNotAllowedException } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { LostArkGameContent, LostArkNotice } from "../lostark/lostark.types";
 import { AdventureIslandsService } from "../lostark/services/adventure-islands.service";
@@ -6,7 +6,6 @@ import { LostArkGameContentsService } from "../lostark/services/lostark-game-con
 import { LostArkNoticesService } from "../lostark/services/lostark-notices.service";
 
 export type BotAlarmType = "weeklyNotice" | "dailyContents";
-type BotAlarmAckStatus = "sent" | "failed";
 
 interface BotAlarmCandidate {
     type: BotAlarmType;
@@ -181,41 +180,6 @@ export class BotAlarmService {
         });
     }
 
-    private async createDelivery(candidate: BotAlarmCandidate, message: string) {
-        try {
-            return await this.prismaService.botAlarmDelivery.create({
-                data: {
-                    alarmType: candidate.type,
-                    scheduleKey: candidate.scheduleKey,
-                    status: "pending",
-                    message,
-                },
-            });
-        } catch (error) {
-            this.logger.warn(
-                `Skipped duplicated bot alarm. type=${candidate.type}, scheduleKey=${candidate.scheduleKey}`,
-            );
-            return null;
-        }
-    }
-
-    private async markSkipped(candidate: BotAlarmCandidate, status: string, errorReason?: string) {
-        try {
-            await this.prismaService.botAlarmDelivery.create({
-                data: {
-                    alarmType: candidate.type,
-                    scheduleKey: candidate.scheduleKey,
-                    status,
-                    errorReason,
-                },
-            });
-        } catch (error) {
-            this.logger.warn(
-                `Skipped duplicated bot alarm skip record. type=${candidate.type}, scheduleKey=${candidate.scheduleKey}`,
-            );
-        }
-    }
-
     private findNoticeByKeywords(notices: LostArkNotice[], keywords: string[]) {
         return notices.find((notice) => {
             const title = this.normalizeText(notice.Title);
@@ -232,11 +196,14 @@ export class BotAlarmService {
         let notices: LostArkNotice[];
 
         try {
-            const collectedNotices = await this.lostArkNoticesService.collectNotices();
-
-            notices = collectedNotices.items;
+            notices = (await this.lostArkNoticesService.getNotices()).map((notice) => ({
+                Title: notice.Title,
+                Date: notice.Date,
+                Link: notice.Link,
+                Type: notice.Type,
+            })) as LostArkNotice[];
         } catch (error) {
-            this.logger.error(`Failed to collect notices for weekly alarm. date=${dateText}`, error);
+            this.logger.error(`Failed to load notices for weekly alarm. date=${dateText}`, error);
             return null;
         }
 
@@ -302,11 +269,11 @@ export class BotAlarmService {
                 date: dateText,
             })
             .catch((error) => {
-                this.logger.error(`Failed to collect adventure islands for daily alarm. date=${dateText}`, error);
+                this.logger.error(`Failed to load adventure islands for daily alarm. date=${dateText}`, error);
                 return null;
             });
         const calendarContents = await this.lostArkGameContentsService.collectCalendarContents().catch((error) => {
-            this.logger.error(`Failed to collect calendar contents for daily alarm. date=${dateText}`, error);
+            this.logger.error(`Failed to load calendar contents for daily alarm. date=${dateText}`, error);
             return null;
         });
 
@@ -314,7 +281,12 @@ export class BotAlarmService {
             return null;
         }
 
-        const lines = [`[로스트아크 콘텐츠 알람]`, `${dateText} (${this.getKoreaWeekdayShortText(dateText)})`, "", "모험섬"];
+        const lines = [
+            `[로스트아크 콘텐츠 알람]`,
+            `${dateText} (${this.getKoreaWeekdayShortText(dateText)})`,
+            "",
+            "모험 섬",
+        ];
 
         if (adventureIslands.length === 0) {
             lines.push("- 없음");
@@ -366,7 +338,7 @@ export class BotAlarmService {
         const targets = await this.getEnabledTargets();
 
         if (targets.length === 0) {
-            this.logger.warn(`Skipped bot alarm because no enabled target room exists. count=${candidates.length}`);
+            this.logger.warn(`Skipped bot alarm because no enabled target room exists. count=${targets.length}`);
             return [];
         }
 
@@ -389,24 +361,14 @@ export class BotAlarmService {
             const message = await this.buildAlarmMessage(candidate);
 
             if (!message) {
-                await this.markSkipped(candidate, "skipped");
                 this.logger.log(
                     `Skipped bot alarm because message was empty. type=${candidate.type}, scheduleKey=${candidate.scheduleKey}`,
                 );
                 continue;
             }
 
-            const delivery = await this.createDelivery(candidate, message);
-
-            if (!delivery) {
-                continue;
-            }
-
-            this.logger.log(
-                `Created bot alarm delivery. id=${delivery.id}, type=${candidate.type}, scheduleKey=${candidate.scheduleKey}, targets=${targets.length}`,
-            );
             result.push({
-                deliveryId: delivery.id,
+                deliveryId: `readonly:${candidate.type}:${candidate.scheduleKey}`,
                 alarmType: candidate.type,
                 scheduleKey: candidate.scheduleKey,
                 targets: targets.map((target) => ({
@@ -420,43 +382,12 @@ export class BotAlarmService {
         return result;
     }
 
-    async ackDelivery(id: string, status: BotAlarmAckStatus, errorReason?: string) {
-        const delivery = await this.prismaService.botAlarmDelivery.update({
-            where: {
-                id,
-            },
-            data: {
-                status,
-                errorReason: errorReason || null,
-            },
-        });
-
-        if (status === "sent") {
-            this.logger.log(`Bot alarm sent. id=${id}, type=${delivery.alarmType}, scheduleKey=${delivery.scheduleKey}`);
-        } else {
-            this.logger.warn(
-                `Bot alarm failed. id=${id}, type=${delivery.alarmType}, scheduleKey=${delivery.scheduleKey}, reason=${errorReason ?? ""}`,
-            );
-        }
-
-        return delivery;
+    async ackDelivery() {
+        throw new MethodNotAllowedException("Bot alarm delivery updates are disabled.");
     }
 
-    async setGlobalEnabled(enabled: boolean) {
-        await this.prismaService.botAlarmSetting.upsert({
-            where: {
-                key: this.globalSettingKey,
-            },
-            create: {
-                key: this.globalSettingKey,
-                enabled,
-            },
-            update: {
-                enabled,
-            },
-        });
-
-        return enabled ? "알람이 켜졌습니다." : "알람이 꺼졌습니다.";
+    async setGlobalEnabled() {
+        throw new MethodNotAllowedException("Bot alarm setting updates are disabled.");
     }
 
     async getStatusMessage() {
@@ -475,49 +406,12 @@ export class BotAlarmService {
         return lines.join("\n");
     }
 
-    async registerTarget(room?: string, packageName?: string) {
-        const targetRoom = String(room ?? "").trim();
-        const targetPackageName = String(packageName ?? "").trim();
-
-        if (!targetRoom) {
-            return "알람 대상 채팅방을 확인할 수 없습니다.";
-        }
-
-        await this.prismaService.botAlarmTarget.upsert({
-            where: {
-                room: targetRoom,
-            },
-            create: {
-                room: targetRoom,
-                packageName: targetPackageName || null,
-                enabled: true,
-            },
-            update: {
-                packageName: targetPackageName || null,
-                enabled: true,
-            },
-        });
-
-        return `알람 대상 채팅방으로 등록했습니다.\n- ${targetRoom}`;
+    async registerTarget() {
+        throw new MethodNotAllowedException("Bot alarm target updates are disabled.");
     }
 
-    async unregisterTarget(room?: string) {
-        const targetRoom = String(room ?? "").trim();
-
-        if (!targetRoom) {
-            return "알람 대상 채팅방을 확인할 수 없습니다.";
-        }
-
-        await this.prismaService.botAlarmTarget.updateMany({
-            where: {
-                room: targetRoom,
-            },
-            data: {
-                enabled: false,
-            },
-        });
-
-        return `알람 대상 채팅방에서 해제했습니다.\n- ${targetRoom}`;
+    async unregisterTarget() {
+        throw new MethodNotAllowedException("Bot alarm target updates are disabled.");
     }
 
     async getTestAlarmMessage(type: BotAlarmType) {

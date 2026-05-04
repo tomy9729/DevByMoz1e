@@ -1,4 +1,4 @@
-import { Controller, Delete, Get, Post, Query } from "@nestjs/common";
+import { Controller, Delete, Get, MethodNotAllowedException, Post, Query } from "@nestjs/common";
 import { QueryAdventureIslandsDto } from "../dto/query-adventure-islands.dto";
 import { AdventureIslandsService } from "../services/adventure-islands.service";
 
@@ -8,12 +8,12 @@ export class AdventureIslandsController {
 
     @Post("collect")
     async collectAdventureIslands() {
-        return this.adventureIslandsService.collectAdventureIslands();
+        throw new MethodNotAllowedException("Adventure island collection is disabled.");
     }
 
     @Post("test-note/import")
     async importAdventureIslandTestNoteData() {
-        return this.adventureIslandsService.importAdventureIslandTestNoteData();
+        throw new MethodNotAllowedException("Adventure island test note import is disabled.");
     }
 
     @Get("test-note")
@@ -23,7 +23,7 @@ export class AdventureIslandsController {
 
     @Delete("test-note")
     async deleteAdventureIslandTestNoteData() {
-        return this.adventureIslandsService.deleteAdventureIslandTestNoteData();
+        throw new MethodNotAllowedException("Adventure island test note deletion is disabled.");
     }
 
     @Get("resolved")

@@ -1,5 +1,5 @@
-import { Injectable } from "@nestjs/common";
-import { Prisma } from "@prisma/client";
+import { Injectable, MethodNotAllowedException } from "@nestjs/common";
+import { AdventureIslandPeriod, Prisma } from "@prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
 import {
     ADVENTURE_ISLAND_TEST_NOTE_SOURCE_KEY,
@@ -8,6 +8,25 @@ import {
 import { extractAdventureIslandRecords } from "../adventure-island.util";
 import { QueryAdventureIslandsDto } from "../dto/query-adventure-islands.dto";
 import { LostArkClient } from "../lostark.client";
+
+type AdventureIslandRecord = {
+    id: string;
+    lostArkDate: string;
+    period: AdventureIslandPeriod;
+    categoryName: string;
+    contentsName: string;
+    shortName: string;
+    rewardName: string | null;
+    rewardShortName: string | null;
+    rewardIconUrl: string | null;
+    contentIconUrl: string | null;
+    contentImageUrl: string | null;
+    startTime: Date;
+    rawData: Prisma.JsonValue;
+    collectedAt: Date;
+    createdAt: Date;
+    updatedAt: Date;
+};
 
 @Injectable()
 export class AdventureIslandsService {
@@ -29,43 +48,11 @@ export class AdventureIslandsService {
         createdAt: true,
         updatedAt: true,
     };
-    private adventureIslandShortNamesNormalized = false;
 
     constructor(
         private readonly prismaService: PrismaService,
         private readonly lostArkClient: LostArkClient,
     ) {}
-
-    private async normalizeAdventureIslandShortNames() {
-        if (this.adventureIslandShortNamesNormalized) {
-            return;
-        }
-
-        const storedAdventureIslands = await this.prismaService.adventureIsland.findMany({
-            select: {
-                id: true,
-                contentsName: true,
-                shortName: true,
-            },
-        });
-
-        for (const adventureIsland of storedAdventureIslands) {
-            if (adventureIsland.shortName === adventureIsland.contentsName) {
-                continue;
-            }
-
-            await this.prismaService.adventureIsland.update({
-                where: {
-                    id: adventureIsland.id,
-                },
-                data: {
-                    shortName: adventureIsland.contentsName,
-                },
-            });
-        }
-
-        this.adventureIslandShortNamesNormalized = true;
-    }
 
     private matchesAdventureIslandQuery(
         adventureIsland: {
@@ -104,69 +91,37 @@ export class AdventureIslandsService {
               : undefined;
     }
 
-    private buildAdventureIslandWhereInput(
-        query: QueryAdventureIslandsDto,
-    ): Prisma.AdventureIslandWhereInput {
+    private buildAdventureIslandWhereInput(query: QueryAdventureIslandsDto) {
         return {
             period: query.period,
             lostArkDate: this.buildLostArkDateFilter(query),
         };
     }
 
-    private async saveAdventureIslands(collectedAt = new Date()) {
+    private async fetchAdventureIslands(collectedAt = new Date()) {
         const calendarContents = await this.lostArkClient.fetchCalendarContents();
         const records = extractAdventureIslandRecords(calendarContents);
 
-        for (const record of records) {
-            await this.prismaService.adventureIsland.upsert({
-                where: {
-                    lostArkDate_period_contentsName: {
-                        lostArkDate: record.lostArkDate,
-                        period: record.period,
-                        contentsName: record.contentsName,
-                    },
-                },
-                create: {
-                    ...record,
-                    sourceType: "api",
-                    sourceKey: null,
-                    rawData: record.rawData as unknown as Prisma.InputJsonValue,
-                    collectedAt,
-                },
-                update: {
-                    categoryName: record.categoryName,
-                    shortName: record.shortName,
-                    sourceType: "api",
-                    sourceKey: null,
-                    rewardName: record.rewardName,
-                    rewardShortName: record.rewardShortName,
-                    rewardIconUrl: record.rewardIconUrl,
-                    contentIconUrl: record.contentIconUrl,
-                    contentImageUrl: record.contentImageUrl,
-                    startTime: record.startTime,
-                    rawData: record.rawData as unknown as Prisma.InputJsonValue,
-                    collectedAt,
-                },
-            });
-        }
-
-        return records;
+        return records.map((record) => ({
+            id: [
+                record.lostArkDate,
+                record.period,
+                record.contentsName,
+                record.startTime.toISOString(),
+            ].join(":"),
+            ...record,
+            rawData: record.rawData as unknown as Prisma.JsonValue,
+            collectedAt,
+            createdAt: collectedAt,
+            updatedAt: collectedAt,
+        })) as AdventureIslandRecord[];
     }
 
     async collectAdventureIslands() {
-        const collectedAt = new Date();
-        const records = await this.saveAdventureIslands(collectedAt);
-
-        return {
-            collectedAt,
-            count: records.length,
-            items: records,
-        };
+        throw new MethodNotAllowedException("Adventure island collection is disabled.");
     }
 
     async getAdventureIslands(query: QueryAdventureIslandsDto) {
-        await this.normalizeAdventureIslandShortNames();
-
         return this.prismaService.adventureIsland.findMany({
             where: this.buildAdventureIslandWhereInput(query),
             select: this.adventureIslandSelect,
@@ -181,108 +136,15 @@ export class AdventureIslandsService {
             return storedAdventureIslands;
         }
 
-        await this.saveAdventureIslands();
+        const fetchedAdventureIslands = await this.fetchAdventureIslands();
 
-        return this.getAdventureIslands(query);
-    }
-
-    private async getAdventureIslandAssetMap(contentsNames: string[]) {
-        const latestAdventureIslands = await this.prismaService.adventureIsland.findMany({
-            where: {
-                contentsName: {
-                    in: contentsNames,
-                },
-            },
-            select: {
-                contentsName: true,
-                contentIconUrl: true,
-                contentImageUrl: true,
-                collectedAt: true,
-            },
-            orderBy: [{ collectedAt: "desc" }, { createdAt: "desc" }],
-        });
-        const assetMap = new Map<
-            string,
-            {
-                contentIconUrl: string | null;
-                contentImageUrl: string | null;
-            }
-        >();
-
-        for (const item of latestAdventureIslands) {
-            if (assetMap.has(item.contentsName)) {
-                continue;
-            }
-
-            assetMap.set(item.contentsName, {
-                contentIconUrl: item.contentIconUrl,
-                contentImageUrl: item.contentImageUrl,
-            });
-        }
-
-        return assetMap;
+        return fetchedAdventureIslands.filter((adventureIsland) =>
+            this.matchesAdventureIslandQuery(adventureIsland, query),
+        );
     }
 
     async importAdventureIslandTestNoteData() {
-        const collectedAt = new Date();
-        const seedRecords = buildAdventureIslandTestSeedRecords();
-        const assetMap = await this.getAdventureIslandAssetMap(
-            [...new Set(seedRecords.map((item) => item.contentsName))],
-        );
-
-        await this.prismaService.adventureIsland.deleteMany({
-            where: {
-                sourceType: "manual",
-                sourceKey: ADVENTURE_ISLAND_TEST_NOTE_SOURCE_KEY,
-            } as Prisma.AdventureIslandWhereInput,
-        });
-
-        for (const record of seedRecords) {
-            const asset = assetMap.get(record.contentsName);
-
-            await this.prismaService.adventureIsland.upsert({
-                where: {
-                    lostArkDate_period_contentsName: {
-                        lostArkDate: record.lostArkDate,
-                        period: record.period,
-                        contentsName: record.contentsName,
-                    },
-                },
-                create: {
-                    lostArkDate: record.lostArkDate,
-                    period: record.period,
-                    categoryName: record.categoryName,
-                    contentsName: record.contentsName,
-                    shortName: record.shortName,
-                    sourceType: "manual",
-                    sourceKey: record.sourceKey,
-                    rewardName: record.rewardName,
-                    rewardShortName: record.rewardShortName,
-                    rewardIconUrl: record.rewardIconUrl,
-                    contentIconUrl: asset?.contentIconUrl ?? null,
-                    contentImageUrl: asset?.contentImageUrl ?? null,
-                    startTime: record.startTime,
-                    rawData: record.rawData as unknown as Prisma.InputJsonValue,
-                    collectedAt,
-                },
-                update: {
-                    categoryName: record.categoryName,
-                    shortName: record.shortName,
-                    sourceType: "manual",
-                    sourceKey: record.sourceKey,
-                    rewardName: record.rewardName,
-                    rewardShortName: record.rewardShortName,
-                    rewardIconUrl: record.rewardIconUrl,
-                    contentIconUrl: asset?.contentIconUrl ?? null,
-                    contentImageUrl: asset?.contentImageUrl ?? null,
-                    startTime: record.startTime,
-                    rawData: record.rawData as unknown as Prisma.InputJsonValue,
-                    collectedAt,
-                },
-            });
-        }
-
-        return this.getAdventureIslandTestNoteData();
+        throw new MethodNotAllowedException("Adventure island test note import is disabled.");
     }
 
     async getAdventureIslandTestNoteData(query?: QueryAdventureIslandsDto) {
@@ -291,7 +153,7 @@ export class AdventureIslandsService {
                 sourceType: "manual",
                 sourceKey: ADVENTURE_ISLAND_TEST_NOTE_SOURCE_KEY,
                 period: query?.period,
-            } as Prisma.AdventureIslandWhereInput,
+            },
             select: this.adventureIslandSelect,
             orderBy: [{ lostArkDate: "asc" }, { startTime: "asc" }, { contentsName: "asc" }],
         });
@@ -302,16 +164,6 @@ export class AdventureIslandsService {
     }
 
     async deleteAdventureIslandTestNoteData() {
-        const deleteResult = await this.prismaService.adventureIsland.deleteMany({
-            where: {
-                sourceType: "manual",
-                sourceKey: ADVENTURE_ISLAND_TEST_NOTE_SOURCE_KEY,
-            } as Prisma.AdventureIslandWhereInput,
-        });
-
-        return {
-            sourceKey: ADVENTURE_ISLAND_TEST_NOTE_SOURCE_KEY,
-            deletedCount: deleteResult.count,
-        };
+        throw new MethodNotAllowedException("Adventure island test note deletion is disabled.");
     }
 }
