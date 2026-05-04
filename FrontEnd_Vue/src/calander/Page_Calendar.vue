@@ -30,7 +30,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
-import type { EventClickArg, EventInput } from '@fullcalendar/core'
+import type { DatesSetArg, EventClickArg, EventInput } from '@fullcalendar/core'
 import FullCalendar from '@fullcalendar/vue3'
 import dayGridPlugin from '@fullcalendar/daygrid'
 import koLocale from '@fullcalendar/core/locales/ko'
@@ -393,8 +393,26 @@ function getScheduleList(startDate: string, endDate: string): void {
         })
 }
 
-function handleDatesSet(calendarInfo: { start: Date; end: Date; view: { title: string } }): void {
+/**
+ * Sets selected date from FullCalendar current date.
+ *
+ * @param calendarInfo FullCalendar dates set payload.
+ * @returns void
+ * @public
+ */
+function setSelectedDateFromCalendar(calendarInfo: DatesSetArg): void {
+    const currentDate = calendarInfo.view.calendar.getDate()
+
+    if (Number.isNaN(currentDate.getTime())) {
+        return
+    }
+
+    selectedDate.value = currentDate
+}
+
+function handleDatesSet(calendarInfo: DatesSetArg): void {
     currentCalendarTitle.value = calendarInfo.view.title
+    setSelectedDateFromCalendar(calendarInfo)
 
     const nextRange = {
         startDate: toDateKey(calendarInfo.start),
