@@ -1,27 +1,31 @@
-import { getShortIslandName, getShortRewardName } from "../mappings/lostark.js";
-import { getCalendarEventColors } from "../calendarEventColors.js";
+import { getShortIslandName, getShortRewardName } from "../mappings/lostark.js"
+import { getCalendarEventColors } from "../calendarEventColors.js"
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "";
-const LOSTARK_EVENTS_ENDPOINT = createApiUrl("/api/lostark/news/events");
-const LOSTARK_NOTICES_ENDPOINT = createApiUrl("/api/lostark/news/notices");
-const LOSTARK_ADVENTURE_ISLANDS_ENDPOINT = createApiUrl("/api/lostark/adventure-islands");
-const LOSTARK_CALENDAR_SCHEDULES_ENDPOINT = createApiUrl("/api/lostark/calendar/schedules");
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? ""
+const LOSTARK_EVENTS_ENDPOINT = createApiUrl("/api/lostark/news/events")
+const LOSTARK_NOTICES_ENDPOINT = createApiUrl("/api/lostark/news/notices")
+const LOSTARK_ADVENTURE_ISLANDS_ENDPOINT = createApiUrl(
+    "/api/lostark/adventure-islands",
+)
+const LOSTARK_CALENDAR_SCHEDULES_ENDPOINT = createApiUrl(
+    "/api/lostark/calendar/schedules",
+)
 const LOSTARK_SHARED_REQUEST_CACHE = {
     events: {
         data: null,
-    promise: null,
+        promise: null,
     },
     notices: {
         data: null,
         promise: null,
     },
-};
-const LOSTARK_ADVENTURE_ISLAND_REQUEST_CACHE = new Map();
-const LOSTARK_CALENDAR_SCHEDULE_REQUEST_CACHE = new Map();
+}
+const LOSTARK_ADVENTURE_ISLAND_REQUEST_CACHE = new Map()
+const LOSTARK_CALENDAR_SCHEDULE_REQUEST_CACHE = new Map()
 const FIXED_GAME_CONTENT_SCHEDULES = {
     chaosGate: [1, 4, 6, 0],
     fieldBoss: [2, 5, 0],
-};
+}
 const DISPLAYABLE_GAME_CONTENT_TYPES = [
     {
         key: "adventureIsland",
@@ -38,7 +42,7 @@ const DISPLAYABLE_GAME_CONTENT_TYPES = [
         label: "필드보스",
         keywords: ["필드보스", "필드 보스"],
     },
-];
+]
 const ADVENTURE_ISLAND_MAJOR_REWARDS = [
     { key: "gold", sourceNames: ["골드"] },
     { key: "shilling", sourceNames: ["실링"] },
@@ -54,7 +58,7 @@ const ADVENTURE_ISLAND_MAJOR_REWARDS = [
         ],
     },
     { key: "legendCardPackIv", sourceNames: ["전설 ~ 고급 카드 팩 IV"] },
-];
+]
 
 /**
  * 20260428 khs
@@ -71,10 +75,10 @@ function normalizeAdventureIslandRewardName(rewardName = "") {
         rewardName.includes("주화") ||
         rewardName.includes("해주")
     ) {
-        return "대양의 주화";
+        return "대양의 주화"
     }
 
-    return rewardName;
+    return rewardName
 }
 
 /**
@@ -85,13 +89,13 @@ function normalizeAdventureIslandRewardName(rewardName = "") {
  * 반환값 설명: base URL이 있으면 절대 URL, 없으면 기존 프록시용 상대 URL 문자열
  */
 function createApiUrl(path) {
-    const normalizedBaseUrl = API_BASE_URL.trim().replace(/\/+$/, "");
+    const normalizedBaseUrl = API_BASE_URL.trim().replace(/\/+$/, "")
 
     if (!normalizedBaseUrl) {
-        return path;
+        return path
     }
 
-    return `${normalizedBaseUrl}${path}`;
+    return `${normalizedBaseUrl}${path}`
 }
 
 /**
@@ -101,7 +105,7 @@ function createApiUrl(path) {
  * 반환값 설명: `YYYY-MM-DD` 형식 날짜 문자열
  */
 function toDateOnly(dateTime) {
-    return dateTime.split("T")[0];
+    return dateTime.split("T")[0]
 }
 
 /**
@@ -111,9 +115,9 @@ function toDateOnly(dateTime) {
  * 반환값 설명: 연/월/일/시/분 숫자 객체
  */
 function parseDateTime(dateTime) {
-    const [datePart, timePart = "00:00:00"] = dateTime.split("T");
-    const [year, month, day] = datePart.split("-").map(Number);
-    const [hour = 0, minute = 0] = timePart.split(":").map(Number);
+    const [datePart, timePart = "00:00:00"] = dateTime.split("T")
+    const [year, month, day] = datePart.split("-").map(Number)
+    const [hour = 0, minute = 0] = timePart.split(":").map(Number)
 
     return {
         year,
@@ -121,7 +125,7 @@ function parseDateTime(dateTime) {
         day,
         hour,
         minute,
-    };
+    }
 }
 
 /**
@@ -133,7 +137,7 @@ function parseDateTime(dateTime) {
  * 반환값 설명: 포맷된 날짜 문자열
  */
 function formatDateParts(year, month, day) {
-    return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`
 }
 
 /**
@@ -143,7 +147,11 @@ function formatDateParts(year, month, day) {
  * 반환값 설명: `YYYY-MM-DD` 형식 날짜 문자열
  */
 function toLocalDateOnly(date = new Date()) {
-    return formatDateParts(date.getFullYear(), date.getMonth() + 1, date.getDate());
+    return formatDateParts(
+        date.getFullYear(),
+        date.getMonth() + 1,
+        date.getDate(),
+    )
 }
 
 /**
@@ -153,18 +161,18 @@ function toLocalDateOnly(date = new Date()) {
  * 반환값 설명: 로스트아크 기준 `YYYY-MM-DD` 날짜 문자열
  */
 function toLostArkDateOnly(dateTime) {
-    const { year, month, day, hour } = parseDateTime(dateTime);
-    const targetDate = new Date(year, month - 1, day);
+    const { year, month, day, hour } = parseDateTime(dateTime)
+    const targetDate = new Date(year, month - 1, day)
 
     if (hour < 6) {
-        targetDate.setDate(targetDate.getDate() - 1);
+        targetDate.setDate(targetDate.getDate() - 1)
     }
 
     return formatDateParts(
         targetDate.getFullYear(),
         targetDate.getMonth() + 1,
-        targetDate.getDate()
-    );
+        targetDate.getDate(),
+    )
 }
 
 /**
@@ -174,10 +182,10 @@ function toLostArkDateOnly(dateTime) {
  * 반환값 설명: 로스트아크 일자 시작 기준 경과 분
  */
 function getLostArkMinutesFromDayStart(dateTime) {
-    const { hour, minute } = parseDateTime(dateTime);
-    const adjustedHour = hour < 6 ? hour + 24 : hour;
+    const { hour, minute } = parseDateTime(dateTime)
+    const adjustedHour = hour < 6 ? hour + 24 : hour
 
-    return (adjustedHour - 6) * 60 + minute;
+    return (adjustedHour - 6) * 60 + minute
 }
 
 /**
@@ -187,10 +195,10 @@ function getLostArkMinutesFromDayStart(dateTime) {
  * 반환값 설명: 주말 여부
  */
 function isWeekendLostArkDate(dateText) {
-    const targetDate = new Date(`${dateText}T00:00:00`);
-    const dayOfWeek = targetDate.getDay();
+    const targetDate = new Date(`${dateText}T00:00:00`)
+    const dayOfWeek = targetDate.getDay()
 
-    return dayOfWeek === 0 || dayOfWeek === 6;
+    return dayOfWeek === 0 || dayOfWeek === 6
 }
 
 /**
@@ -200,15 +208,15 @@ function isWeekendLostArkDate(dateText) {
  * 반환값 설명: `weekday`, `weekendMorning`, `weekendAfternoon` 중 하나
  */
 function getAdventureIslandPeriod(startTime) {
-    const lostArkDate = toLostArkDateOnly(startTime);
+    const lostArkDate = toLostArkDateOnly(startTime)
 
     if (!isWeekendLostArkDate(lostArkDate)) {
-        return "weekday";
+        return "weekday"
     }
 
     return getLostArkMinutesFromDayStart(startTime) <= 7 * 60
         ? "weekendMorning"
-        : "weekendAfternoon";
+        : "weekendAfternoon"
 }
 
 /**
@@ -219,14 +227,14 @@ function getAdventureIslandPeriod(startTime) {
  */
 function getAdventureIslandPeriodLabel(period) {
     if (period === "weekendMorning") {
-        return "오전";
+        return "오전"
     }
 
     if (period === "weekendAfternoon") {
-        return "오후";
+        return "오후"
     }
 
-    return "";
+    return ""
 }
 
 /**
@@ -236,7 +244,7 @@ function getAdventureIslandPeriodLabel(period) {
  * 반환값 설명: 주말 구간이면 `오전` 또는 `오후`, 평일이면 빈 문자열
  */
 function getAdventureIslandPeriodLabelFromRecord(period) {
-    return getAdventureIslandPeriodLabel(period);
+    return getAdventureIslandPeriodLabel(period)
 }
 
 /**
@@ -246,44 +254,44 @@ function getAdventureIslandPeriodLabelFromRecord(period) {
  * 반환값 설명: 다음 날 `YYYY-MM-DD`
  */
 function addOneDay(dateText) {
-    const [year, month, day] = dateText.split("-").map(Number);
-    const nextDate = new Date(year, month - 1, day + 1);
-    const nextYear = nextDate.getFullYear();
-    const nextMonth = String(nextDate.getMonth() + 1).padStart(2, "0");
-    const nextDay = String(nextDate.getDate()).padStart(2, "0");
+    const [year, month, day] = dateText.split("-").map(Number)
+    const nextDate = new Date(year, month - 1, day + 1)
+    const nextYear = nextDate.getFullYear()
+    const nextMonth = String(nextDate.getMonth() + 1).padStart(2, "0")
+    const nextDay = String(nextDate.getDate()).padStart(2, "0")
 
-    return `${nextYear}-${nextMonth}-${nextDay}`;
+    return `${nextYear}-${nextMonth}-${nextDay}`
 }
 
 function createDateRange(fromDate, toDate) {
-    const dates = [];
-    const currentDate = new Date(`${fromDate}T00:00:00`);
-    const lastDate = new Date(`${toDate}T00:00:00`);
+    const dates = []
+    const currentDate = new Date(`${fromDate}T00:00:00`)
+    const lastDate = new Date(`${toDate}T00:00:00`)
 
     while (currentDate <= lastDate) {
-        dates.push(toLocalDateOnly(currentDate));
-        currentDate.setDate(currentDate.getDate() + 1);
+        dates.push(toLocalDateOnly(currentDate))
+        currentDate.setDate(currentDate.getDate() + 1)
     }
 
-    return dates;
+    return dates
 }
 
 function createFixedGameContentEvents(calendarMonthQuery = {}) {
-    const fromDate = calendarMonthQuery.fromDate;
-    const toDate = calendarMonthQuery.toDate;
+    const fromDate = calendarMonthQuery.fromDate
+    const toDate = calendarMonthQuery.toDate
 
     if (!fromDate || !toDate) {
-        return [];
+        return []
     }
 
     return createDateRange(fromDate, toDate).flatMap((dateText) => {
-        const dayOfWeek = new Date(`${dateText}T00:00:00`).getDay();
+        const dayOfWeek = new Date(`${dateText}T00:00:00`).getDay()
 
         return Object.entries(FIXED_GAME_CONTENT_SCHEDULES)
             .filter(([, days]) => days.includes(dayOfWeek))
             .map(([contentType]) => {
-                const displayType = getGameContentTypeByKey(contentType);
-                const eventColors = getCalendarEventColors(contentType);
+                const displayType = getGameContentTypeByKey(contentType)
+                const eventColors = getCalendarEventColors(contentType)
 
                 return {
                     id: `${contentType}-${dateText}`,
@@ -303,9 +311,9 @@ function createFixedGameContentEvents(calendarMonthQuery = {}) {
                         rewardIconUrl: "",
                         contentIconUrl: "",
                     },
-                };
-            });
-    });
+                }
+            })
+    })
 }
 
 /**
@@ -324,7 +332,7 @@ function getNoticeDisplayTitle(title = "") {
             /\s*(?:(\[\s*)?\d{4}[./-]\d{1,2}[./-]\d{1,2}(\s*\])?|(\[\s*)?\d{1,2}\s*월\s*\d{1,2}\s*일(?:\s*\([^)]+\))?(\s*\])?)\s*$/u,
             "",
         )
-        .trim();
+        .trim()
 }
 
 /**
@@ -336,11 +344,11 @@ function getNoticeDisplayTitle(title = "") {
  * 반환값 설명: 진행 중 여부
  */
 function isOngoingEvent(startDate, endDate, now = new Date()) {
-    const start = toDateOnly(startDate);
-    const end = toDateOnly(endDate);
-    const today = toLocalDateOnly(now);
+    const start = toDateOnly(startDate)
+    const end = toDateOnly(endDate)
+    const today = toLocalDateOnly(now)
 
-    return start <= today && today <= end;
+    return start <= today && today <= end
 }
 
 /**
@@ -350,7 +358,7 @@ function isOngoingEvent(startDate, endDate, now = new Date()) {
  * 반환값 설명: 정규화된 문자열
  */
 function normalizeContentText(value = "") {
-    return value.replace(/\s+/g, "").toLowerCase();
+    return value.replace(/\s+/g, "").toLowerCase()
 }
 
 /**
@@ -360,21 +368,21 @@ function normalizeContentText(value = "") {
  * 반환값 설명: 공지, 이벤트, 상점, 점검 중 하나의 카테고리 문자열
  */
 function normalizeNoticeCategory(noticeType = "") {
-    const normalizedType = normalizeContentText(noticeType);
+    const normalizedType = normalizeContentText(noticeType)
 
     if (normalizedType.includes("이벤트")) {
-        return "이벤트";
+        return "이벤트"
     }
 
     if (normalizedType.includes("상점")) {
-        return "상점";
+        return "상점"
     }
 
     if (normalizedType.includes("점검")) {
-        return "점검";
+        return "점검"
     }
 
-    return "공지";
+    return "공지"
 }
 
 /**
@@ -385,26 +393,26 @@ function normalizeNoticeCategory(noticeType = "") {
  * 반환값 설명: 중복 호출이 제거된 요청 결과 Promise
  */
 async function fetchWithSharedCache(cacheKey, request) {
-    const cacheEntry = LOSTARK_SHARED_REQUEST_CACHE[cacheKey];
+    const cacheEntry = LOSTARK_SHARED_REQUEST_CACHE[cacheKey]
 
     if (cacheEntry.data) {
-        return cacheEntry.data;
+        return cacheEntry.data
     }
 
     if (cacheEntry.promise) {
-        return cacheEntry.promise;
+        return cacheEntry.promise
     }
 
     cacheEntry.promise = request()
         .then((data) => {
-            cacheEntry.data = data;
-            return data;
+            cacheEntry.data = data
+            return data
         })
         .finally(() => {
-            cacheEntry.promise = null;
-        });
+            cacheEntry.promise = null
+        })
 
-    return cacheEntry.promise;
+    return cacheEntry.promise
 }
 
 /**
@@ -415,23 +423,22 @@ async function fetchWithSharedCache(cacheKey, request) {
  * 반환값 설명: 월 범위 기준 중복 호출이 제거된 모험섬 요청 결과 Promise
  */
 async function fetchAdventureIslandsWithMonthCache(query, request) {
-    const cacheKey = `${query.fromDate ?? ""}|${query.toDate ?? ""}`;
-    const cacheEntry = LOSTARK_ADVENTURE_ISLAND_REQUEST_CACHE.get(cacheKey);
+    const cacheKey = `${query.fromDate ?? ""}|${query.toDate ?? ""}`
+    const cacheEntry = LOSTARK_ADVENTURE_ISLAND_REQUEST_CACHE.get(cacheKey)
 
     if (cacheEntry?.promise) {
-        return cacheEntry.promise;
+        return cacheEntry.promise
     }
 
-    const requestPromise = request()
-        .finally(() => {
-            LOSTARK_ADVENTURE_ISLAND_REQUEST_CACHE.delete(cacheKey);
-        });
+    const requestPromise = request().finally(() => {
+        LOSTARK_ADVENTURE_ISLAND_REQUEST_CACHE.delete(cacheKey)
+    })
 
     LOSTARK_ADVENTURE_ISLAND_REQUEST_CACHE.set(cacheKey, {
         promise: requestPromise,
-    });
+    })
 
-    return requestPromise;
+    return requestPromise
 }
 
 /**
@@ -443,22 +450,22 @@ async function fetchAdventureIslandsWithMonthCache(query, request) {
  * 반환값 설명: 월별 일정 API 응답 Promise
  */
 async function fetchCalendarSchedulesWithMonthCache(query, request) {
-    const cacheKey = `${query.year ?? ""}|${query.month ?? ""}`;
-    const cacheEntry = LOSTARK_CALENDAR_SCHEDULE_REQUEST_CACHE.get(cacheKey);
+    const cacheKey = `${query.year ?? ""}|${query.month ?? ""}`
+    const cacheEntry = LOSTARK_CALENDAR_SCHEDULE_REQUEST_CACHE.get(cacheKey)
 
     if (cacheEntry?.promise) {
-        return cacheEntry.promise;
+        return cacheEntry.promise
     }
 
     const requestPromise = request().finally(() => {
-        LOSTARK_CALENDAR_SCHEDULE_REQUEST_CACHE.delete(cacheKey);
-    });
+        LOSTARK_CALENDAR_SCHEDULE_REQUEST_CACHE.delete(cacheKey)
+    })
 
     LOSTARK_CALENDAR_SCHEDULE_REQUEST_CACHE.set(cacheKey, {
         promise: requestPromise,
-    });
+    })
 
-    return requestPromise;
+    return requestPromise
 }
 
 /**
@@ -468,7 +475,10 @@ async function fetchCalendarSchedulesWithMonthCache(query, request) {
  * 반환값 설명: 일치하는 타입 객체 또는 null
  */
 function getGameContentTypeByKey(typeKey) {
-    return DISPLAYABLE_GAME_CONTENT_TYPES.find((type) => type.key === typeKey) ?? null;
+    return (
+        DISPLAYABLE_GAME_CONTENT_TYPES.find((type) => type.key === typeKey) ??
+        null
+    )
 }
 
 /**
@@ -478,24 +488,24 @@ function getGameContentTypeByKey(typeKey) {
  * 반환값 설명: 모험섬 여부
  */
 function isAdventureIslandContent(content) {
-    const categoryName = normalizeContentText(content.CategoryName);
-    const contentsName = normalizeContentText(content.ContentsName);
-    const adventureIslandType = getGameContentTypeByKey("adventureIsland");
+    const categoryName = normalizeContentText(content.CategoryName)
+    const contentsName = normalizeContentText(content.ContentsName)
+    const adventureIslandType = getGameContentTypeByKey("adventureIsland")
 
     if (!adventureIslandType) {
-        return false;
+        return false
     }
 
     return adventureIslandType.keywords.some((keyword) => {
-        const normalizedKeyword = normalizeContentText(keyword);
+        const normalizedKeyword = normalizeContentText(keyword)
 
         return (
             categoryName === normalizedKeyword ||
             contentsName === normalizedKeyword ||
             categoryName.includes(normalizedKeyword) ||
             contentsName.includes(normalizedKeyword)
-        );
-    });
+        )
+    })
 }
 
 /**
@@ -505,13 +515,14 @@ function isAdventureIslandContent(content) {
  * 반환값 설명: 일반 섬 여부
  */
 function isIslandContent(content) {
-    const categoryName = normalizeContentText(content.CategoryName);
-    const contentsName = normalizeContentText(content.ContentsName);
-    const bracketIslandKeyword = normalizeContentText("[섬]");
+    const categoryName = normalizeContentText(content.CategoryName)
+    const contentsName = normalizeContentText(content.ContentsName)
+    const bracketIslandKeyword = normalizeContentText("[섬]")
 
     return (
-        categoryName.includes(bracketIslandKeyword) || contentsName.includes(bracketIslandKeyword)
-    );
+        categoryName.includes(bracketIslandKeyword) ||
+        contentsName.includes(bracketIslandKeyword)
+    )
 }
 
 /**
@@ -522,30 +533,30 @@ function isIslandContent(content) {
  */
 function getDisplayableGameContentType(content) {
     if (isAdventureIslandContent(content)) {
-        return getGameContentTypeByKey("adventureIsland");
+        return getGameContentTypeByKey("adventureIsland")
     }
 
     if (isIslandContent(content)) {
-        return null;
+        return null
     }
 
-    const categoryName = normalizeContentText(content.CategoryName);
-    const contentsName = normalizeContentText(content.ContentsName);
+    const categoryName = normalizeContentText(content.CategoryName)
+    const contentsName = normalizeContentText(content.ContentsName)
 
     return (
         DISPLAYABLE_GAME_CONTENT_TYPES.find((type) =>
             type.keywords.some((keyword) => {
-                const normalizedKeyword = normalizeContentText(keyword);
+                const normalizedKeyword = normalizeContentText(keyword)
 
                 return (
                     categoryName === normalizedKeyword ||
                     contentsName === normalizedKeyword ||
                     categoryName.includes(normalizedKeyword) ||
                     contentsName.includes(normalizedKeyword)
-                );
-            })
+                )
+            }),
         ) ?? null
-    );
+    )
 }
 
 /**
@@ -555,15 +566,16 @@ function getDisplayableGameContentType(content) {
  * 반환값 설명: 일치하는 주요 보상 타입 객체 또는 null
  */
 function getAdventureIslandMajorRewardType(rewardName) {
-    const normalizedRewardName = normalizeContentText(rewardName);
+    const normalizedRewardName = normalizeContentText(rewardName)
 
     return (
         ADVENTURE_ISLAND_MAJOR_REWARDS.find((type) =>
             type.sourceNames.some(
-                (sourceName) => normalizedRewardName === normalizeContentText(sourceName)
-            )
+                (sourceName) =>
+                    normalizedRewardName === normalizeContentText(sourceName),
+            ),
         ) ?? null
-    );
+    )
 }
 
 /**
@@ -574,46 +586,55 @@ function getAdventureIslandMajorRewardType(rewardName) {
  * 반환값 설명: 짧게 변환된 보상명 또는 빈 문자열
  */
 function getAdventureIslandReward(content, startTime) {
-    const rewardItems = Array.isArray(content.RewardItems) ? content.RewardItems : [];
+    const rewardItems = Array.isArray(content.RewardItems)
+        ? content.RewardItems
+        : []
     const flattenedRewardItems = rewardItems.flatMap((rewardGroup) => {
         if (Array.isArray(rewardGroup?.Items)) {
-            return rewardGroup.Items;
+            return rewardGroup.Items
         }
 
         if (Array.isArray(rewardGroup)) {
-            return rewardGroup;
+            return rewardGroup
         }
 
-        return rewardGroup ? [rewardGroup] : [];
-    });
+        return rewardGroup ? [rewardGroup] : []
+    })
 
     for (const rewardItem of flattenedRewardItems) {
-        if (!Array.isArray(rewardItem?.StartTimes) || rewardItem.StartTimes.length === 0) {
-            continue;
+        if (
+            !Array.isArray(rewardItem?.StartTimes) ||
+            rewardItem.StartTimes.length === 0
+        ) {
+            continue
         }
 
         if (!rewardItem.StartTimes.includes(startTime)) {
-            continue;
+            continue
         }
 
-        const rewardType = getAdventureIslandMajorRewardType(rewardItem?.Name ?? "");
+        const rewardType = getAdventureIslandMajorRewardType(
+            rewardItem?.Name ?? "",
+        )
 
         if (!rewardType) {
-            continue;
+            continue
         }
 
         return {
             rewardTypeKey: rewardType.key,
-            rewardName: normalizeAdventureIslandRewardName(getShortRewardName(rewardItem.Name)),
+            rewardName: normalizeAdventureIslandRewardName(
+                getShortRewardName(rewardItem.Name),
+            ),
             rewardIconUrl: rewardItem.Icon ?? "",
-        };
+        }
     }
 
     return {
         rewardTypeKey: "",
         rewardName: "",
         rewardIconUrl: "",
-    };
+    }
 }
 
 /**
@@ -630,7 +651,7 @@ function getGameContentIconUrl(content) {
      * - 최상위 Image
      * 실제 조회 샘플에서는 ContentsIcon이 존재했고 Icon, Image는 비어 있었다.
      */
-    return content.ContentsIcon ?? content.Icon ?? content.Image ?? "";
+    return content.ContentsIcon ?? content.Icon ?? content.Image ?? ""
 }
 
 /**
@@ -643,14 +664,10 @@ function getGameContentIconUrl(content) {
  */
 function getGameContentEventTitle(content, displayType, startTime) {
     if (displayType.key !== "adventureIsland") {
-        return displayType.label;
+        return displayType.label
     }
 
-    // 20260330 khs
-    // 제목 조합 시작: 주말 모험섬은 오전/오후를 가장 앞에 붙이고, 뒤에 섬 이름과 주요 보상을 연결한다.
-    return getShortIslandName(content.ContentsName);
-    // 20260330 khs
-    // 제목 조합 끝
+    return getShortIslandName(content.ContentsName)
 }
 
 /**
@@ -660,9 +677,9 @@ function getGameContentEventTitle(content, displayType, startTime) {
  * 반환값 설명: FullCalendar 이벤트 객체
  */
 export function mapLostArkEventToCalendarEvent(event) {
-    const start = toDateOnly(event.StartDate);
-    const inclusiveEnd = toDateOnly(event.EndDate);
-    const eventColors = getCalendarEventColors("event");
+    const start = toDateOnly(event.StartDate)
+    const inclusiveEnd = toDateOnly(event.EndDate)
+    const eventColors = getCalendarEventColors("event")
 
     return {
         id: `${event.Title}-${event.StartDate}`,
@@ -678,7 +695,7 @@ export function mapLostArkEventToCalendarEvent(event) {
             sourceEndDate: event.EndDate,
             filterTarget: "event",
         },
-    };
+    }
 }
 
 /**
@@ -694,12 +711,12 @@ export function mapLostArkEventToCalendarEvent(event) {
  * 반환값 설명: FullCalendar에서 사용할 notice 이벤트 객체
  */
 export function mapLostArkNoticeToCalendarEvent(notice) {
-    const noticeDate = toDateOnly(notice.Date);
-    const noticeType = notice.Type?.trim() ?? "";
-    const noticeCategory = normalizeNoticeCategory(noticeType);
-    const eventColors = getCalendarEventColors("notice");
-    const displayTitle = getNoticeDisplayTitle(notice.Title);
-    const title = noticeType ? `[${noticeType}] ${displayTitle}` : displayTitle;
+    const noticeDate = toDateOnly(notice.Date)
+    const noticeType = notice.Type?.trim() ?? ""
+    const noticeCategory = normalizeNoticeCategory(noticeType)
+    const eventColors = getCalendarEventColors("notice")
+    const displayTitle = getNoticeDisplayTitle(notice.Title)
+    const title = noticeType ? `[${noticeType}] ${displayTitle}` : displayTitle
 
     return {
         id: `notice-${notice.Date}-${notice.Link}`,
@@ -716,7 +733,7 @@ export function mapLostArkNoticeToCalendarEvent(notice) {
             link: notice.Link,
             rawTitle: notice.Title,
         },
-    };
+    }
 }
 
 /**
@@ -726,11 +743,16 @@ export function mapLostArkNoticeToCalendarEvent(notice) {
  * 반환값 설명: FullCalendar에서 사용할 모험섬 이벤트 객체
  */
 export function mapAdventureIslandRecordToCalendarEvent(adventureIsland) {
-    const rewardType = getAdventureIslandMajorRewardType(adventureIsland.rewardName ?? "");
+    const rewardType = getAdventureIslandMajorRewardType(
+        adventureIsland.rewardName ?? "",
+    )
     const rewardName = normalizeAdventureIslandRewardName(
         adventureIsland.rewardShortName ?? adventureIsland.rewardName ?? "",
-    );
-    const eventColors = getCalendarEventColors("adventureIsland", rewardType?.key ?? "");
+    )
+    const eventColors = getCalendarEventColors(
+        "adventureIsland",
+        rewardType?.key ?? "",
+    )
 
     return {
         id: `adventure-island-${adventureIsland.lostArkDate}-${adventureIsland.period}-${adventureIsland.contentsName}`,
@@ -750,9 +772,11 @@ export function mapAdventureIslandRecordToCalendarEvent(adventureIsland) {
             rewardName,
             rewardIconUrl: adventureIsland.rewardIconUrl ?? "",
             contentIconUrl:
-                adventureIsland.contentImageUrl ?? adventureIsland.contentIconUrl ?? "",
+                adventureIsland.contentImageUrl ??
+                adventureIsland.contentIconUrl ??
+                "",
         },
-    };
+    }
 }
 
 /**
@@ -763,19 +787,26 @@ export function mapAdventureIslandRecordToCalendarEvent(adventureIsland) {
  * 반환값 설명: FullCalendar에서 사용할 이벤트 객체
  */
 export function mapLostArkScheduleToCalendarEvent(schedule) {
-    const display = schedule.display ?? {};
-    const contentType = schedule.type === "patchNote" ? "notice" : schedule.type;
+    const display = schedule.display ?? {}
+    const contentType = schedule.type === "patchNote" ? "notice" : schedule.type
     const normalizedDisplay =
         contentType === "adventureIsland"
             ? {
                   ...display,
-                  rewardName: normalizeAdventureIslandRewardName(display.rewardName ?? ""),
+                  rewardName: normalizeAdventureIslandRewardName(
+                      display.rewardName ?? "",
+                  ),
               }
-            : display;
-    const rewardType = getAdventureIslandMajorRewardType(normalizedDisplay.rewardName ?? "");
-    const eventColors = getCalendarEventColors(contentType, rewardType?.key ?? "");
-    const start = schedule.startDate ?? schedule.scheduleDate;
-    const end = schedule.endDate ? addOneDay(schedule.endDate) : undefined;
+            : display
+    const rewardType = getAdventureIslandMajorRewardType(
+        normalizedDisplay.rewardName ?? "",
+    )
+    const eventColors = getCalendarEventColors(
+        contentType,
+        rewardType?.key ?? "",
+    )
+    const start = schedule.startDate ?? schedule.scheduleDate
+    const end = schedule.endDate ? addOneDay(schedule.endDate) : undefined
 
     return {
         id: schedule.id,
@@ -797,29 +828,29 @@ export function mapLostArkScheduleToCalendarEvent(schedule) {
             source: schedule.source,
             sortOrder: schedule.sortOrder,
         },
-    };
+    }
 }
 
 export function mapLostArkGameContentToCalendarEvents(content) {
-    const displayType = getDisplayableGameContentType(content);
+    const displayType = getDisplayableGameContentType(content)
 
     if (!displayType) {
-        return [];
+        return []
     }
 
     return (content.StartTimes ?? []).map((startTime) => {
-        const lostArkDate = toLostArkDateOnly(startTime);
+        const lostArkDate = toLostArkDateOnly(startTime)
         const adventureIslandReward =
             displayType.key === "adventureIsland"
                 ? getAdventureIslandReward(content, startTime)
                 : {
                       rewardTypeKey: "",
                       rewardName: "",
-                  };
+                  }
         const eventColors = getCalendarEventColors(
             displayType.key,
-            adventureIslandReward.rewardTypeKey
-        );
+            adventureIslandReward.rewardTypeKey,
+        )
 
         return {
             id: `${displayType.key}-${lostArkDate}-${content.ContentsName}`,
@@ -837,14 +868,17 @@ export function mapLostArkGameContentToCalendarEvents(content) {
                         : null,
                 sourceStartTime: startTime,
                 filterTarget: displayType.key,
-                islandName: displayType.key === "adventureIsland" ? content.ContentsName : "",
+                islandName:
+                    displayType.key === "adventureIsland"
+                        ? content.ContentsName
+                        : "",
                 rewardTypeKey: adventureIslandReward.rewardTypeKey,
                 rewardName: adventureIslandReward.rewardName,
                 rewardIconUrl: adventureIslandReward.rewardIconUrl,
                 contentIconUrl: getGameContentIconUrl(content),
             },
-        };
-    });
+        }
+    })
 }
 
 /**
@@ -854,49 +888,52 @@ export function mapLostArkGameContentToCalendarEvents(content) {
  * 반환값 설명: 표시 규칙이 반영된 이벤트 배열
  */
 function _dedupeGameContentEvents(events) {
-    const uniqueEvents = new Map();
-    const adventureIslandGroups = new Map();
+    const uniqueEvents = new Map()
+    const adventureIslandGroups = new Map()
 
     // 콘텐츠 타입별 중복 제거 시작
     events.forEach((event) => {
         if (event.extendedProps.contentType !== "adventureIsland") {
-            const uniqueKey = `${event.start}-${event.extendedProps.contentType}`;
+            const uniqueKey = `${event.start}-${event.extendedProps.contentType}`
 
             if (!uniqueEvents.has(uniqueKey)) {
-                uniqueEvents.set(uniqueKey, event);
+                uniqueEvents.set(uniqueKey, event)
             }
 
-            return;
+            return
         }
 
         const adventureIslandUniqueKey = [
             event.start,
             event.extendedProps.period,
             event.extendedProps.contentsName,
-        ].join("-");
+        ].join("-")
 
         if (uniqueEvents.has(adventureIslandUniqueKey)) {
-            return;
+            return
         }
 
-        uniqueEvents.set(adventureIslandUniqueKey, event);
+        uniqueEvents.set(adventureIslandUniqueKey, event)
 
-        const groupKey = `${event.start}-${event.extendedProps.period}`;
-        const groupedEvents = adventureIslandGroups.get(groupKey) ?? [];
+        const groupKey = `${event.start}-${event.extendedProps.period}`
+        const groupedEvents = adventureIslandGroups.get(groupKey) ?? []
 
-        groupedEvents.push(event);
-        adventureIslandGroups.set(groupKey, groupedEvents);
-    });
+        groupedEvents.push(event)
+        adventureIslandGroups.set(groupKey, groupedEvents)
+    })
     // 콘텐츠 타입별 중복 제거 끝
 
     const nonAdventureIslandEvents = [...uniqueEvents.entries()]
-        .filter(([, event]) => event.extendedProps.contentType !== "adventureIsland")
-        .map(([, event]) => event);
-    const adventureIslandEvents = [...adventureIslandGroups.values()].flatMap((group) =>
-        group.slice(0, 3)
-    );
+        .filter(
+            ([, event]) =>
+                event.extendedProps.contentType !== "adventureIsland",
+        )
+        .map(([, event]) => event)
+    const adventureIslandEvents = [...adventureIslandGroups.values()].flatMap(
+        (group) => group.slice(0, 3),
+    )
 
-    return [...nonAdventureIslandEvents, ...adventureIslandEvents];
+    return [...nonAdventureIslandEvents, ...adventureIslandEvents]
 }
 
 /**
@@ -909,13 +946,22 @@ async function fetchLostArkEvents() {
         headers: {
             accept: "application/json",
         },
-    });
+    })
 
     if (!response.ok) {
-        throw new Error(`Failed to fetch Lost Ark events: ${response.status}`);
+        const errorBody = await response.json().catch(() => null)
+        const message = errorBody?.message
+        console.error(
+            message ??
+                errorBody ??
+                `Failed to fetch Lost Ark events: ${response.status}`,
+        )
+        throw new Error(
+            message ?? `Failed to fetch Lost Ark events: ${response.status}`,
+        )
     }
 
-    return response.json();
+    return response.json()
 }
 
 /**
@@ -925,18 +971,13 @@ async function fetchLostArkEvents() {
  */
 async function fetchLostArkEventsSafely() {
     try {
-        return await fetchWithSharedCache("events", fetchLostArkEvents);
+        return await fetchWithSharedCache("events", fetchLostArkEvents)
     } catch (error) {
-        console.error("Failed to fetch Lost Ark events.", error);
-        return [];
+        console.error("Failed to fetch Lost Ark events.", error)
+        return []
     }
 }
 
-/**
- * 역할: 게임 콘텐츠 일정 목록을 서버 엔드포인트에서 조회한다.
- * 파라미터 설명: 없음
- * 반환값 설명: 게임 콘텐츠 원본 배열 Promise
- */
 /**
  * 역할: notice 목록을 백엔드 notice API에서 조회한다.
  * 파라미터 설명: 없음
@@ -947,13 +988,22 @@ async function fetchLostArkNotices() {
         headers: {
             accept: "application/json",
         },
-    });
+    })
 
     if (!response.ok) {
-        throw new Error(`Failed to fetch Lost Ark notices: ${response.status}`);
+        const errorBody = await response.json().catch(() => null)
+        const message = errorBody?.message
+        console.error(
+            message ??
+                errorBody ??
+                `Failed to fetch Lost Ark notices: ${response.status}`,
+        )
+        throw new Error(
+            message ?? `Failed to fetch Lost Ark notices: ${response.status}`,
+        )
     }
 
-    return response.json();
+    return response.json()
 }
 
 /**
@@ -963,10 +1013,10 @@ async function fetchLostArkNotices() {
  */
 async function fetchLostArkNoticesSafely() {
     try {
-        return await fetchWithSharedCache("notices", fetchLostArkNotices);
+        return await fetchWithSharedCache("notices", fetchLostArkNotices)
     } catch (error) {
-        console.error("Failed to fetch Lost Ark notices.", error);
-        return [];
+        console.error("Failed to fetch Lost Ark notices.", error)
+        return []
     }
 }
 
@@ -977,31 +1027,41 @@ async function fetchLostArkNoticesSafely() {
  */
 async function fetchAdventureIslands(query = {}) {
     return fetchAdventureIslandsWithMonthCache(query, async () => {
-        const searchParams = new URLSearchParams();
+        const searchParams = new URLSearchParams()
 
         if (query.fromDate) {
-            searchParams.set("fromDate", query.fromDate);
+            searchParams.set("fromDate", query.fromDate)
         }
 
         if (query.toDate) {
-            searchParams.set("toDate", query.toDate);
+            searchParams.set("toDate", query.toDate)
         }
 
         const requestUrl = searchParams.size
             ? `${LOSTARK_ADVENTURE_ISLANDS_ENDPOINT}?${searchParams.toString()}`
-            : LOSTARK_ADVENTURE_ISLANDS_ENDPOINT;
+            : LOSTARK_ADVENTURE_ISLANDS_ENDPOINT
         const response = await fetch(requestUrl, {
             headers: {
                 accept: "application/json",
             },
-        });
+        })
 
         if (!response.ok) {
-            throw new Error(`Failed to fetch adventure islands: ${response.status}`);
+            const errorBody = await response.json().catch(() => null)
+            const message = errorBody?.message
+            console.error(
+                message ??
+                    errorBody ??
+                    `Failed to fetch adventure islands: ${response.status}`,
+            )
+            throw new Error(
+                message ??
+                    `Failed to fetch adventure islands: ${response.status}`,
+            )
         }
 
-        return response.json();
-    });
+        return response.json()
+    })
 }
 
 /**
@@ -1016,7 +1076,7 @@ async function fetchLostArkCalendarSchedules(query) {
         const searchParams = new URLSearchParams({
             year: String(query.year),
             month: String(query.month),
-        });
+        })
         const response = await fetch(
             `${LOSTARK_CALENDAR_SCHEDULES_ENDPOINT}?${searchParams.toString()}`,
             {
@@ -1024,14 +1084,24 @@ async function fetchLostArkCalendarSchedules(query) {
                     accept: "application/json",
                 },
             },
-        );
+        )
 
         if (!response.ok) {
-            throw new Error(`Failed to fetch Lost Ark calendar schedules: ${response.status}`);
+            const errorBody = await response.json().catch(() => null)
+            const message = errorBody?.message
+            console.error(
+                message ??
+                    errorBody ??
+                    `Failed to fetch Lost Ark calendar schedules: ${response.status}`,
+            )
+            throw new Error(
+                message ??
+                    `Failed to fetch Lost Ark calendar schedules: ${response.status}`,
+            )
         }
 
-        return response.json();
-    });
+        return response.json()
+    })
 }
 
 /**
@@ -1043,27 +1113,20 @@ async function fetchLostArkCalendarSchedules(query) {
  */
 function getCalendarScheduleMonthQuery(calendarMonthQuery = {}) {
     if (!calendarMonthQuery.fromDate) {
-        return null;
+        return null
     }
 
-    const [year, month] = calendarMonthQuery.fromDate.split("-").map(Number);
+    const [year, month] = calendarMonthQuery.fromDate.split("-").map(Number)
 
     if (!year || !month) {
-        return null;
+        return null
     }
 
     return {
         year,
         month,
-    };
+    }
 }
-
-
-/**
- * 역할: 게임 콘텐츠 API 실패가 전체 달력 로딩을 막지 않도록 빈 배열로 보정한다.
- * 파라미터 설명: 없음
- * 반환값 설명: 게임 콘텐츠 원본 배열 Promise
- */
 
 /**
  * 역할: 뉴스 이벤트와 게임 콘텐츠 일정을 모두 조회해 달력 표시용 배열로 합친다.
@@ -1073,15 +1136,19 @@ function getCalendarScheduleMonthQuery(calendarMonthQuery = {}) {
 export async function fetchLostArkCalendarEvents(options = {}) {
     const calendarScheduleMonthQuery = getCalendarScheduleMonthQuery(
         options.calendarMonthQuery,
-    );
+    )
 
     if (calendarScheduleMonthQuery) {
         try {
-            const schedules = await fetchLostArkCalendarSchedules(calendarScheduleMonthQuery);
+            const schedules = await fetchLostArkCalendarSchedules(
+                calendarScheduleMonthQuery,
+            )
 
-            return schedules.map((schedule) => mapLostArkScheduleToCalendarEvent(schedule));
+            return schedules.map((schedule) =>
+                mapLostArkScheduleToCalendarEvent(schedule),
+            )
         } catch (error) {
-            console.error("Failed to fetch Lost Ark calendar schedules.", error);
+            console.error("Failed to fetch Lost Ark calendar schedules.", error)
         }
     }
 
@@ -1089,21 +1156,30 @@ export async function fetchLostArkCalendarEvents(options = {}) {
         fetchLostArkEventsSafely(),
         fetchLostArkNoticesSafely(),
         fetchAdventureIslands(options.adventureIslandQuery),
-    ]);
+    ])
 
     // 공지 이벤트 가공 시작
     const newsEvents = events
         .filter((event) => isOngoingEvent(event.StartDate, event.EndDate))
-        .map((event) => mapLostArkEventToCalendarEvent(event));
+        .map((event) => mapLostArkEventToCalendarEvent(event))
     // 공지 이벤트 가공 끝
 
     // 게임 콘텐츠 일정 가공 시작
-    const noticeEvents = notices.map((notice) => mapLostArkNoticeToCalendarEvent(notice));
+    const noticeEvents = notices.map((notice) =>
+        mapLostArkNoticeToCalendarEvent(notice),
+    )
     const adventureIslandEvents = adventureIslands.map((adventureIsland) =>
-        mapAdventureIslandRecordToCalendarEvent(adventureIsland)
-    );
-    const contentEvents = createFixedGameContentEvents(options.calendarMonthQuery);
+        mapAdventureIslandRecordToCalendarEvent(adventureIsland),
+    )
+    const contentEvents = createFixedGameContentEvents(
+        options.calendarMonthQuery,
+    )
     // 게임 콘텐츠 일정 가공 끝
 
-    return [...newsEvents, ...noticeEvents, ...adventureIslandEvents, ...contentEvents];
+    return [
+        ...newsEvents,
+        ...noticeEvents,
+        ...adventureIslandEvents,
+        ...contentEvents,
+    ]
 }
