@@ -48,8 +48,38 @@ export interface CalendarScheduleMutationPayload {
   times: CalendarScheduleTimePayload[]
 }
 
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000'
+const API_BASE_URL_LIST = [
+  'http://localhost:3000',
+  'https://hatchling-keep-progeny.ngrok-free.dev',
+]
+
+/**
+ * Creates a server API URL.
+ *
+ * @param baseUrl Server base URL.
+ * @param path API path starting with `/api`.
+ * @returns Server API URL.
+ * @private
+ */
+function createApiUrl(baseUrl: string, path: string): string {
+  return `${baseUrl}${path}`
+}
+
+/**
+ * Requests server API with local backend first and ngrok backend fallback.
+ *
+ * @param path API path starting with `/api`.
+ * @param init Fetch request options.
+ * @returns Server API response.
+ * @private
+ */
+function requestApi(path: string, init?: RequestInit): Promise<Response> {
+  return fetch(createApiUrl(API_BASE_URL_LIST[0], path), init).catch((error: unknown) => {
+    return fetch(createApiUrl(API_BASE_URL_LIST[1], path), init).catch(() => {
+      throw error
+    })
+  })
+}
 
 /**
  * Gets calendar list from server.
@@ -58,7 +88,7 @@ const API_BASE_URL =
  * @public
  */
 export function getCalendars(): Promise<CalendarListItem[]> {
-  return fetch(`${API_BASE_URL}/api/calendars`, {
+  return requestApi('/api/calendars', {
     headers: {
       Accept: 'application/json',
       'ngrok-skip-browser-warning': 'true',
@@ -85,7 +115,7 @@ export function getCalendarSchedules(query: CalendarScheduleQuery): Promise<Cale
     endDate: query.endDate,
   })
 
-  return fetch(`${API_BASE_URL}/api/schedules?${searchParams.toString()}`, {
+  return requestApi(`/api/schedules?${searchParams.toString()}`, {
     headers: {
       Accept: 'application/json',
       'ngrok-skip-browser-warning': 'true',
@@ -109,7 +139,7 @@ export function getCalendarSchedules(query: CalendarScheduleQuery): Promise<Cale
 export function createCalendarSchedule(
   payload: CalendarScheduleMutationPayload,
 ): Promise<CalendarScheduleItem> {
-  return fetch(`${API_BASE_URL}/api/calendar/events`, {
+  return requestApi('/api/calendar/events', {
     method: 'POST',
     headers: {
       Accept: 'application/json',
@@ -138,7 +168,7 @@ export function updateCalendarSchedule(
   scheduleId: string,
   payload: CalendarScheduleMutationPayload,
 ): Promise<CalendarScheduleItem> {
-  return fetch(`${API_BASE_URL}/api/calendar/events/${scheduleId}`, {
+  return requestApi(`/api/calendar/events/${scheduleId}`, {
     method: 'PATCH',
     headers: {
       Accept: 'application/json',
