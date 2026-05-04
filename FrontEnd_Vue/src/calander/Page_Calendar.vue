@@ -25,16 +25,37 @@
         <ScheduleEventPopup v-model:visible="schedulePopupStuff.visible" :mode="schedulePopupStuff.mode"
             :schedule="schedulePopupStuff.schedule" :calendars="calendars" :selected-calendar-id="selectedCalendarId"
             :selected-date="selectedDate" @save="saveSchedulePopup" />
+        <Dialog v-model:visible="settingPopupStuff.visible" header="설정" modal class="calendar-setting-popup"
+            :style="{ width: 'min(420px, calc(100vw - 32px))' }">
+            <div class="schedule-popup-form">
+                <label class="schedule-popup-field">
+                    <span class="schedule-popup-label">시작 요일 설정</span>
+                    <Select v-model="calendarFirstDay" :options="calendarFirstDayOptions" option-label="name"
+                        option-value="id" />
+                </label>
+                <div class="schedule-popup-field">
+                    <span class="schedule-popup-label">내보내기</span>
+                    <Button label="달력 현재 상태 PNG로 내보내기" icon="pi pi-download"
+                        :loading="settingPopupStuff.isExporting" @click="exportCurrentCalendarToPng" />
+                </div>
+            </div>
+
+            <template #footer>
+                <Button label="닫기" severity="secondary" text @click="settingPopupStuff.visible = false" />
+            </template>
+        </Dialog>
     </section>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import type { DatesSetArg, EventClickArg, EventInput } from '@fullcalendar/core'
 import FullCalendar from '@fullcalendar/vue3'
 import dayGridPlugin from '@fullcalendar/daygrid'
 import koLocale from '@fullcalendar/core/locales/ko'
+import { toPng } from 'html-to-image'
 import Button from 'primevue/button'
+import Dialog from 'primevue/dialog'
 import Select from 'primevue/select'
 import CalendarSideBar from './CalendarSideBar.vue'
 import ScheduleEventPopup, {
@@ -63,6 +84,10 @@ const calendars = ref<CalendarListItem[]>([])
 const schedules = ref<CalendarScheduleItem[]>([])
 const isCalendarListLoading = ref(false)
 const calendarListErrorMessage = ref('')
+const settingPopupStuff = ref({
+    visible: false,
+    isExporting: false,
+})
 const schedulePopupStuff = ref<{
     visible: boolean
     mode: 'add' | 'edit'
@@ -77,12 +102,22 @@ const schedulePopupStuff = ref<{
 const calendarRef = ref<InstanceType<typeof FullCalendar> | null>(null)
 const currentCalendarTitle = ref('')
 const selectedCalendarView = ref('month')
+const calendarFirstDay = ref(0)
 const currentScheduleRange = ref<{ startDate: string; endDate: string } | null>(null)
 let scheduleRequestSequence = 0
 const calendarViewOptions = [
     { id: 'year', name: '년간' },
     { id: 'month', name: '월간' },
     { id: 'week', name: '주간' },
+]
+const calendarFirstDayOptions = [
+    { id: 1, name: '월' },
+    { id: 2, name: '화' },
+    { id: 3, name: '수' },
+    { id: 4, name: '목' },
+    { id: 5, name: '금' },
+    { id: 6, name: '토' },
+    { id: 0, name: '일' },
 ]
 
 const visibleCalendarIds = computed(() => {
@@ -110,6 +145,7 @@ const calendarOptions = computed(() => {
         height: '100%',
         expandRows: true,
         fixedWeekCount: false,
+        firstDay: calendarFirstDay.value,
         weekends: true,
         dayMaxEventRows: true,
         handleWindowResize: true,
@@ -152,6 +188,46 @@ function addDays(date: Date, days: number): Date {
     nextDate.setDate(nextDate.getDate() + days)
 
     return nextDate
+}
+
+/**
+ * Gets calendar export file name for the current calendar date.
+ *
+ * @returns Calendar export file name.
+ * @public
+ */
+function getCalendarExportFileName(): string {
+    const calendarDate = calendarRef.value?.getApi().getDate() ?? selectedDate.value ?? new Date()
+    const year = calendarDate.getFullYear()
+    const month = String(calendarDate.getMonth() + 1).padStart(2, '0')
+
+    return `calendar-${year}-${month}.png`
+}
+
+/**
+ * Downloads a data url as a file.
+ *
+ * @param dataUrl Download data url.
+ * @param fileName Download file name.
+ * @returns void
+ * @public
+ */
+function downloadDataUrl(dataUrl: string, fileName: string): void {
+    const downloadLink = document.createElement('a')
+
+    downloadLink.href = dataUrl
+    downloadLink.download = fileName
+    downloadLink.click()
+}
+
+/**
+ * Gets FullCalendar element for PNG export.
+ *
+ * @returns FullCalendar root element or null.
+ * @public
+ */
+function getCalendarExportElement(): HTMLElement | null {
+    return document.querySelector<HTMLElement>('.calendar-fullcalendar')
 }
 
 /**
@@ -582,6 +658,39 @@ function onClickSearch(): void {
  * @public
  */
 function onClickSetting(): void {
+    settingPopupStuff.value.visible = true
+}
+
+/**
+ * Exports the current FullCalendar area to PNG.
+ *
+ * @returns void
+ * @public
+ */
+function exportCurrentCalendarToPng(): void {
+    const calendarElement = getCalendarExportElement()
+
+    if (calendarElement == null) {
+        console.error('FullCalendar 영역을 찾을 수 없습니다.')
+        return
+    }
+
+    settingPopupStuff.value.isExporting = true
+
+    toPng(calendarElement, {
+        backgroundColor: '#ffffff',
+        cacheBust: true,
+        pixelRatio: 2,
+    })
+        .then((dataUrl) => {
+            downloadDataUrl(dataUrl, getCalendarExportFileName())
+        })
+        .catch((error) => {
+            console.error(error)
+        })
+        .finally(() => {
+            settingPopupStuff.value.isExporting = false
+        })
 }
 
 // Calendar list loading.
@@ -617,6 +726,29 @@ onMounted(() => {
 
 watch(selectedCalendarView, (nextCalendarView) => {
     calendarRef.value?.getApi().changeView(getCalendarFullCalendarView(nextCalendarView))
+})
+
+watch(calendarFirstDay, (nextFirstDay) => {
+    const calendarApi = calendarRef.value?.getApi()
+
+    if (calendarApi == null) {
+        return
+    }
+
+    const currentDate = calendarApi.getDate()
+    const currentViewType = calendarApi.view.type
+
+    calendarApi.setOption('firstDay', nextFirstDay)
+    calendarApi.changeView(currentViewType)
+    calendarApi.gotoDate(toDateKey(currentDate))
+
+    nextTick()
+        .then(() => {
+            calendarApi.updateSize()
+        })
+        .catch((error) => {
+            console.error(error)
+        })
 })
 </script>
 
