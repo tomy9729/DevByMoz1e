@@ -1,4 +1,4 @@
-import { Injectable, MethodNotAllowedException } from "@nestjs/common";
+import { BadRequestException, Injectable, MethodNotAllowedException } from "@nestjs/common";
 import { AdventureIslandPeriod, Prisma } from "@prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
 import {
@@ -12,6 +12,7 @@ import { LostArkClient } from "../lostark.client";
 type AdventureIslandRecord = {
     id: string;
     lostArkDate: string;
+    date?: Date | null;
     period: AdventureIslandPeriod;
     categoryName: string;
     contentsName: string;
@@ -28,22 +29,37 @@ type AdventureIslandRecord = {
     updatedAt: Date;
 };
 
+type StoredAdventureIslandRecord = {
+    id: string;
+    date: Date | null;
+    period: AdventureIslandPeriod;
+    categoryName: string;
+    contentsName: string;
+    sourceType: string;
+    sourceKey: string | null;
+    rewardName: string | null;
+    rewardIconUrl: string | null;
+    contentIconUrl: string | null;
+    contentImageUrl: string | null;
+    collectedAt: Date;
+    createdAt: Date;
+    updatedAt: Date;
+};
+
 @Injectable()
 export class AdventureIslandsService {
     private readonly adventureIslandSelect = {
         id: true,
-        lostArkDate: true,
+        date: true,
         period: true,
         categoryName: true,
         contentsName: true,
-        shortName: true,
+        sourceType: true,
+        sourceKey: true,
         rewardName: true,
-        rewardShortName: true,
         rewardIconUrl: true,
         contentIconUrl: true,
         contentImageUrl: true,
-        startTime: true,
-        rawData: true,
         collectedAt: true,
         createdAt: true,
         updatedAt: true,
@@ -80,13 +96,35 @@ export class AdventureIslandsService {
         return true;
     }
 
-    private buildLostArkDateFilter(query: QueryAdventureIslandsDto) {
+    private createDateOnly(value: string) {
+        const date = new Date(`${value}T00:00:00.000Z`);
+
+        if (Number.isNaN(date.getTime())) {
+            throw new BadRequestException("Invalid adventure island date.");
+        }
+
+        return date;
+    }
+
+    private formatDateText(date: Date | null) {
+        if (date == null) {
+            return "";
+        }
+
+        const year = date.getUTCFullYear();
+        const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+        const day = String(date.getUTCDate()).padStart(2, "0");
+
+        return `${year}-${month}-${day}`;
+    }
+
+    private buildDateFilter(query: QueryAdventureIslandsDto) {
         return query.date
-            ? query.date
+            ? this.createDateOnly(query.date)
             : query.fromDate || query.toDate
               ? {
-                    gte: query.fromDate,
-                    lte: query.toDate,
+                    gte: query.fromDate ? this.createDateOnly(query.fromDate) : undefined,
+                    lte: query.toDate ? this.createDateOnly(query.toDate) : undefined,
                 }
               : undefined;
     }
@@ -94,8 +132,40 @@ export class AdventureIslandsService {
     private buildAdventureIslandWhereInput(query: QueryAdventureIslandsDto) {
         return {
             period: query.period,
-            lostArkDate: this.buildLostArkDateFilter(query),
+            date: this.buildDateFilter(query),
         };
+    }
+
+    private mapStoredAdventureIsland(adventureIsland: StoredAdventureIslandRecord): AdventureIslandRecord {
+        const lostArkDate = this.formatDateText(adventureIsland.date);
+
+        return {
+            ...adventureIsland,
+            lostArkDate,
+            shortName: adventureIsland.contentsName,
+            rewardShortName: adventureIsland.rewardName,
+            startTime: this.createStartTime(lostArkDate, adventureIsland.period),
+            rawData: {
+                sourceType: adventureIsland.sourceType,
+                sourceKey: adventureIsland.sourceKey,
+            },
+        };
+    }
+
+    private createStartTime(dateText: string, period: AdventureIslandPeriod) {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(dateText)) {
+            return new Date(0);
+        }
+
+        const [year, month, day] = dateText.split("-").map(Number);
+        const hour =
+            period === AdventureIslandPeriod.weekendMorning
+                ? 9
+                : period === AdventureIslandPeriod.weekendAfternoon
+                  ? 19
+                  : 11;
+
+        return new Date(Date.UTC(year, month - 1, day, hour, 0, 0, 0));
     }
 
     private async fetchAdventureIslands(collectedAt = new Date()) {
@@ -125,8 +195,12 @@ export class AdventureIslandsService {
         return this.prismaService.adventureIsland.findMany({
             where: this.buildAdventureIslandWhereInput(query),
             select: this.adventureIslandSelect,
-            orderBy: [{ lostArkDate: "asc" }, { startTime: "asc" }, { contentsName: "asc" }],
-        });
+            orderBy: [{ date: "asc" }, { contentsName: "asc" }],
+        }).then((adventureIslands) =>
+            adventureIslands.map((adventureIsland) =>
+                this.mapStoredAdventureIsland(adventureIsland as StoredAdventureIslandRecord),
+            ),
+        );
     }
 
     async getAdventureIslandsFromDatabaseFirst(query: QueryAdventureIslandsDto) {
@@ -155,12 +229,14 @@ export class AdventureIslandsService {
                 period: query?.period,
             },
             select: this.adventureIslandSelect,
-            orderBy: [{ lostArkDate: "asc" }, { startTime: "asc" }, { contentsName: "asc" }],
+            orderBy: [{ date: "asc" }, { contentsName: "asc" }],
         });
 
-        return testAdventureIslands.filter((adventureIsland) =>
-            this.matchesAdventureIslandQuery(adventureIsland, query ?? {}),
-        );
+        return testAdventureIslands
+            .map((adventureIsland) =>
+                this.mapStoredAdventureIsland(adventureIsland as StoredAdventureIslandRecord),
+            )
+            .filter((adventureIsland) => this.matchesAdventureIslandQuery(adventureIsland, query ?? {}));
     }
 
     async deleteAdventureIslandTestNoteData() {

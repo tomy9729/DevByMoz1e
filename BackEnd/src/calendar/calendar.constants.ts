@@ -1,5 +1,3 @@
-export const ADVENTURE_ISLAND_CALENDAR_SOURCE_TYPE = "adventureIsland";
-
 export const ADVENTURE_ISLAND_CALENDAR_DEFINITIONS = {
     gold: {
         name: "모험섬 골드",
@@ -28,8 +26,6 @@ export const ADVENTURE_ISLAND_CALENDAR_DEFINITIONS = {
 } as const;
 
 export type AdventureIslandCalendarKey = keyof typeof ADVENTURE_ISLAND_CALENDAR_DEFINITIONS;
-
-export const LOSTARK_NOTICE_CALENDAR_SOURCE_TYPE = "lostarkNotice";
 
 export const LOSTARK_NOTICE_CALENDAR_DEFINITIONS = {
     notice: {

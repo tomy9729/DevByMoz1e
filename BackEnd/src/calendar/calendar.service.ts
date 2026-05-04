@@ -1,16 +1,15 @@
 import {
     BadRequestException,
     Injectable,
+    Logger,
     MethodNotAllowedException,
 } from "@nestjs/common";
 import { CalendarEventSourceType, CalendarSourceType } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import {
     ADVENTURE_ISLAND_CALENDAR_DEFINITIONS,
-    ADVENTURE_ISLAND_CALENDAR_SOURCE_TYPE,
     AdventureIslandCalendarKey,
     LOSTARK_NOTICE_CALENDAR_DEFINITIONS,
-    LOSTARK_NOTICE_CALENDAR_SOURCE_TYPE,
     LostArkNoticeCalendarKey,
 } from "./calendar.constants";
 import {
@@ -38,8 +37,6 @@ type CalendarEventRecord = {
     description: string | null;
     color: string | null;
     sourceType: CalendarEventSourceType;
-    externalSourceType: string | null;
-    externalSourceId: string | null;
     alarmEnabled: boolean;
     createdAt: Date;
     updatedAt: Date;
@@ -58,6 +55,7 @@ type CalendarEventRecord = {
 @Injectable()
 export class CalendarService {
     private readonly virtualCalendarCreatedAt = new Date(0);
+    private readonly logger = new Logger(CalendarService.name);
 
     constructor(private readonly prismaService: PrismaService) {}
 
@@ -140,6 +138,16 @@ export class CalendarService {
 
     private toDateText(date: Date) {
         return this.formatDateParts(date.getUTCFullYear(), date.getUTCMonth() + 1, date.getUTCDate());
+    }
+
+    private createDateOnly(value: string) {
+        const date = new Date(`${value}T00:00:00.000Z`);
+
+        if (Number.isNaN(date.getTime())) {
+            throw new BadRequestException("Invalid date range.");
+        }
+
+        return date;
     }
 
     private createKoreaTimestampDate(
@@ -284,8 +292,6 @@ export class CalendarService {
             description: event.description,
             color: event.color,
             sourceType: event.sourceType,
-            externalSourceType: event.externalSourceType,
-            externalSourceId: event.externalSourceId,
             alarmEnabled: event.alarmEnabled,
             createdAt: event.createdAt,
             updatedAt: event.updatedAt,
@@ -299,25 +305,37 @@ export class CalendarService {
         };
     }
 
+    private mapScheduleEvent(event: CalendarEventRecord) {
+        const responseEvent = this.mapCalendarEvent(event);
+
+        this.logger.debug(
+            [
+                "Mapped schedule times from CalendarEventTime.",
+                `eventId=${event.id}`,
+                `calendarEventTimeCount=${event.times.length}`,
+                `responseTimesCount=${responseEvent.times.length}`,
+            ].join(" "),
+        );
+
+        return responseEvent;
+    }
+
     private buildAdventureIslandEvent(
         adventureIsland: {
             id: string;
-            lostArkDate: string;
+            date: Date | null;
             period: string;
             contentsName: string;
-            shortName: string;
             rewardName: string | null;
-            rewardShortName: string | null;
             rewardIconUrl: string | null;
             contentIconUrl: string | null;
             contentImageUrl: string | null;
-            startTime: Date;
             createdAt: Date;
             updatedAt: Date;
         },
         calendarMap: Map<string, CalendarRecord>,
     ) {
-        const rewardName = adventureIsland.rewardShortName ?? adventureIsland.rewardName ?? "";
+        const rewardName = adventureIsland.rewardName ?? "";
         let calendarKey: AdventureIslandCalendarKey;
 
         try {
@@ -340,8 +358,14 @@ export class CalendarService {
             return null;
         }
 
+        const startTime = this.createAdventureIslandStartTime(adventureIsland.date, adventureIsland.period);
+
+        if (startTime == null) {
+            return null;
+        }
+
         const { startDateTime, endDateTime } = this.createAdventureIslandEventDateRange(
-            adventureIsland.startTime,
+            startTime,
         );
         const periodLabel = this.getPeriodLabel(adventureIsland.period);
         const titlePrefix = periodLabel ? `[${periodLabel}] ` : "";
@@ -354,8 +378,6 @@ export class CalendarService {
             description,
             color: null,
             sourceType: CalendarEventSourceType.lostark,
-            externalSourceType: ADVENTURE_ISLAND_CALENDAR_SOURCE_TYPE,
-            externalSourceId: adventureIsland.id,
             alarmEnabled: false,
             createdAt: adventureIsland.createdAt,
             updatedAt: adventureIsland.updatedAt,
@@ -372,6 +394,21 @@ export class CalendarService {
                 },
             ],
         } satisfies CalendarEventRecord;
+    }
+
+    private createAdventureIslandStartTime(date: Date | null, period: string) {
+        if (date == null || Number.isNaN(date.getTime())) {
+            return null;
+        }
+
+        const hour = period === "weekendMorning" ? 9 : period === "weekendAfternoon" ? 19 : 11;
+
+        return this.createKoreaTimestampDate(
+            date.getUTCFullYear(),
+            date.getUTCMonth() + 1,
+            date.getUTCDate(),
+            hour,
+        );
     }
 
     private buildLostArkNoticeEvent(
@@ -409,8 +446,6 @@ export class CalendarService {
             description: notice.title,
             color: null,
             sourceType: CalendarEventSourceType.lostark,
-            externalSourceType: LOSTARK_NOTICE_CALENDAR_SOURCE_TYPE,
-            externalSourceId: notice.id,
             alarmEnabled: false,
             createdAt: notice.createdAt,
             updatedAt: notice.updatedAt,
@@ -462,24 +497,15 @@ export class CalendarService {
             },
             orderBy: [{ calendar: { sortOrder: "asc" } }, { title: "asc" }],
         })) as unknown as CalendarEventRecord[];
-        const eventKeySet = new Set(
-            events
-                .map((event) =>
-                    event.externalSourceType && event.externalSourceId
-                        ? `${event.sourceType}:${event.externalSourceType}:${event.externalSourceId}`
-                        : null,
-                )
-                .filter((value): value is string => value != null),
-        );
 
         const adventureIslands = await this.prismaService.adventureIsland.findMany({
             where: {
-                lostArkDate: {
-                    gte: this.toDateText(fromDate),
-                    lte: this.toDateText(toDate),
+                date: {
+                    gte: this.createDateOnly(this.toDateText(fromDate)),
+                    lte: this.createDateOnly(this.toDateText(toDate)),
                 },
             },
-            orderBy: [{ lostArkDate: "asc" }, { startTime: "asc" }, { contentsName: "asc" }],
+            orderBy: [{ date: "asc" }, { contentsName: "asc" }],
         });
         const notices = await this.prismaService.lostArkNotice.findMany({
             where: {
@@ -498,12 +524,6 @@ export class CalendarService {
                 continue;
             }
 
-            const eventKey = `${generatedEvent.sourceType}:${generatedEvent.externalSourceType}:${generatedEvent.externalSourceId}`;
-
-            if (eventKeySet.has(eventKey)) {
-                continue;
-            }
-
             events.push(generatedEvent);
         }
 
@@ -514,17 +534,67 @@ export class CalendarService {
                 continue;
             }
 
-            const eventKey = `${generatedEvent.sourceType}:${generatedEvent.externalSourceType}:${generatedEvent.externalSourceId}`;
-
-            if (eventKeySet.has(eventKey)) {
-                continue;
-            }
-
             events.push(generatedEvent);
         }
 
         return events
             .map((event) => this.mapCalendarEvent(event))
+            .sort((leftEvent, rightEvent) => {
+                const leftStartTime = leftEvent.times[0]?.startDateTime ?? "";
+                const rightStartTime = rightEvent.times[0]?.startDateTime ?? "";
+
+                if (leftStartTime !== rightStartTime) {
+                    return leftStartTime.localeCompare(rightStartTime);
+                }
+
+                return leftEvent.title.localeCompare(rightEvent.title);
+            });
+    }
+
+    private async getScheduleEventsByRange(startDateText: string, endDateText: string) {
+        const startDate = this.parseQueryDate(startDateText);
+        const endDate = this.parseQueryDate(endDateText, true);
+
+        if (startDate > endDate) {
+            throw new BadRequestException("Invalid date range.");
+        }
+
+        const events = (await this.prismaService.calendarEvent.findMany({
+            where: {
+                OR: [
+                    {
+                        times: {
+                            some: {
+                                startDateTime: {
+                                    lte: endDate,
+                                },
+                                endDateTime: {
+                                    gte: startDate,
+                                },
+                            },
+                        },
+                    },
+                    {
+                        times: {
+                            none: {},
+                        },
+                    },
+                ],
+                calendar: {
+                    isVisible: true,
+                },
+            },
+            include: {
+                calendar: true,
+                times: {
+                    orderBy: [{ sortOrder: "asc" }, { startDateTime: "asc" }],
+                },
+            },
+            orderBy: [{ calendar: { sortOrder: "asc" } }, { title: "asc" }],
+        })) as unknown as CalendarEventRecord[];
+
+        return events
+            .map((event) => this.mapScheduleEvent(event))
             .sort((leftEvent, rightEvent) => {
                 const leftStartTime = leftEvent.times[0]?.startDateTime ?? "";
                 const rightStartTime = rightEvent.times[0]?.startDateTime ?? "";
@@ -608,8 +678,14 @@ export class CalendarService {
         return this.getCalendarEventsByRange(query.from, query.to);
     }
 
+    /**
+     * @public
+     * @param startDate Schedule range start.
+     * @param endDate Schedule range end.
+     * @returns Schedules whose times are based only on CalendarEventTime rows.
+     */
     async getSchedules(startDate: string, endDate: string) {
-        return this.getCalendarEventsByRange(startDate, endDate);
+        return this.getScheduleEventsByRange(startDate, endDate);
     }
 
     /**
