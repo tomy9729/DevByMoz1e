@@ -1,4 +1,4 @@
-import { Controller, Get, Header, Query } from "@nestjs/common";
+import { Controller, Get, Header, MethodNotAllowedException, Query } from "@nestjs/common";
 import { BotAlarmService } from "./bot-alarm.service";
 
 @Controller("api/bot/alarms")
@@ -16,7 +16,7 @@ export class BotAlarmController {
         @Query("status") status: "sent" | "failed",
         @Query("errorReason") errorReason?: string,
     ) {
-        return this.botAlarmService.ackDelivery(deliveryId, status, errorReason);
+        throw new MethodNotAllowedException("Bot alarm delivery updates are disabled.");
     }
 
     @Get("status")
@@ -28,25 +28,25 @@ export class BotAlarmController {
     @Get("on")
     @Header("Content-Type", "text/plain; charset=utf-8")
     turnOn() {
-        return this.botAlarmService.setGlobalEnabled(true);
+        throw new MethodNotAllowedException("Bot alarm setting updates are disabled.");
     }
 
     @Get("off")
     @Header("Content-Type", "text/plain; charset=utf-8")
     turnOff() {
-        return this.botAlarmService.setGlobalEnabled(false);
+        throw new MethodNotAllowedException("Bot alarm setting updates are disabled.");
     }
 
     @Get("targets/register")
     @Header("Content-Type", "text/plain; charset=utf-8")
     registerTarget(@Query("room") room?: string, @Query("packageName") packageName?: string) {
-        return this.botAlarmService.registerTarget(room, packageName);
+        throw new MethodNotAllowedException("Bot alarm target updates are disabled.");
     }
 
     @Get("targets/unregister")
     @Header("Content-Type", "text/plain; charset=utf-8")
     unregisterTarget(@Query("room") room?: string) {
-        return this.botAlarmService.unregisterTarget(room);
+        throw new MethodNotAllowedException("Bot alarm target updates are disabled.");
     }
 
     @Get("test")

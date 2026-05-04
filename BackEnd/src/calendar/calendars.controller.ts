@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch } from "@nestjs/common";
+import { Body, Controller, Get, MethodNotAllowedException, Param, Patch } from "@nestjs/common";
 import { CalendarService } from "./calendar.service";
 import { UpdateCalendarColorDto, UpdateCalendarVisibleDto } from "./dto/update-calendar.dto";
 
@@ -23,7 +23,7 @@ export class CalendarsController {
      */
     @Patch(":id/visible")
     updateCalendarVisible(@Param("id") calendarId: string, @Body() dto: UpdateCalendarVisibleDto) {
-        return this.calendarService.updateCalendarVisible(calendarId, dto);
+        throw new MethodNotAllowedException("Calendar updates are disabled.");
     }
 
     /**
@@ -34,6 +34,6 @@ export class CalendarsController {
      */
     @Patch(":id/color")
     updateCalendarColor(@Param("id") calendarId: string, @Body() dto: UpdateCalendarColorDto) {
-        return this.calendarService.updateCalendarColor(calendarId, dto);
+        throw new MethodNotAllowedException("Calendar updates are disabled.");
     }
 }

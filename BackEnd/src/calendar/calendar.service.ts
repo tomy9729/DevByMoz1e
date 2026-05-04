@@ -1,4 +1,8 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
+import {
+    BadRequestException,
+    Injectable,
+    MethodNotAllowedException,
+} from "@nestjs/common";
 import { CalendarEventSourceType, CalendarSourceType, Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import {
@@ -17,9 +21,120 @@ import {
 } from "./dto/calendar-event.dto";
 import { UpdateCalendarColorDto, UpdateCalendarVisibleDto } from "./dto/update-calendar.dto";
 
+type CalendarRecord = {
+    id: string;
+    name: string;
+    defaultColor: string;
+    iconUrl: string | null;
+    isVisible: boolean;
+    sortOrder: number;
+    sourceType: CalendarSourceType;
+    createdAt: Date;
+    updatedAt: Date;
+};
+
+type CalendarEventRecord = {
+    id: string;
+    title: string;
+    description: string | null;
+    color: string | null;
+    sourceType: CalendarEventSourceType;
+    externalSourceType: string | null;
+    externalSourceId: string | null;
+    alarmEnabled: boolean;
+    createdAt: Date;
+    updatedAt: Date;
+    calendar: CalendarRecord;
+    times: Array<{
+        id: string;
+        eventId: string;
+        startDateTime: Date;
+        endDateTime: Date;
+        allDay: boolean;
+        sortOrder: number;
+        createdAt: Date;
+        updatedAt: Date;
+    }>;
+};
+
 @Injectable()
 export class CalendarService {
+    private readonly virtualCalendarCreatedAt = new Date(0);
+
     constructor(private readonly prismaService: PrismaService) {}
+
+    private buildVirtualCalendar(
+        sourceType: CalendarSourceType,
+        name: string,
+        defaultColor: string,
+        iconUrl: string | null,
+        sortOrder: number,
+    ): CalendarRecord {
+        return {
+            id: `virtual:${sourceType}:${name}`,
+            name,
+            defaultColor,
+            iconUrl,
+            isVisible: true,
+            sortOrder,
+            sourceType,
+            createdAt: this.virtualCalendarCreatedAt,
+            updatedAt: this.virtualCalendarCreatedAt,
+        };
+    }
+
+    private getVirtualCalendars() {
+        return [
+            ...Object.values(ADVENTURE_ISLAND_CALENDAR_DEFINITIONS).map((definition) =>
+                this.buildVirtualCalendar(
+                    CalendarSourceType.lostark,
+                    definition.name,
+                    definition.defaultColor,
+                    definition.iconUrl,
+                    definition.sortOrder,
+                ),
+            ),
+            ...Object.values(LOSTARK_NOTICE_CALENDAR_DEFINITIONS).map((definition) =>
+                this.buildVirtualCalendar(
+                    CalendarSourceType.lostark,
+                    definition.name,
+                    definition.defaultColor,
+                    null,
+                    definition.sortOrder,
+                ),
+            ),
+        ];
+    }
+
+    private async getCalendarLookup() {
+        const calendars = (await this.prismaService.calendar.findMany({
+            orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
+        })) as CalendarRecord[];
+        const calendarMap = new Map<string, CalendarRecord>();
+
+        for (const calendar of calendars) {
+            calendarMap.set(`${calendar.sourceType}:${calendar.name}`, calendar);
+        }
+
+        return {
+            calendars,
+            calendarMap,
+        };
+    }
+
+    private resolveCalendar(
+        calendarMap: Map<string, CalendarRecord>,
+        sourceType: CalendarSourceType,
+        name: string,
+        defaultColor: string,
+        iconUrl: string | null,
+        sortOrder: number,
+    ) {
+        return (
+            calendarMap.get(`${sourceType}:${name}`) ??
+            this.buildVirtualCalendar(sourceType, name, defaultColor, iconUrl, sortOrder)
+        );
+    }
 
     private formatDateParts(year: number, month: number, day: number) {
         return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
@@ -61,6 +176,10 @@ export class CalendarService {
         return date;
     }
 
+    private normalizeText(value = "") {
+        return value.replace(/\s+/g, "").toLowerCase();
+    }
+
     private getPeriodLabel(period: string) {
         if (period === "weekendMorning") {
             return "오전";
@@ -73,89 +192,26 @@ export class CalendarService {
         return "";
     }
 
-    private normalizeText(value = "") {
-        return value.replace(/\s+/g, "").toLowerCase();
-    }
-
-    private async renameLegacyCalendar(oldName: string, newName: string) {
-        const legacyCalendar = await this.prismaService.calendar.findUnique({
-            where: {
-                sourceType_name: {
-                    sourceType: CalendarSourceType.lostark,
-                    name: oldName,
-                },
-            },
-        });
-
-        if (legacyCalendar == null) {
-            return;
-        }
-
-        const currentCalendar = await this.prismaService.calendar.findUnique({
-            where: {
-                sourceType_name: {
-                    sourceType: CalendarSourceType.lostark,
-                    name: newName,
-                },
-            },
-        });
-
-        if (currentCalendar != null) {
-            await this.prismaService.calendar.delete({
-                where: {
-                    id: legacyCalendar.id,
-                },
-            });
-
-            return;
-        }
-
-        await this.prismaService.calendar.update({
-            where: {
-                id: legacyCalendar.id,
-            },
-            data: {
-                name: newName,
-            },
-        });
-    }
-
-    private async cleanupLegacyCalendars() {
-        await this.prismaService.calendar.deleteMany({
-            where: {
-                sourceType: CalendarSourceType.lostark,
-                name: "모험섬 기타",
-            },
-        });
-
-        await this.renameLegacyCalendar("로스트아크 공지사항", "공지사항");
-        await this.renameLegacyCalendar("로스트아크 패치노트", "패치노트");
-    }
-
     private getAdventureIslandCalendarKey(rewardName = ""): AdventureIslandCalendarKey {
         const normalizedRewardName = this.normalizeText(rewardName);
 
-        if (normalizedRewardName.includes("골드") || normalizedRewardName.includes("怨⑤뱶")) {
+        if (normalizedRewardName.includes("골드") || normalizedRewardName.includes("gold")) {
             return "gold";
         }
 
-        if (
-            normalizedRewardName.includes("카드") ||
-            normalizedRewardName.includes("移대뱶") ||
-            normalizedRewardName.includes("card")
-        ) {
+        if (normalizedRewardName.includes("카드") || normalizedRewardName.includes("card")) {
             return "card";
         }
 
         if (
             normalizedRewardName.includes("주화") ||
-            normalizedRewardName.includes("二쇳솕") ||
-            normalizedRewardName.includes("?댁＜")
+            normalizedRewardName.includes("ocean") ||
+            normalizedRewardName.includes("coin")
         ) {
             return "oceanCoin";
         }
 
-        if (normalizedRewardName.includes("실링") || normalizedRewardName.includes("?ㅻ쭅")) {
+        if (normalizedRewardName.includes("실링") || normalizedRewardName.includes("shilling")) {
             return "shilling";
         }
 
@@ -165,77 +221,11 @@ export class CalendarService {
     private getLostArkNoticeCalendarKey(noticeType = ""): LostArkNoticeCalendarKey {
         const normalizedType = this.normalizeText(noticeType);
 
-        if (normalizedType.includes("패치") || normalizedType.includes("?⑥튂")) {
+        if (normalizedType.includes("패치") || normalizedType.includes("patch")) {
             return "patchNote";
         }
 
         return "notice";
-    }
-
-    private async getOrCreateAdventureIslandCalendar(calendarKey: AdventureIslandCalendarKey) {
-        const calendarDefinition = ADVENTURE_ISLAND_CALENDAR_DEFINITIONS[calendarKey];
-
-        return this.prismaService.calendar.upsert({
-            where: {
-                sourceType_name: {
-                    sourceType: CalendarSourceType.lostark,
-                    name: calendarDefinition.name,
-                },
-            },
-            create: {
-                name: calendarDefinition.name,
-                defaultColor: calendarDefinition.defaultColor,
-                iconUrl: calendarDefinition.iconUrl,
-                isVisible: true,
-                sortOrder: calendarDefinition.sortOrder,
-                sourceType: CalendarSourceType.lostark,
-            },
-            update: {
-                iconUrl: calendarDefinition.iconUrl,
-                sortOrder: calendarDefinition.sortOrder,
-                sourceType: CalendarSourceType.lostark,
-            },
-        });
-    }
-
-    private async getOrCreateLostArkNoticeCalendar(calendarKey: LostArkNoticeCalendarKey) {
-        const calendarDefinition = LOSTARK_NOTICE_CALENDAR_DEFINITIONS[calendarKey];
-
-        return this.prismaService.calendar.upsert({
-            where: {
-                sourceType_name: {
-                    sourceType: CalendarSourceType.lostark,
-                    name: calendarDefinition.name,
-                },
-            },
-            create: {
-                name: calendarDefinition.name,
-                defaultColor: calendarDefinition.defaultColor,
-                isVisible: true,
-                sortOrder: calendarDefinition.sortOrder,
-                sourceType: CalendarSourceType.lostark,
-            },
-            update: {
-                sortOrder: calendarDefinition.sortOrder,
-                sourceType: CalendarSourceType.lostark,
-            },
-        });
-    }
-
-    private async ensureDefaultCalendars() {
-        await this.cleanupLegacyCalendars();
-
-        for (const calendarKey of Object.keys(
-            ADVENTURE_ISLAND_CALENDAR_DEFINITIONS,
-        ) as AdventureIslandCalendarKey[]) {
-            await this.getOrCreateAdventureIslandCalendar(calendarKey);
-        }
-
-        for (const calendarKey of Object.keys(
-            LOSTARK_NOTICE_CALENDAR_DEFINITIONS,
-        ) as LostArkNoticeCalendarKey[]) {
-            await this.getOrCreateLostArkNoticeCalendar(calendarKey);
-        }
     }
 
     private createAdventureIslandEventDateRange(startTime: Date) {
@@ -245,44 +235,10 @@ export class CalendarService {
             throw new BadRequestException("Invalid adventure island start time.");
         }
 
-        const endDateTime = new Date(startDateTime);
-
         return {
             startDateTime,
-            endDateTime,
+            endDateTime: new Date(startDateTime),
         };
-    }
-
-    private assertEventTimes(times: CalendarEventTimeDto[] | undefined) {
-        if (!Array.isArray(times) || times.length === 0) {
-            throw new BadRequestException("At least one schedule time is required.");
-        }
-
-        for (const time of times) {
-            if (time.startDateTime > time.endDateTime) {
-                throw new BadRequestException("Schedule start time must be before end time.");
-            }
-        }
-    }
-
-    private createEventTimeCreateManyInput(times: CalendarEventTimeDto[]) {
-        return times.map((time, timeIndex) => ({
-            startDateTime: time.startDateTime,
-            endDateTime: time.endDateTime,
-            allDay: time.allDay ?? false,
-            sortOrder: (timeIndex + 1) * 100,
-        }));
-    }
-
-    private formatTimestampText(date: Date) {
-        const year = date.getUTCFullYear();
-        const month = String(date.getUTCMonth() + 1).padStart(2, "0");
-        const day = String(date.getUTCDate()).padStart(2, "0");
-        const hour = String(date.getUTCHours()).padStart(2, "0");
-        const minute = String(date.getUTCMinutes()).padStart(2, "0");
-        const second = String(date.getUTCSeconds()).padStart(2, "0");
-
-        return `${year}-${month}-${day}T${hour}:${minute}:${second}`;
     }
 
     private createAllDayEventDateRange(date: Date) {
@@ -298,36 +254,18 @@ export class CalendarService {
         };
     }
 
-    private mapCalendarEvent(event: {
-        id: string;
-        title: string;
-        description: string | null;
-        color: string | null;
-        sourceType: CalendarEventSourceType;
-        externalSourceType: string | null;
-        externalSourceId: string | null;
-        alarmEnabled: boolean;
-        createdAt: Date;
-        updatedAt: Date;
-        times: {
-            id: string;
-            eventId: string;
-            startDateTime: Date;
-            endDateTime: Date;
-            allDay: boolean;
-            sortOrder: number;
-            createdAt: Date;
-            updatedAt: Date;
-        }[];
-        calendar: {
-            id: string;
-            name: string;
-            defaultColor: string;
-            isVisible: boolean;
-            sortOrder: number;
-            sourceType: CalendarSourceType;
-        };
-    }) {
+    private formatTimestampText(date: Date) {
+        const year = date.getUTCFullYear();
+        const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+        const day = String(date.getUTCDate()).padStart(2, "0");
+        const hour = String(date.getUTCHours()).padStart(2, "0");
+        const minute = String(date.getUTCMinutes()).padStart(2, "0");
+        const second = String(date.getUTCSeconds()).padStart(2, "0");
+
+        return `${year}-${month}-${day}T${hour}:${minute}:${second}`;
+    }
+
+    private mapCalendarEvent(event: CalendarEventRecord) {
         const orderedTimes = [...event.times].sort((leftTime, rightTime) => {
             if (leftTime.sortOrder !== rightTime.sortOrder) {
                 return leftTime.sortOrder - rightTime.sortOrder;
@@ -357,267 +295,136 @@ export class CalendarService {
         };
     }
 
-    private async assertUserCalendar(calendarId: string) {
-        const calendar = await this.prismaService.calendar.findUnique({
-            where: {
-                id: calendarId,
-            },
-        });
+    private buildAdventureIslandEvent(
+        adventureIsland: {
+            id: string;
+            lostArkDate: string;
+            period: string;
+            contentsName: string;
+            shortName: string;
+            rewardName: string | null;
+            rewardShortName: string | null;
+            rewardIconUrl: string | null;
+            contentIconUrl: string | null;
+            contentImageUrl: string | null;
+            startTime: Date;
+            createdAt: Date;
+            updatedAt: Date;
+        },
+        calendarMap: Map<string, CalendarRecord>,
+    ) {
+        const rewardName = adventureIsland.rewardShortName ?? adventureIsland.rewardName ?? "";
+        let calendarKey: AdventureIslandCalendarKey;
 
-        if (calendar == null) {
-            throw new NotFoundException("Calendar was not found.");
+        try {
+            calendarKey = this.getAdventureIslandCalendarKey(rewardName);
+        } catch {
+            return null;
         }
 
-        if (calendar.sourceType !== CalendarSourceType.user) {
-            throw new ForbiddenException("User events can only use user calendars.");
-        }
-    }
+        const definition = ADVENTURE_ISLAND_CALENDAR_DEFINITIONS[calendarKey];
+        const calendar = this.resolveCalendar(
+            calendarMap,
+            CalendarSourceType.lostark,
+            definition.name,
+            definition.defaultColor,
+            definition.iconUrl,
+            definition.sortOrder,
+        );
 
-    /**
-     * @public
-     * @returns Calendar list ordered by display order and name.
-     */
-    async getCalendars() {
-        await this.ensureDefaultCalendars();
-
-        return this.prismaService.calendar.findMany({
-            orderBy: [{ sortOrder: "asc" }, { name: "asc" }],
-        });
-    }
-
-    /**
-     * @public
-     * @param calendarId Calendar id to update.
-     * @param dto Visibility update payload.
-     * @returns Updated calendar.
-     */
-    updateCalendarVisible(calendarId: string, dto: UpdateCalendarVisibleDto) {
-        return this.prismaService.calendar.update({
-            where: {
-                id: calendarId,
-            },
-            data: {
-                isVisible: dto.isVisible,
-            },
-        });
-    }
-
-    /**
-     * @public
-     * @param calendarId Calendar id to update.
-     * @param dto Default color update payload.
-     * @returns Updated calendar.
-     */
-    updateCalendarColor(calendarId: string, dto: UpdateCalendarColorDto) {
-        return this.prismaService.calendar.update({
-            where: {
-                id: calendarId,
-            },
-            data: {
-                defaultColor: dto.defaultColor,
-            },
-        });
-    }
-
-    /**
-     * @public
-     * @param fromDate Period start.
-     * @param toDate Period end.
-     * @returns Synced Lost Ark adventure island event count.
-     */
-    async syncAdventureIslandEvents(fromDate: Date, toDate: Date) {
-        const adventureIslands = await this.prismaService.adventureIsland.findMany({
-            where: {
-                lostArkDate: {
-                    gte: this.toDateText(fromDate),
-                    lte: this.toDateText(toDate),
-                },
-            },
-            orderBy: [{ lostArkDate: "asc" }, { startTime: "asc" }, { contentsName: "asc" }],
-        });
-        let syncedCount = 0;
-
-        for (const adventureIsland of adventureIslands) {
-            const rewardName = adventureIsland.rewardShortName ?? adventureIsland.rewardName ?? "";
-            let calendarKey: AdventureIslandCalendarKey;
-
-            try {
-                calendarKey = this.getAdventureIslandCalendarKey(rewardName);
-            } catch {
-                continue;
-            }
-
-            const calendar = await this.getOrCreateAdventureIslandCalendar(calendarKey);
-            const { startDateTime, endDateTime } = this.createAdventureIslandEventDateRange(
-                adventureIsland.startTime,
-            );
-            const periodLabel = this.getPeriodLabel(adventureIsland.period);
-            const titlePrefix = periodLabel ? `[${periodLabel}] ` : "";
-            const title = `${titlePrefix}${adventureIsland.contentsName}`;
-            const description = [adventureIsland.contentsName, rewardName].filter(Boolean).join(" / ");
-
-            await this.prismaService.calendarEvent.upsert({
-                where: {
-                    sourceType_externalSourceType_externalSourceId: {
-                        sourceType: CalendarEventSourceType.lostark,
-                        externalSourceType: ADVENTURE_ISLAND_CALENDAR_SOURCE_TYPE,
-                        externalSourceId: adventureIsland.id,
-                    },
-                },
-                create: {
-                    calendarId: calendar.id,
-                    title,
-                    description,
-                    color: null,
-                    sourceType: CalendarEventSourceType.lostark,
-                    externalSourceType: ADVENTURE_ISLAND_CALENDAR_SOURCE_TYPE,
-                    externalSourceId: adventureIsland.id,
-                    alarmEnabled: false,
-                    times: {
-                        create: [
-                            {
-                                startDateTime,
-                                endDateTime,
-                                allDay: false,
-                                sortOrder: 100,
-                            },
-                        ],
-                    },
-                    rawData: {
-                        adventureIslandId: adventureIsland.id,
-                        lostArkDate: adventureIsland.lostArkDate,
-                        period: adventureIsland.period,
-                        contentsName: adventureIsland.contentsName,
-                        rewardName,
-                        rewardIconUrl: adventureIsland.rewardIconUrl,
-                        contentIconUrl:
-                            adventureIsland.contentImageUrl ?? adventureIsland.contentIconUrl,
-                    } as Prisma.InputJsonValue,
-                },
-                update: {
-                    calendarId: calendar.id,
-                    title,
-                    description,
-                    externalSourceType: ADVENTURE_ISLAND_CALENDAR_SOURCE_TYPE,
-                    externalSourceId: adventureIsland.id,
-                    times: {
-                        deleteMany: {},
-                        create: [
-                            {
-                                startDateTime,
-                                endDateTime,
-                                allDay: false,
-                                sortOrder: 100,
-                            },
-                        ],
-                    },
-                    rawData: {
-                        adventureIslandId: adventureIsland.id,
-                        lostArkDate: adventureIsland.lostArkDate,
-                        period: adventureIsland.period,
-                        contentsName: adventureIsland.contentsName,
-                        rewardName,
-                        rewardIconUrl: adventureIsland.rewardIconUrl,
-                        contentIconUrl:
-                            adventureIsland.contentImageUrl ?? adventureIsland.contentIconUrl,
-                    } as Prisma.InputJsonValue,
-                },
-            });
-
-            syncedCount += 1;
+        if (!calendar.isVisible) {
+            return null;
         }
 
-        return syncedCount;
+        const { startDateTime, endDateTime } = this.createAdventureIslandEventDateRange(
+            adventureIsland.startTime,
+        );
+        const periodLabel = this.getPeriodLabel(adventureIsland.period);
+        const titlePrefix = periodLabel ? `[${periodLabel}] ` : "";
+        const title = `${titlePrefix}${adventureIsland.contentsName}`;
+        const description = [adventureIsland.contentsName, rewardName].filter(Boolean).join(" / ");
+
+        return {
+            id: `virtual:${adventureIsland.id}`,
+            title,
+            description,
+            color: null,
+            sourceType: CalendarEventSourceType.lostark,
+            externalSourceType: ADVENTURE_ISLAND_CALENDAR_SOURCE_TYPE,
+            externalSourceId: adventureIsland.id,
+            alarmEnabled: false,
+            createdAt: adventureIsland.createdAt,
+            updatedAt: adventureIsland.updatedAt,
+            calendar,
+            times: [
+                {
+                    id: `virtual:${adventureIsland.id}:time`,
+                    eventId: `virtual:${adventureIsland.id}`,
+                    startDateTime,
+                    endDateTime,
+                    allDay: false,
+                    sortOrder: 100,
+                    createdAt: adventureIsland.createdAt,
+                    updatedAt: adventureIsland.updatedAt,
+                },
+            ],
+        } satisfies CalendarEventRecord;
     }
 
-    /**
-     * @public
-     * @param fromDate Period start.
-     * @param toDate Period end.
-     * @returns Synced Lost Ark notice event count.
-     */
-    async syncLostArkNoticeEvents(fromDate: Date, toDate: Date) {
-        const notices = await this.prismaService.lostArkNotice.findMany({
-            where: {
-                noticeDate: {
-                    gte: fromDate,
-                    lte: toDate,
-                },
-            },
-            orderBy: [{ noticeDate: "asc" }, { title: "asc" }],
-        });
-        let syncedCount = 0;
+    private buildLostArkNoticeEvent(
+        notice: {
+            id: string;
+            title: string;
+            noticeDate: Date;
+            type: string;
+            createdAt: Date;
+            updatedAt: Date;
+        },
+        calendarMap: Map<string, CalendarRecord>,
+    ) {
+        const calendarKey = this.getLostArkNoticeCalendarKey(notice.type);
+        const definition = LOSTARK_NOTICE_CALENDAR_DEFINITIONS[calendarKey];
+        const calendar = this.resolveCalendar(
+            calendarMap,
+            CalendarSourceType.lostark,
+            definition.name,
+            definition.defaultColor,
+            null,
+            definition.sortOrder,
+        );
 
-        for (const notice of notices) {
-            const calendarKey = this.getLostArkNoticeCalendarKey(notice.type);
-            const calendar = await this.getOrCreateLostArkNoticeCalendar(calendarKey);
-            const { startDateTime, endDateTime } = this.createAllDayEventDateRange(
-                notice.noticeDate,
-            );
-            const title = notice.type ? `[${notice.type}] ${notice.title}` : notice.title;
-
-            await this.prismaService.calendarEvent.upsert({
-                where: {
-                    sourceType_externalSourceType_externalSourceId: {
-                        sourceType: CalendarEventSourceType.lostark,
-                        externalSourceType: LOSTARK_NOTICE_CALENDAR_SOURCE_TYPE,
-                        externalSourceId: notice.id,
-                    },
-                },
-                create: {
-                    calendarId: calendar.id,
-                    title,
-                    description: notice.title,
-                    color: null,
-                    sourceType: CalendarEventSourceType.lostark,
-                    externalSourceType: LOSTARK_NOTICE_CALENDAR_SOURCE_TYPE,
-                    externalSourceId: notice.id,
-                    alarmEnabled: false,
-                    times: {
-                        create: [
-                            {
-                                startDateTime,
-                                endDateTime,
-                                allDay: true,
-                                sortOrder: 100,
-                            },
-                        ],
-                    },
-                    rawData: {
-                        noticeId: notice.id,
-                        type: notice.type,
-                        link: notice.link,
-                    } as Prisma.InputJsonValue,
-                },
-                update: {
-                    calendarId: calendar.id,
-                    title,
-                    description: notice.title,
-                    externalSourceType: LOSTARK_NOTICE_CALENDAR_SOURCE_TYPE,
-                    externalSourceId: notice.id,
-                    times: {
-                        deleteMany: {},
-                        create: [
-                            {
-                                startDateTime,
-                                endDateTime,
-                                allDay: true,
-                                sortOrder: 100,
-                            },
-                        ],
-                    },
-                    rawData: {
-                        noticeId: notice.id,
-                        type: notice.type,
-                        link: notice.link,
-                    } as Prisma.InputJsonValue,
-                },
-            });
-
-            syncedCount += 1;
+        if (!calendar.isVisible) {
+            return null;
         }
 
-        return syncedCount;
+        const { startDateTime, endDateTime } = this.createAllDayEventDateRange(notice.noticeDate);
+        const title = notice.type ? `[${notice.type}] ${notice.title}` : notice.title;
+
+        return {
+            id: `virtual:${notice.id}`,
+            title,
+            description: notice.title,
+            color: null,
+            sourceType: CalendarEventSourceType.lostark,
+            externalSourceType: LOSTARK_NOTICE_CALENDAR_SOURCE_TYPE,
+            externalSourceId: notice.id,
+            alarmEnabled: false,
+            createdAt: notice.createdAt,
+            updatedAt: notice.updatedAt,
+            calendar,
+            times: [
+                {
+                    id: `virtual:${notice.id}:time`,
+                    eventId: `virtual:${notice.id}`,
+                    startDateTime,
+                    endDateTime,
+                    allDay: true,
+                    sortOrder: 100,
+                    createdAt: notice.createdAt,
+                    updatedAt: notice.updatedAt,
+                },
+            ],
+        } satisfies CalendarEventRecord;
     }
 
     private async getCalendarEventsByRange(fromText: string, toText: string) {
@@ -628,11 +435,8 @@ export class CalendarService {
             throw new BadRequestException("Invalid date range.");
         }
 
-        await this.ensureDefaultCalendars();
-        await this.syncAdventureIslandEvents(fromDate, toDate);
-        await this.syncLostArkNoticeEvents(fromDate, toDate);
-
-        const events = await this.prismaService.calendarEvent.findMany({
+        const { calendarMap } = await this.getCalendarLookup();
+        const events = (await this.prismaService.calendarEvent.findMany({
             where: {
                 times: {
                     some: {
@@ -655,7 +459,67 @@ export class CalendarService {
                 },
             },
             orderBy: [{ calendar: { sortOrder: "asc" } }, { title: "asc" }],
+        })) as unknown as CalendarEventRecord[];
+        const eventKeySet = new Set(
+            events
+                .map((event) =>
+                    event.externalSourceType && event.externalSourceId
+                        ? `${event.sourceType}:${event.externalSourceType}:${event.externalSourceId}`
+                        : null,
+                )
+                .filter((value): value is string => value != null),
+        );
+
+        const adventureIslands = await this.prismaService.adventureIsland.findMany({
+            where: {
+                lostArkDate: {
+                    gte: this.toDateText(fromDate),
+                    lte: this.toDateText(toDate),
+                },
+            },
+            orderBy: [{ lostArkDate: "asc" }, { startTime: "asc" }, { contentsName: "asc" }],
         });
+        const notices = await this.prismaService.lostArkNotice.findMany({
+            where: {
+                noticeDate: {
+                    gte: fromDate,
+                    lte: toDate,
+                },
+            },
+            orderBy: [{ noticeDate: "asc" }, { title: "asc" }],
+        });
+
+        for (const adventureIsland of adventureIslands) {
+            const generatedEvent = this.buildAdventureIslandEvent(adventureIsland, calendarMap);
+
+            if (generatedEvent == null) {
+                continue;
+            }
+
+            const eventKey = `${generatedEvent.sourceType}:${generatedEvent.externalSourceType}:${generatedEvent.externalSourceId}`;
+
+            if (eventKeySet.has(eventKey)) {
+                continue;
+            }
+
+            events.push(generatedEvent);
+        }
+
+        for (const notice of notices) {
+            const generatedEvent = this.buildLostArkNoticeEvent(notice, calendarMap);
+
+            if (generatedEvent == null) {
+                continue;
+            }
+
+            const eventKey = `${generatedEvent.sourceType}:${generatedEvent.externalSourceType}:${generatedEvent.externalSourceId}`;
+
+            if (eventKeySet.has(eventKey)) {
+                continue;
+            }
+
+            events.push(generatedEvent);
+        }
 
         return events
             .map((event) => this.mapCalendarEvent(event))
@@ -669,6 +533,73 @@ export class CalendarService {
 
                 return leftEvent.title.localeCompare(rightEvent.title);
             });
+    }
+
+    /**
+     * @public
+     * @returns Calendar list ordered by display order and name.
+     */
+    async getCalendars() {
+        const { calendars, calendarMap } = await this.getCalendarLookup();
+        const virtualCalendars = this.getVirtualCalendars().filter(
+            (calendar) => !calendarMap.has(`${calendar.sourceType}:${calendar.name}`),
+        );
+
+        return [...calendars, ...virtualCalendars].sort((leftCalendar, rightCalendar) => {
+            if (leftCalendar.sortOrder !== rightCalendar.sortOrder) {
+                return leftCalendar.sortOrder - rightCalendar.sortOrder;
+            }
+
+            return leftCalendar.name.localeCompare(rightCalendar.name);
+        });
+    }
+
+    /**
+     * @public
+     * @param calendarId Calendar id to update.
+     * @param dto Visibility update payload.
+     * @returns Updated calendar.
+     */
+    updateCalendarVisible(calendarId: string, dto: UpdateCalendarVisibleDto) {
+        throw new MethodNotAllowedException(
+            `Calendar updates are disabled. calendarId=${calendarId}`,
+        );
+    }
+
+    /**
+     * @public
+     * @param calendarId Calendar id to update.
+     * @param dto Default color update payload.
+     * @returns Updated calendar.
+     */
+    updateCalendarColor(calendarId: string, dto: UpdateCalendarColorDto) {
+        throw new MethodNotAllowedException(
+            `Calendar updates are disabled. calendarId=${calendarId}`,
+        );
+    }
+
+    /**
+     * @public
+     * @param fromDate Period start.
+     * @param toDate Period end.
+     * @returns Calendar event count.
+     */
+    async syncAdventureIslandEvents(fromDate: Date, toDate: Date) {
+        throw new MethodNotAllowedException(
+            `Calendar sync is disabled. fromDate=${fromDate.toISOString()}, toDate=${toDate.toISOString()}`,
+        );
+    }
+
+    /**
+     * @public
+     * @param fromDate Period start.
+     * @param toDate Period end.
+     * @returns Calendar event count.
+     */
+    async syncLostArkNoticeEvents(fromDate: Date, toDate: Date) {
+        throw new MethodNotAllowedException(
+            `Calendar sync is disabled. fromDate=${fromDate.toISOString()}, toDate=${toDate.toISOString()}`,
+        );
     }
 
     async getCalendarEvents(query: QueryCalendarEventsDto) {
@@ -685,32 +616,7 @@ export class CalendarService {
      * @returns Created user event with calendar and display color.
      */
     async createUserEvent(dto: CreateCalendarEventDto) {
-        await this.assertUserCalendar(dto.calendarId);
-        this.assertEventTimes(dto.times);
-
-        const event = await this.prismaService.calendarEvent.create({
-            data: {
-                calendarId: dto.calendarId,
-                title: dto.title,
-                description: dto.description,
-                color: dto.color,
-                sourceType: CalendarEventSourceType.user,
-                externalSourceType: null,
-                externalSourceId: null,
-                alarmEnabled: dto.alarmEnabled ?? false,
-                times: {
-                    create: this.createEventTimeCreateManyInput(dto.times),
-                },
-            },
-            include: {
-                calendar: true,
-                times: {
-                    orderBy: [{ sortOrder: "asc" }, { startDateTime: "asc" }],
-                },
-            },
-        });
-
-        return this.mapCalendarEvent(event);
+        throw new MethodNotAllowedException("Calendar event mutations are disabled.");
     }
 
     /**
@@ -720,55 +626,7 @@ export class CalendarService {
      * @returns Updated user event with calendar and display color.
      */
     async updateUserEvent(eventId: string, dto: UpdateCalendarEventDto) {
-        const storedEvent = await this.prismaService.calendarEvent.findUnique({
-            where: {
-                id: eventId,
-            },
-        });
-
-        if (storedEvent == null) {
-            throw new NotFoundException("Calendar event was not found.");
-        }
-
-        if (storedEvent.sourceType === CalendarEventSourceType.lostark) {
-            throw new ForbiddenException("Lost Ark calendar events cannot be modified.");
-        }
-
-        if (dto.calendarId != null) {
-            await this.assertUserCalendar(dto.calendarId);
-        }
-
-        if (dto.times != null) {
-            this.assertEventTimes(dto.times);
-        }
-
-        const event = await this.prismaService.calendarEvent.update({
-            where: {
-                id: eventId,
-            },
-            data: {
-                calendarId: dto.calendarId,
-                title: dto.title,
-                description: dto.description,
-                color: dto.color,
-                alarmEnabled: dto.alarmEnabled,
-                times:
-                    dto.times == null
-                        ? undefined
-                        : {
-                              deleteMany: {},
-                              create: this.createEventTimeCreateManyInput(dto.times),
-                          },
-            },
-            include: {
-                calendar: true,
-                times: {
-                    orderBy: [{ sortOrder: "asc" }, { startDateTime: "asc" }],
-                },
-            },
-        });
-
-        return this.mapCalendarEvent(event);
+        throw new MethodNotAllowedException("Calendar event mutations are disabled.");
     }
 
     /**
@@ -777,28 +635,6 @@ export class CalendarService {
      * @returns Deleted user event id.
      */
     async deleteUserEvent(eventId: string) {
-        const storedEvent = await this.prismaService.calendarEvent.findUnique({
-            where: {
-                id: eventId,
-            },
-        });
-
-        if (storedEvent == null) {
-            throw new NotFoundException("Calendar event was not found.");
-        }
-
-        if (storedEvent.sourceType === CalendarEventSourceType.lostark) {
-            throw new ForbiddenException("Lost Ark calendar events cannot be deleted.");
-        }
-
-        await this.prismaService.calendarEvent.delete({
-            where: {
-                id: eventId,
-            },
-        });
-
-        return {
-            id: eventId,
-        };
+        throw new MethodNotAllowedException("Calendar event mutations are disabled.");
     }
 }

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Query } from "@nestjs/common";
+import { Controller, Get, MethodNotAllowedException, Post, Query } from "@nestjs/common";
 import { QueryNoticesDto } from "../dto/query-notices.dto";
 import { LostArkNoticesService } from "../services/lostark-notices.service";
 
@@ -13,7 +13,7 @@ export class LostArkNoticesController {
 
     @Post("collect")
     async collectNotices() {
-        return this.lostArkNoticesService.collectNotices();
+        throw new MethodNotAllowedException("Notice collection is disabled.");
     }
 
     @Get("stored")

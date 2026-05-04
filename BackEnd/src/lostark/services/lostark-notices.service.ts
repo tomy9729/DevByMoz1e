@@ -1,5 +1,5 @@
-import { Injectable, Logger } from "@nestjs/common";
-import { LostArkNotice, Prisma } from "@prisma/client";
+import { Injectable, Logger, MethodNotAllowedException } from "@nestjs/common";
+import { LostArkNotice } from "@prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
 import { QueryNoticesDto } from "../dto/query-notices.dto";
 import { LostArkClient } from "../lostark.client";
@@ -37,37 +37,7 @@ export class LostArkNoticesService {
     }
 
     async collectNotices() {
-        const notices = await this.lostArkClient.fetchNotices();
-        const collectedAt = new Date();
-
-        for (const notice of notices) {
-            await this.prismaService.lostArkNotice.upsert({
-                where: {
-                    link: notice.Link,
-                },
-                create: {
-                    title: notice.Title,
-                    noticeDate: new Date(notice.Date),
-                    link: notice.Link,
-                    type: notice.Type,
-                    rawData: notice as unknown as Prisma.InputJsonValue,
-                    collectedAt,
-                },
-                update: {
-                    title: notice.Title,
-                    noticeDate: new Date(notice.Date),
-                    type: notice.Type,
-                    rawData: notice as unknown as Prisma.InputJsonValue,
-                    collectedAt,
-                },
-            });
-        }
-
-        return {
-            collectedAt,
-            count: notices.length,
-            items: notices,
-        };
+        throw new MethodNotAllowedException("Notice collection is disabled.");
     }
 
     async getStoredNotices(query: QueryNoticesDto): Promise<LostArkNotice[]> {
